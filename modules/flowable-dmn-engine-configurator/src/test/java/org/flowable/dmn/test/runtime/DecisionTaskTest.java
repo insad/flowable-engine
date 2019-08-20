@@ -12,15 +12,20 @@
  */
 package org.flowable.dmn.test.runtime;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import org.flowable.cmmn.api.runtime.CaseInstance;
 import org.flowable.cmmn.api.runtime.PlanItemInstance;
 import org.flowable.cmmn.api.runtime.PlanItemInstanceState;
+import org.flowable.cmmn.engine.CmmnEngineConfiguration;
 import org.flowable.cmmn.engine.test.CmmnDeployment;
 import org.flowable.cmmn.engine.test.FlowableCmmnRule;
 import org.flowable.common.engine.api.FlowableException;
-import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.impl.DefaultTenantProvider;
+import org.flowable.common.engine.impl.interceptor.EngineConfigurationConstants;
+import org.flowable.dmn.api.DmnHistoricDecisionExecution;
+import org.flowable.dmn.engine.DmnEngineConfiguration;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -33,6 +38,7 @@ public class DecisionTaskTest {
 
     @Rule
     public FlowableCmmnRule cmmnRule = new FlowableCmmnRule("org/flowable/cmmn/test/runtime/DecisionTaskTest.cfg.xml");
+    
     @Rule
     public ExpectedException expectedException = ExpectedException.none();
 
@@ -200,7 +206,7 @@ public class DecisionTaskTest {
             resources = {"org/flowable/cmmn/test/runtime/DecisionTaskTest.testExpressionReferenceKey.cmmn"}
     )
     public void testNonStringReferenceKey() {
-        this.expectedException.expect(FlowableObjectNotFoundException.class);
+        this.expectedException.expect(FlowableException.class);
         this.expectedException.expectMessage("No decision found for key: 1 and parent deployment id");
 
         cmmnRule.getCmmnRuntimeService().createCaseInstanceBuilder()
@@ -215,7 +221,7 @@ public class DecisionTaskTest {
             resources = {"org/flowable/cmmn/test/runtime/DecisionTaskTest.testExpressionReferenceKey.cmmn"}
     )
     public void testNonExistingReferenceKey() {
-        this.expectedException.expect(FlowableObjectNotFoundException.class);
+        this.expectedException.expect(FlowableException.class);
         this.expectedException.expectMessage("No decision found for key: NonExistingReferenceKey and parent deployment id");
 
         cmmnRule.getCmmnRuntimeService().createCaseInstanceBuilder()
@@ -241,6 +247,118 @@ public class DecisionTaskTest {
                 .start();
 
         assertResultVariable(caseInstance);
+    }
+
+    @Test
+    @CmmnDeployment(
+        resources = {"org/flowable/cmmn/test/runtime/DecisionTaskTest.testDecisionServiceTaskFallBackToDefaultTenant.cmmn"},
+        tenantId = "flowable"
+    )
+    public void testDecisionServiceTaskWithFallback() {
+        deployDmnTableAssertCaseStarted();
+    }
+    
+    @Test
+    @CmmnDeployment(
+        resources = {"org/flowable/cmmn/test/runtime/DecisionTaskTest.testDecisionServiceTaskFallBackToDefaultTenantFalse.cmmn"},
+        tenantId = "flowable"
+    )
+    public void testDecisionServiceTaskWithFallbackFalse() {
+        this.expectedException.expect(FlowableException.class);
+        this.expectedException.expectMessage("and tenant id: flowable. There was also no fall back decision table found without parent deployment id.");
+
+        deployDmnTableAssertCaseStarted();
+    }
+    
+    @Test
+    @CmmnDeployment(
+        resources = {"org/flowable/cmmn/test/runtime/DecisionTaskTest.testDecisionServiceTask.cmmn"},
+        tenantId = "flowable"
+    )
+    public void testDecisionServiceTaskWithGlobalTenantFallback() {
+        deployDmnTableWithGlobalTenantFallback("defaultFlowable");
+    }
+    
+    @Test
+    @CmmnDeployment(
+        resources = {"org/flowable/cmmn/test/runtime/DecisionTaskTest.testDecisionServiceTaskFallBackToDefaultTenantFalse.cmmn"},
+        tenantId = "flowable"
+    )
+    public void testDecisionServiceTaskWithGlobalTenantFallbackNoDefinition() {
+        this.expectedException.expect(FlowableException.class);
+        this.expectedException.expectMessage("There was also no fall back decision table found for default tenant defaultFlowable");
+
+        deployDmnTableWithGlobalTenantFallback("otherTenant");
+    }
+
+    protected void deployDmnTableAssertCaseStarted() {
+        org.flowable.cmmn.api.repository.CmmnDeployment cmmnDeployment = cmmnRule.getCmmnRepositoryService().createDeployment().
+            addClasspathResource("org/flowable/cmmn/test/runtime/DecisionTaskTest.testDecisionServiceTask.dmn").
+            tenantId(CmmnEngineConfiguration.NO_TENANT_ID).
+            deploy();
+
+        try {
+            CaseInstance caseInstance = cmmnRule.getCmmnRuntimeService().createCaseInstanceBuilder()
+                .caseDefinitionKey("myCase")
+                .variable("testVar", "test2")
+                .tenantId("flowable")
+                .start();
+
+            assertResultVariable(caseInstance);
+            
+            CmmnEngineConfiguration cmmnEngineConfiguration = cmmnRule.getCmmnEngineConfiguration();
+            DmnEngineConfiguration dmnEngineConfiguration = (DmnEngineConfiguration) cmmnEngineConfiguration.getEngineConfigurations().get(
+                            EngineConfigurationConstants.KEY_DMN_ENGINE_CONFIG);
+            
+            DmnHistoricDecisionExecution decisionExecution = dmnEngineConfiguration.getDmnHistoryService()
+                            .createHistoricDecisionExecutionQuery()
+                            .instanceId(caseInstance.getId())
+                            .singleResult();
+            
+            assertNotNull(decisionExecution);
+            assertEquals("flowable", decisionExecution.getTenantId());
+            
+        } finally {
+            cmmnRule.getCmmnRepositoryService().deleteDeployment(cmmnDeployment.getId(), true);
+        }
+    }
+    
+    protected void deployDmnTableWithGlobalTenantFallback(String tenantId) {
+        CmmnEngineConfiguration cmmnEngineConfiguration = cmmnRule.getCmmnEngineConfiguration();
+        DmnEngineConfiguration dmnEngineConfiguration = (DmnEngineConfiguration) cmmnEngineConfiguration.getEngineConfigurations().get(
+                        EngineConfigurationConstants.KEY_DMN_ENGINE_CONFIG);
+        
+        DefaultTenantProvider originalDefaultTenantProvider = dmnEngineConfiguration.getDefaultTenantProvider();
+        dmnEngineConfiguration.setFallbackToDefaultTenant(true);
+        dmnEngineConfiguration.setDefaultTenantValue("defaultFlowable");
+        
+        org.flowable.cmmn.api.repository.CmmnDeployment cmmnDeployment = cmmnRule.getCmmnRepositoryService().createDeployment().
+            addClasspathResource("org/flowable/cmmn/test/runtime/DecisionTaskTest.testDecisionServiceTask.dmn").
+            tenantId(tenantId).
+            deploy();
+
+        try {
+            CaseInstance caseInstance = cmmnRule.getCmmnRuntimeService().createCaseInstanceBuilder()
+                .caseDefinitionKey("myCase")
+                .variable("testVar", "test2")
+                .tenantId("flowable")
+                .start();
+
+            assertResultVariable(caseInstance);
+            
+            DmnHistoricDecisionExecution decisionExecution = dmnEngineConfiguration.getDmnHistoryService()
+                            .createHistoricDecisionExecutionQuery()
+                            .instanceId(caseInstance.getId())
+                            .singleResult();
+            
+            assertNotNull(decisionExecution);
+            assertEquals("flowable", decisionExecution.getTenantId());
+            
+        } finally {
+            dmnEngineConfiguration.setFallbackToDefaultTenant(false);
+            dmnEngineConfiguration.setDefaultTenantProvider(originalDefaultTenantProvider);
+            cmmnRule.getCmmnRepositoryService().deleteDeployment(cmmnDeployment.getId(), true);
+        }
     }
 
     protected void assertResultVariable(CaseInstance caseInstance) {

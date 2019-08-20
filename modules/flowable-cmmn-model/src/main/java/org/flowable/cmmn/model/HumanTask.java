@@ -24,10 +24,12 @@ public class HumanTask extends Task {
     protected String owner;
     protected String priority;
     protected String formKey;
+    protected String validateFormFields;
     protected String dueDate;
     protected String category;
     protected List<String> candidateUsers = new ArrayList<>();
     protected List<String> candidateGroups = new ArrayList<>();
+    protected List<FlowableListener> taskListeners = new ArrayList<>();
 
     public String getAssignee() {
         return assignee;
@@ -59,6 +61,14 @@ public class HumanTask extends Task {
 
     public void setFormKey(String formKey) {
         this.formKey = formKey;
+    }
+
+    public String getValidateFormFields() {
+        return validateFormFields;
+    }
+
+    public void setValidateFormFields(String validateFormFields) {
+        this.validateFormFields = validateFormFields;
     }
 
     public String getDueDate() {
@@ -93,6 +103,14 @@ public class HumanTask extends Task {
         this.candidateGroups = candidateGroups;
     }
 
+    public List<FlowableListener> getTaskListeners() {
+        return taskListeners;
+    }
+
+    public void setTaskListeners(List<FlowableListener> taskListeners) {
+        this.taskListeners = taskListeners;
+    }
+
     @Override
     public HumanTask clone() {
         HumanTask clone = new HumanTask();
@@ -105,6 +123,7 @@ public class HumanTask extends Task {
         setAssignee(otherElement.getAssignee());
         setOwner(otherElement.getOwner());
         setFormKey(otherElement.getFormKey());
+        setValidateFormFields(otherElement.getValidateFormFields());
         setDueDate(otherElement.getDueDate());
         setPriority(otherElement.getPriority());
         setCategory(otherElement.getCategory());

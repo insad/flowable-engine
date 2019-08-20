@@ -19,7 +19,6 @@ import org.flowable.idm.api.IdmIdentityService;
 import org.flowable.spring.boot.FlowableSecurityAutoConfiguration;
 import org.flowable.spring.boot.idm.IdmEngineAutoConfiguration;
 import org.flowable.spring.boot.idm.IdmEngineServicesAutoConfiguration;
-import org.flowable.spring.security.FlowableAuthenticationProvider;
 import org.flowable.spring.security.FlowableUserDetailsService;
 import org.flowable.spring.security.SpringSecurityAuthenticationContext;
 import org.junit.Test;
@@ -74,10 +73,10 @@ public class FlowableSecurityAutoConfigurationTest {
     }
 
     @Test
-    public void withMissingFlowableAuthenticationProvider() {
+    public void withMissingFlowableUserDetailsService() {
         contextRunner
             .withConfiguration(IDM_CONFIGURATION)
-            .withClassLoader(new FilteredClassLoader(FlowableAuthenticationProvider.class))
+            .withClassLoader(new FilteredClassLoader(FlowableUserDetailsService.class))
             .run(context -> assertThat(context)
                 .hasSingleBean(IdmIdentityService.class)
                 .doesNotHaveBean(FlowableSecurityAutoConfiguration.class));
@@ -110,9 +109,8 @@ public class FlowableSecurityAutoConfigurationTest {
                         .hasSingleBean(IdmIdentityService.class)
                         .hasSingleBean(FlowableSecurityAutoConfiguration.class)
                         .hasSingleBean(UserDetailsService.class)
-                        .hasSingleBean(AuthenticationProvider.class);
+                        .doesNotHaveBean(AuthenticationProvider.class);
                     assertThat(context.getBean(UserDetailsService.class)).isInstanceOf(FlowableUserDetailsService.class);
-                    assertThat(context.getBean(AuthenticationProvider.class)).isInstanceOf(FlowableAuthenticationProvider.class);
 
                     assertThat(Authentication.getAuthenticationContext()).isInstanceOf(SpringSecurityAuthenticationContext.class);
                 }

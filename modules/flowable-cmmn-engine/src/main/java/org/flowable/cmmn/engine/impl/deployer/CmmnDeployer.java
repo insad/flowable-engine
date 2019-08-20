@@ -13,6 +13,7 @@
 package org.flowable.cmmn.engine.impl.deployer;
 
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -34,9 +35,13 @@ import org.flowable.cmmn.model.CmmnModel;
 import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.api.repository.EngineDeployment;
 import org.flowable.common.engine.api.repository.EngineResource;
+import org.flowable.common.engine.api.scope.ScopeTypes;
 import org.flowable.common.engine.impl.EngineDeployer;
 import org.flowable.common.engine.impl.cfg.IdGenerator;
 import org.flowable.common.engine.impl.persistence.deploy.DeploymentCache;
+import org.flowable.identitylink.api.IdentityLinkType;
+import org.flowable.identitylink.service.IdentityLinkService;
+import org.flowable.identitylink.service.impl.persistence.entity.IdentityLinkEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +59,7 @@ public class CmmnDeployer implements EngineDeployer {
     protected IdGenerator idGenerator;
     protected CmmnParser cmmnParser;
     protected CaseDefinitionDiagramHelper caseDefinitionDiagramHelper;
+    protected boolean usePrefixId;
 
     @Override
     public void deploy(EngineDeployment deployment, Map<String, Object> deploymentSettings) {
@@ -144,7 +150,11 @@ public class CmmnDeployer implements EngineDeployer {
                 version = latest.getVersion() + 1;
             }
             caseDefinition.setVersion(version);
-            caseDefinition.setId(idGenerator.getNextId());
+            if (usePrefixId) {
+                caseDefinition.setId(caseDefinition.getIdPrefix() + idGenerator.getNextId());
+            } else {
+                caseDefinition.setId(idGenerator.getNextId());
+            }
 
             Case caseObject = parseResult.getCmmnCaseForCaseDefinition(caseDefinition);
             if (caseObject.getPlanModel().getFormKey() != null) {
@@ -157,6 +167,7 @@ public class CmmnDeployer implements EngineDeployer {
         CaseDefinitionEntityManager caseDefinitionManager = CommandContextUtil.getCaseDefinitionEntityManager();
         for (CaseDefinitionEntity caseDefinition : parseResult.getAllCaseDefinitions()) {
             caseDefinitionManager.insert(caseDefinition, false);
+            addAuthorizationsForNewCaseDefinition(parseResult.getCmmnCaseForCaseDefinition(caseDefinition), caseDefinition);
         }
     }
 
@@ -245,6 +256,35 @@ public class CmmnDeployer implements EngineDeployer {
             deployment.addDeployedArtifact(caseDefinitionEntity);
         }
     }
+    
+    public void addAuthorizationsForNewCaseDefinition(Case caze, CaseDefinitionEntity caseDefinition) {
+        addAuthorizationsFromIterator(caze.getCandidateStarterUsers(), caseDefinition, "user");
+        addAuthorizationsFromIterator(caze.getCandidateStarterGroups(), caseDefinition, "group");
+    }
+
+    protected void addAuthorizationsFromIterator(List<String> expressions,
+                    CaseDefinitionEntity caseDefinition, String expressionType) {
+
+        if (expressions != null) {
+            IdentityLinkService identityLinkService = CommandContextUtil.getIdentityLinkService();
+            Iterator<String> iterator = expressions.iterator();
+            while (iterator.hasNext()) {
+                @SuppressWarnings("cast")
+                String expression = iterator.next();
+                IdentityLinkEntity identityLink = identityLinkService.createIdentityLink();
+                identityLink.setScopeDefinitionId(caseDefinition.getId());
+                identityLink.setScopeType(ScopeTypes.CMMN);
+                if ("user".equals(expressionType)) {
+                    identityLink.setUserId(expression);
+                } else if ("group".equals(expressionType)) {
+                    identityLink.setGroupId(expression);
+                }
+                identityLink.setType(IdentityLinkType.CANDIDATE);
+                identityLinkService.insertIdentityLink(identityLink);
+            }
+        }
+
+    }
 
     public IdGenerator getIdGenerator() {
         return idGenerator;
@@ -268,5 +308,13 @@ public class CmmnDeployer implements EngineDeployer {
 
     public void setCaseDefinitionDiagramHelper(CaseDefinitionDiagramHelper caseDefinitionDiagramHelper) {
         this.caseDefinitionDiagramHelper = caseDefinitionDiagramHelper;
+    }
+
+    public boolean isUsePrefixId() {
+        return usePrefixId;
+    }
+
+    public void setUsePrefixId(boolean usePrefixId) {
+        this.usePrefixId = usePrefixId;
     }
 }

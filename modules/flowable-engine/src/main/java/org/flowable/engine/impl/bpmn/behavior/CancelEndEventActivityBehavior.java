@@ -123,7 +123,7 @@ public class CancelEndEventActivityBehavior extends FlowNodeActivityBehavior {
         }
 
         // The current activity is finished (and will not be ended in the deleteChildExecutions)
-        CommandContextUtil.getHistoryManager(commandContext).recordActivityEnd(executionEntity, null);
+        CommandContextUtil.getActivityInstanceEntityManager(commandContext).recordActivityEnd(executionEntity, null);
 
         // set new parent for boundary event execution
         executionEntity.setParent(newParentScopeExecution);
@@ -148,7 +148,7 @@ public class CancelEndEventActivityBehavior extends FlowNodeActivityBehavior {
             }
         }
 
-        executionEntityManager.deleteExecutionAndRelatedData(parentExecution, deleteReason);
+        executionEntityManager.deleteExecutionAndRelatedData(parentExecution, deleteReason, false);
     }
 
 }

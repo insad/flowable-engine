@@ -125,7 +125,7 @@ public abstract class MultiInstanceActivityBehavior extends FlowNodeActivityBeha
             // for synchronous, history was created already in ContinueMultiInstanceOperation,
             // but that would lead to wrong timings for asynchronous which is why it's here
             if (activity.isAsynchronous()) {
-                CommandContextUtil.getHistoryManager().recordActivityStart((ExecutionEntity) execution);
+                CommandContextUtil.getActivityInstanceEntityManager().recordActivityStart(execution);
             }
             innerActivityBehavior.execute(execution);
         }
@@ -342,7 +342,7 @@ public abstract class MultiInstanceActivityBehavior extends FlowNodeActivityBeha
                 } else if (collectionVariable instanceof Iterable) {
                     return iterableToCollection((Iterable) collectionVariable);
                 } else if (collectionVariable == null) {
-                    throw new FlowableIllegalArgumentException("Variable '" + obj + "' is not found");
+                    throw new FlowableIllegalArgumentException("Variable '" + obj + "' was not found");
                 } else {
                     throw new FlowableIllegalArgumentException("Variable '" + obj + "':" + collectionVariable + " is not a Collection");
                 }

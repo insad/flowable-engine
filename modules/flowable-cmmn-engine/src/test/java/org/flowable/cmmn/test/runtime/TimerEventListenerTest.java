@@ -57,6 +57,9 @@ public class TimerEventListenerTest extends FlowableCmmnTestCase {
         
         Job timerJob = cmmnManagementService.createTimerJobQuery().scopeDefinitionId(caseInstance.getCaseDefinitionId()).singleResult();
         assertNotNull(timerJob);
+        assertEquals("timerListener", timerJob.getElementId());
+        assertEquals("Timer listener", timerJob.getElementName());
+        
         cmmnManagementService.moveTimerToExecutableJob(timerJob.getId());
         cmmnManagementService.executeJob(timerJob.getId());
         
@@ -87,7 +90,7 @@ public class TimerEventListenerTest extends FlowableCmmnTestCase {
         // Timer fires after 1 hour, so setting it to 1 hours + 1 second
         setClockTo(new Date(startTime.getTime() + (60 * 60 * 1000 + 1)));
 
-        CmmnJobTestHelper.waitForJobExecutorToProcessAllJobs(cmmnEngineConfiguration, 5000L, 200L, true);
+        CmmnJobTestHelper.waitForJobExecutorToProcessAllJobs(cmmnEngineConfiguration, 7000L, 200L, true);
 
         // User task should be active after the timer has triggered 
         assertEquals(1L, cmmnTaskService.createTaskQuery().count());
@@ -111,7 +114,7 @@ public class TimerEventListenerTest extends FlowableCmmnTestCase {
         // Timer fires after 1 day, so setting it to 1 day + 1 second
         setClockTo(new Date(startTime.getTime() + (24 * 60 * 60 * 1000 + 1)));
         
-        CmmnJobTestHelper.waitForJobExecutorToProcessAllJobs(cmmnEngineConfiguration, 5000L, 200L, true);
+        CmmnJobTestHelper.waitForJobExecutorToProcessAllJobs(cmmnEngineConfiguration, 7000L, 200L, true);
         
         // User task should be active after the timer has triggered 
         assertEquals(2L, cmmnTaskService.createTaskQuery().count());
@@ -136,7 +139,7 @@ public class TimerEventListenerTest extends FlowableCmmnTestCase {
         // Timer fires after 3 hours, so setting it to 3 hours + 1 second
         setClockTo(new Date(startTime.getTime() + (3 * 60 * 60 * 1000 + 1)));
         
-        CmmnJobTestHelper.waitForJobExecutorToProcessAllJobs(cmmnEngineConfiguration, 5000L, 200L, true);
+        CmmnJobTestHelper.waitForJobExecutorToProcessAllJobs(cmmnEngineConfiguration, 7000L, 200L, true);
         
         // User task should be active after the timer has triggered
         List<Task> tasks = cmmnTaskService.createTaskQuery().caseInstanceId(caseInstance.getId()).orderByTaskName().asc().list();
@@ -163,7 +166,7 @@ public class TimerEventListenerTest extends FlowableCmmnTestCase {
         // Timer fires after 24 hours, so setting it to 24 hours + 1 second
         setClockTo(new Date(startTime.getTime() + (24 * 60 * 60 * 1000 + 1)));
         
-        CmmnJobTestHelper.waitForJobExecutorToProcessAllJobs(cmmnEngineConfiguration, 5000L, 200L, true);
+        CmmnJobTestHelper.waitForJobExecutorToProcessAllJobs(cmmnEngineConfiguration, 7000L, 200L, true);
         
         assertEquals(0L, cmmnRuntimeService.createPlanItemInstanceQuery().caseInstanceId(caseInstance.getId()).count());
         assertEquals(0L, cmmnRuntimeService.createCaseInstanceQuery().count());
@@ -200,7 +203,7 @@ public class TimerEventListenerTest extends FlowableCmmnTestCase {
         assertEquals(0L, cmmnTaskService.createTaskQuery().caseInstanceId(caseInstance.getId()).count());
         
         setClockTo(new Date(dayBefore.getTime() + (24 * 60 * 60 * 1000)));
-        CmmnJobTestHelper.waitForJobExecutorToProcessAllJobs(cmmnEngineConfiguration, 5000L, 200L, true);
+        CmmnJobTestHelper.waitForJobExecutorToProcessAllJobs(cmmnEngineConfiguration, 7000L, 200L, true);
         
         assertEquals(0L, cmmnRuntimeService.createPlanItemInstanceQuery().caseInstanceId(caseInstance.getId())
                 .planItemInstanceState(PlanItemInstanceState.ACTIVE).planItemDefinitionType(TimerEventListener.class.getSimpleName().toLowerCase()).count());
@@ -231,7 +234,7 @@ public class TimerEventListenerTest extends FlowableCmmnTestCase {
                 .planItemInstanceState(PlanItemInstanceState.ACTIVE).planItemDefinitionType(HumanTask.class.getSimpleName().toLowerCase()).count());
         
         setClockTo(new Date(startTime.getTime() + (2 * 60 * 60 * 1000)));
-        CmmnJobTestHelper.waitForJobExecutorToProcessAllJobs(cmmnEngineConfiguration, 5000L, 200L, true);
+        CmmnJobTestHelper.waitForJobExecutorToProcessAllJobs(cmmnEngineConfiguration, 7000L, 200L, true);
         
         Task task = cmmnTaskService.createTaskQuery().caseInstanceId(caseInstance.getId()).singleResult();
         assertEquals("A", task.getName());
@@ -264,7 +267,7 @@ public class TimerEventListenerTest extends FlowableCmmnTestCase {
                 .planItemInstanceState(PlanItemInstanceState.AVAILABLE).planItemDefinitionType(TimerEventListener.class.getSimpleName().toLowerCase()).count());
         
         setClockTo(new Date(startTime.getTime() + (3 * 60 * 60 * 1000)));
-        CmmnJobTestHelper.waitForJobExecutorToProcessAllJobs(cmmnEngineConfiguration, 5000L, 200L, true);
+        CmmnJobTestHelper.waitForJobExecutorToProcessAllJobs(cmmnEngineConfiguration, 7000L, 200L, true);
         assertCaseInstanceEnded(caseInstance);
     }
     
@@ -330,6 +333,63 @@ public class TimerEventListenerTest extends FlowableCmmnTestCase {
             cmmnTaskService.complete(task.getId());
         }
         assertCaseInstanceEnded(caseInstance);
+    }
+
+    @Test
+    @CmmnDeployment
+    public void timerExitStageOnCompletedTasks() {
+        CaseInstance caseInstance = cmmnRuntimeService.createCaseInstanceBuilder().caseDefinitionKey("timerExitStageOnCompletedTasks").start();
+
+        List<Task> tasks = cmmnTaskService.createTaskQuery()
+                .caseInstanceId(caseInstance.getId())
+                .orderByTaskName().asc()
+                .list();
+        assertEquals(1, tasks.size());
+
+        // Should have a TimerJob
+        assertEquals(1L, cmmnManagementService.createTimerJobQuery().count());
+
+        for(Task task : tasks) {
+            cmmnTaskService.complete(task.getId());
+        }
+
+        // TimerJob should be deleted after all tasks have completed in the stage
+        assertEquals(0L, cmmnManagementService.createTimerJobQuery().count());
+    }
+
+    @Test
+    @CmmnDeployment
+    public void testTimerWithAvailableCondition() {
+        CaseInstance caseInstance = cmmnRuntimeService.createCaseInstanceBuilder().caseDefinitionKey("testTimerExpression").start();
+
+        assertEquals(0L, cmmnManagementService.createTimerJobQuery().count());
+
+        // Setting the variable should make the timer available and create the timer job
+        cmmnRuntimeService.setVariable(caseInstance.getId(), "timerVar", true);
+        assertEquals(1L, cmmnManagementService.createTimerJobQuery().count());
+
+        PlanItemInstance timerPlanItemInstance = cmmnRuntimeService.createPlanItemInstanceQuery().planItemDefinitionType(PlanItemDefinitionType.TIMER_EVENT_LISTENER).singleResult();
+        assertEquals(PlanItemInstanceState.AVAILABLE, timerPlanItemInstance.getState());
+
+        // Setting the variable to false again will dismiss the timer
+        cmmnRuntimeService.setVariable(caseInstance.getId(), "timerVar", false);
+        assertEquals(0L, cmmnManagementService.createTimerJobQuery().count());
+        timerPlanItemInstance = cmmnRuntimeService.createPlanItemInstanceQuery().planItemDefinitionType(PlanItemDefinitionType.TIMER_EVENT_LISTENER).singleResult();
+        assertEquals(PlanItemInstanceState.UNAVAILABLE, timerPlanItemInstance.getState());
+
+        cmmnRuntimeService.setVariable(caseInstance.getId(), "timerVar", true);
+        assertEquals(1L, cmmnManagementService.createTimerJobQuery().count());
+        timerPlanItemInstance = cmmnRuntimeService.createPlanItemInstanceQuery().planItemDefinitionType(PlanItemDefinitionType.TIMER_EVENT_LISTENER).singleResult();
+        assertEquals(PlanItemInstanceState.AVAILABLE, timerPlanItemInstance.getState());
+
+        // Execute the job
+        Job timerJob = cmmnManagementService.createTimerJobQuery().scopeDefinitionId(caseInstance.getCaseDefinitionId()).singleResult();
+        assertNotNull(timerJob);
+        cmmnManagementService.moveTimerToExecutableJob(timerJob.getId());
+        cmmnManagementService.executeJob(timerJob.getId());
+
+        timerPlanItemInstance = cmmnRuntimeService.createPlanItemInstanceQuery().planItemDefinitionType(PlanItemDefinitionType.TIMER_EVENT_LISTENER).includeEnded().singleResult();
+        assertEquals(PlanItemInstanceState.COMPLETED, timerPlanItemInstance.getState());
     }
     
 }

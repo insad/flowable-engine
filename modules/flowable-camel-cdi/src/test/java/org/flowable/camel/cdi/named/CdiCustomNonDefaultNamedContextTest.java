@@ -13,6 +13,7 @@
 package org.flowable.camel.cdi.named;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 
 import java.util.Collections;
@@ -60,7 +61,7 @@ public class CdiCustomNonDefaultNamedContextTest extends NamedCamelCdiFlowableTe
                 from("direct:start").to("flowable:camelProcess");
 
                 from("flowable:camelProcess:serviceTask1").setBody().exchangeProperty("var1").to("mock:service1").setProperty("var2").constant("var2").setBody()
-                                .properties();
+                                .exchangeProperties();
 
                 from("flowable:camelProcess:serviceTask2?copyVariablesToBodyAsMap=true").to("mock:service2");
 
@@ -97,7 +98,7 @@ public class CdiCustomNonDefaultNamedContextTest extends NamedCamelCdiFlowableTe
         String instanceId = (String) exchange.getProperty("PROCESS_ID_PROPERTY");
 
         ProcessInstance processInstance = processEngine.getRuntimeService().createProcessInstanceQuery().processInstanceId(instanceId).singleResult();
-        assertEquals(false, processInstance.isEnded());
+        assertFalse(processInstance.isEnded());
 
         tpl.sendBodyAndProperty("direct:receive", null, FlowableProducer.PROCESS_ID_PROPERTY, instanceId);
 

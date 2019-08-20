@@ -13,6 +13,8 @@
 
 package org.flowable.rest.service.api.history;
 
+import static org.flowable.common.rest.api.PaginateListUtil.paginateList;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,6 +80,9 @@ public class HistoricTaskInstanceBaseResource {
         }
         if (queryRequest.getProcessInstanceId() != null) {
             query.processInstanceId(queryRequest.getProcessInstanceId());
+        }
+        if (queryRequest.getProcessInstanceIdWithChildren() != null) {
+            query.processInstanceIdWithChildren(queryRequest.getProcessInstanceIdWithChildren());
         }
         if (queryRequest.getProcessBusinessKey() != null) {
             query.processInstanceBusinessKey(queryRequest.getProcessBusinessKey());
@@ -229,17 +234,29 @@ public class HistoricTaskInstanceBaseResource {
         if (queryRequest.getProcessVariables() != null) {
             addProcessVariables(query, queryRequest.getProcessVariables());
         }
+        
+        if (queryRequest.getScopeDefinitionId() != null) {
+            query.scopeDefinitionId(queryRequest.getScopeDefinitionId());
+        }
+        if (queryRequest.getScopeId() != null) {
+            query.scopeId(queryRequest.getScopeId());
+        }
+        if (queryRequest.getScopeType() != null) {
+            query.scopeType(queryRequest.getScopeType());
+        }
 
         if (queryRequest.getTenantId() != null) {
             query.taskTenantId(queryRequest.getTenantId());
         }
-
         if (queryRequest.getTenantIdLike() != null) {
             query.taskTenantIdLike(queryRequest.getTenantIdLike());
         }
-
         if (Boolean.TRUE.equals(queryRequest.getWithoutTenantId())) {
             query.taskWithoutTenantId();
+        }
+
+        if (Boolean.TRUE.equals(queryRequest.getWithoutDeleteReason())) {
+            query.taskWithoutDeleteReason();
         }
 
         if (queryRequest.getTaskCandidateGroup() != null) {
@@ -247,10 +264,11 @@ public class HistoricTaskInstanceBaseResource {
         }
         
         if (restApiInterceptor != null) {
-            restApiInterceptor.accessHistoryTaskInfoWithQuery(query);
+            restApiInterceptor.accessHistoryTaskInfoWithQuery(query, queryRequest);
         }
 
-        return new HistoricTaskInstancePaginateList(restResponseFactory, serverRootUrl).paginateList(allRequestParams, queryRequest, query, "taskInstanceId", allowedSortProperties);
+        return paginateList(allRequestParams, queryRequest, query, "taskInstanceId", allowedSortProperties,
+            restResponseFactory::createHistoricTaskInstanceResponseList);
     }
     
     protected HistoricTaskInstance getHistoricTaskInstanceFromRequest(String taskId) {

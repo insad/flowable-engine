@@ -15,7 +15,6 @@ package org.flowable.variable.service.impl.persistence.entity;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.flowable.common.engine.impl.persistence.entity.data.DataManager;
@@ -44,11 +43,17 @@ public class VariableInstanceEntityManagerImpl extends AbstractEntityManager<Var
 
     @Override
     public VariableInstanceEntity create(String name, VariableType type, Object value) {
+        VariableInstanceEntity variableInstance = create(name, type);
+        variableInstance.setValue(value);
+        return variableInstance;
+    }
+
+    @Override
+    public VariableInstanceEntity create(String name, VariableType type) {
         VariableInstanceEntity variableInstance = create();
         variableInstance.setName(name);
         variableInstance.setType(type);
         variableInstance.setTypeName(type.getTypeName());
-        variableInstance.setValue(value);
         return variableInstance;
     }
 

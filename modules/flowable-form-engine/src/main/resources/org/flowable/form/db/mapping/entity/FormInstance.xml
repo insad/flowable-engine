@@ -76,9 +76,21 @@
   </update>
 
   <!-- FORM INSTANCE DELETE -->
+  
+  <delete id="deleteFormInstance" parameterType="string">
+    delete from ${prefix}ACT_FO_FORM_INSTANCE where ID_ = #{id}
+  </delete>
+
+  <delete id="deleteFormInstancesByFormDefinitionId" parameterType="string">
+    delete from ${prefix}ACT_FO_FORM_INSTANCE where FORM_DEFINITION_ID_ = #{formDefinitionId} 
+  </delete>
 
   <delete id="deleteFormInstancesByProcessDefinitionId" parameterType="string">
     delete from ${prefix}ACT_FO_FORM_INSTANCE where PROC_DEF_ID_ = #{processDefinitionId} 
+  </delete>
+  
+  <delete id="deleteFormInstancesByScopeDefinitionId" parameterType="string">
+    delete from ${prefix}ACT_FO_FORM_INSTANCE where SCOPE_DEFINITION_ID_ = #{scopeDefinitionId} 
   </delete>
   
   <!-- FORM INSTANCE RESULTMAP -->
@@ -196,19 +208,4 @@
     </where>
   </sql>
     
-  <!-- mysql specific sql -->
-  <select id="selectFormInstancesByQueryCriteria" databaseId="mysql" parameterType="org.flowable.form.engine.impl.FormInstanceQueryImpl" resultMap="formInstanceResultMap">
-  	<if test="firstResult != null and firstResult &gt;= 0">${limitBefore}</if>
-    select distinct RES.* <if test="firstResult != null and firstResult &gt;= 0">${limitBetween}</if>
-    <include refid="selectFormInstancesByQueryCriteriaSql"/>
-    ${orderBy}
-    <if test="firstResult != null and firstResult &gt;= 0">${limitAfter}</if>
-  </select>
-
-  <!-- mysql specific sql -->
-  <select id="selectFormInstancesCountByQueryCriteria" databaseId="mysql" parameterType="org.flowable.form.engine.impl.FormInstanceQueryImpl" resultType="long">
-    select distinct count(RES.ID_)
-    <include refid="selectFormInstancesByQueryCriteriaSql"/>
-  </select>
-
 </mapper>

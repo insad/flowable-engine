@@ -30,6 +30,7 @@ import org.flowable.app.engine.impl.AppEngineImpl;
 import org.flowable.app.engine.impl.AppManagementServiceImpl;
 import org.flowable.app.engine.impl.AppRepositoryServiceImpl;
 import org.flowable.app.engine.impl.cfg.StandaloneInMemAppEngineConfiguration;
+import org.flowable.app.engine.impl.cmd.SchemaOperationsAppEngineBuild;
 import org.flowable.app.engine.impl.db.AppDbSchemaManager;
 import org.flowable.app.engine.impl.db.EntityDependencyOrder;
 import org.flowable.app.engine.impl.deployer.AppDeployer;
@@ -52,17 +53,19 @@ import org.flowable.app.engine.impl.persistence.entity.data.impl.MybatisAppDeplo
 import org.flowable.app.engine.impl.persistence.entity.data.impl.MybatisResourceDataManager;
 import org.flowable.app.engine.impl.persistence.entity.data.impl.TableDataManagerImpl;
 import org.flowable.app.engine.impl.persistence.entity.deploy.AppDefinitionCacheEntry;
+import org.flowable.common.engine.api.scope.ScopeTypes;
 import org.flowable.common.engine.impl.AbstractEngineConfiguration;
 import org.flowable.common.engine.impl.EngineConfigurator;
 import org.flowable.common.engine.impl.EngineDeployer;
 import org.flowable.common.engine.impl.HasExpressionManagerEngineConfiguration;
+import org.flowable.common.engine.impl.HasVariableTypes;
 import org.flowable.common.engine.impl.calendar.BusinessCalendarManager;
 import org.flowable.common.engine.impl.calendar.CycleBusinessCalendar;
 import org.flowable.common.engine.impl.calendar.DueDateBusinessCalendar;
 import org.flowable.common.engine.impl.calendar.DurationBusinessCalendar;
 import org.flowable.common.engine.impl.calendar.MapBusinessCalendarManager;
 import org.flowable.common.engine.impl.cfg.BeansConfigurationHelper;
-import org.flowable.common.engine.impl.db.DbSchemaManager;
+import org.flowable.common.engine.impl.db.SchemaManager;
 import org.flowable.common.engine.impl.el.ExpressionManager;
 import org.flowable.common.engine.impl.interceptor.CommandInterceptor;
 import org.flowable.common.engine.impl.interceptor.EngineConfigurationConstants;
@@ -95,15 +98,12 @@ import org.flowable.variable.service.impl.types.SerializableType;
 import org.flowable.variable.service.impl.types.ShortType;
 import org.flowable.variable.service.impl.types.StringType;
 import org.flowable.variable.service.impl.types.UUIDType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class AppEngineConfiguration extends AbstractEngineConfiguration implements
-        AppEngineConfigurationApi, HasExpressionManagerEngineConfiguration {
+        AppEngineConfigurationApi, HasExpressionManagerEngineConfiguration, HasVariableTypes {
 
-    protected static final Logger LOGGER = LoggerFactory.getLogger(AppEngineConfiguration.class);
     public static final String DEFAULT_MYBATIS_MAPPING_FILE = "org/flowable/app/db/mapping/mappings.xml";
     public static final String LIQUIBASE_CHANGELOG_PREFIX = "ACT_APP_";
 
@@ -123,7 +123,7 @@ public class AppEngineConfiguration extends AbstractEngineConfiguration implemen
 
     protected boolean disableIdmEngine;
 
-    protected boolean executeServiceDbSchemaManagers = true;
+    protected boolean executeServiceSchemaManagers = true;
     
     protected AppDeployer appDeployer;
     protected AppDeploymentManager deploymentManager;
@@ -133,8 +133,8 @@ public class AppEngineConfiguration extends AbstractEngineConfiguration implemen
     protected DeploymentCache<AppDefinitionCacheEntry> appDefinitionCache;
 
     protected ExpressionManager expressionManager;
-    protected DbSchemaManager identityLinkDbSchemaManager;
-    protected DbSchemaManager variableDbSchemaManager;
+    protected SchemaManager identityLinkSchemaManager;
+    protected SchemaManager variableSchemaManager;
 
     // Identitylink support
     protected IdentityLinkServiceConfiguration identityLinkServiceConfiguration;
@@ -194,7 +194,11 @@ public class AppEngineConfiguration extends AbstractEngineConfiguration implemen
         
         if (usingRelationalDatabase) {
             initDataSource();
-            initDbSchemaManager();
+        }
+        
+        if (usingRelationalDatabase || usingSchemaMgmt) {
+            initSchemaManager();
+            initSchemaManagementCommand();
         }
 
         initVariableTypes();
@@ -221,31 +225,39 @@ public class AppEngineConfiguration extends AbstractEngineConfiguration implemen
     }
 
     @Override
-    public void initDbSchemaManager() {
-        super.initDbSchemaManager();
-        initAppDbSchemaManager();
+    public void initSchemaManager() {
+        super.initSchemaManager();
+        initAppSchemaManager();
 
-        if (executeServiceDbSchemaManagers) {
-            initIdentityLinkDbSchemaManager();
-            initVariableDbSchemaManager();
+        if (executeServiceSchemaManagers) {
+            initIdentityLinkSchemaManager();
+            initVariableSchemaManager();
+        }
+    }
+    
+    public void initSchemaManagementCommand() {
+        if (schemaManagementCmd == null) {
+            if (usingRelationalDatabase && databaseSchemaUpdate != null) {
+                this.schemaManagementCmd = new SchemaOperationsAppEngineBuild();
+            }
         }
     }
 
-    protected void initAppDbSchemaManager() {
-        if (this.dbSchemaManager == null) {
-            this.dbSchemaManager = new AppDbSchemaManager();
+    protected void initAppSchemaManager() {
+        if (this.schemaManager == null) {
+            this.schemaManager = new AppDbSchemaManager();
         }
     }
 
-    protected void initVariableDbSchemaManager() {
-        if (this.variableDbSchemaManager == null) {
-            this.variableDbSchemaManager = new VariableDbSchemaManager();
+    protected void initVariableSchemaManager() {
+        if (this.variableSchemaManager == null) {
+            this.variableSchemaManager = new VariableDbSchemaManager();
         }
     }
 
-    protected void initIdentityLinkDbSchemaManager() {
-        if (this.identityLinkDbSchemaManager == null) {
-            this.identityLinkDbSchemaManager = new IdentityLinkDbSchemaManager();
+    protected void initIdentityLinkSchemaManager() {
+        if (this.identityLinkSchemaManager == null) {
+            this.identityLinkSchemaManager = new IdentityLinkDbSchemaManager();
         }
     }
 
@@ -403,7 +415,7 @@ public class AppEngineConfiguration extends AbstractEngineConfiguration implemen
     }
 
     public void initVariableServiceConfiguration() {
-        this.variableServiceConfiguration = new VariableServiceConfiguration();
+        this.variableServiceConfiguration = new VariableServiceConfiguration(ScopeTypes.APP);
 
         this.variableServiceConfiguration.setClock(this.clock);
         this.variableServiceConfiguration.setObjectMapper(this.objectMapper);
@@ -420,7 +432,7 @@ public class AppEngineConfiguration extends AbstractEngineConfiguration implemen
     }
 
     public void initIdentityLinkServiceConfiguration() {
-        this.identityLinkServiceConfiguration = new IdentityLinkServiceConfiguration();
+        this.identityLinkServiceConfiguration = new IdentityLinkServiceConfiguration(ScopeTypes.APP);
         this.identityLinkServiceConfiguration.setClock(this.clock);
         this.identityLinkServiceConfiguration.setObjectMapper(this.objectMapper);
         this.identityLinkServiceConfiguration.setEventDispatcher(this.eventDispatcher);
@@ -607,12 +619,12 @@ public class AppEngineConfiguration extends AbstractEngineConfiguration implemen
         return this;
     }
 
-    public boolean isExecuteServiceDbSchemaManagers() {
-        return executeServiceDbSchemaManagers;
+    public boolean isExecuteServiceSchemaManagers() {
+        return executeServiceSchemaManagers;
     }
 
-    public void setExecuteServiceDbSchemaManagers(boolean executeServiceDbSchemaManagers) {
-        this.executeServiceDbSchemaManagers = executeServiceDbSchemaManagers;
+    public void setExecuteServiceSchemaManagers(boolean executeServiceSchemaManagers) {
+        this.executeServiceSchemaManagers = executeServiceSchemaManagers;
     }
 
     @Override
@@ -626,28 +638,30 @@ public class AppEngineConfiguration extends AbstractEngineConfiguration implemen
         return this;
     }
 
-    public DbSchemaManager getIdentityLinkDbSchemaManager() {
-        return identityLinkDbSchemaManager;
+    public SchemaManager getIdentityLinkSchemaManager() {
+        return identityLinkSchemaManager;
     }
 
-    public AppEngineConfiguration setIdentityLinkDbSchemaManager(DbSchemaManager identityLinkDbSchemaManager) {
-        this.identityLinkDbSchemaManager = identityLinkDbSchemaManager;
+    public AppEngineConfiguration setIdentityLinkSchemaManager(SchemaManager identityLinkSchemaManager) {
+        this.identityLinkSchemaManager = identityLinkSchemaManager;
         return this;
     }
 
-    public DbSchemaManager getVariableDbSchemaManager() {
-        return variableDbSchemaManager;
+    public SchemaManager getVariableSchemaManager() {
+        return variableSchemaManager;
     }
 
-    public AppEngineConfiguration setVariableDbSchemaManager(DbSchemaManager variableDbSchemaManager) {
-        this.variableDbSchemaManager = variableDbSchemaManager;
+    public AppEngineConfiguration setVariableSchemaManager(SchemaManager variableSchemaManager) {
+        this.variableSchemaManager = variableSchemaManager;
         return this;
     }
 
+    @Override
     public VariableTypes getVariableTypes() {
         return variableTypes;
     }
 
+    @Override
     public AppEngineConfiguration setVariableTypes(VariableTypes variableTypes) {
         this.variableTypes = variableTypes;
         return this;

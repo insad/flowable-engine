@@ -13,6 +13,8 @@
 
 package org.flowable.engine.test.bpmn.event.message;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -22,12 +24,14 @@ import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
 import org.flowable.job.api.TimerJobQuery;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Tijs Rademakers
  */
 public class MessageBoundaryEventTest extends PluggableFlowableTestCase {
 
+    @Test
     @Deployment
     public void testSingleBoundaryMessageEvent() {
         runtimeService.startProcessInstanceByKey("process");
@@ -69,6 +73,7 @@ public class MessageBoundaryEventTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     public void testDoubleBoundaryMessageEventSameMessageId() {
         // deployment fails when two boundary message events have the same
         // messageId
@@ -80,6 +85,7 @@ public class MessageBoundaryEventTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     @Deployment
     public void testDoubleBoundaryMessageEvent() {
         runtimeService.startProcessInstanceByKey("process");
@@ -103,12 +109,8 @@ public class MessageBoundaryEventTest extends PluggableFlowableTestCase {
         runtimeService.messageEventReceived("messageName_1", execution1.getId());
 
         // this should then throw an exception because execution2 no longer exists
-        try {
-            runtimeService.messageEventReceived("messageName_2", execution2.getId());
-            fail();
-        } catch (Exception e) {
-            // This is good
-        }
+        String execution2Id = execution2.getId();
+        assertThatThrownBy(() -> runtimeService.messageEventReceived("messageName_2", execution2Id));
 
         userTask = taskService.createTaskQuery().singleResult();
         assertNotNull(userTask);
@@ -137,6 +139,7 @@ public class MessageBoundaryEventTest extends PluggableFlowableTestCase {
         assertEquals(0, runtimeService.createProcessInstanceQuery().count());
     }
 
+    @Test
     @Deployment
     public void testDoubleBoundaryMessageEventMultiInstance() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("process");
@@ -157,14 +160,9 @@ public class MessageBoundaryEventTest extends PluggableFlowableTestCase {
         // both subscriptions
         runtimeService.messageEventReceived("messageName_1", execution1.getId());
 
-        // this should then throw an exception because execution2 no longer
-        // exists
-        try {
-            runtimeService.messageEventReceived("messageName_2", execution2.getId());
-            fail();
-        } catch (Exception e) {
-            // This is good
-        }
+        // this should then throw an exception because execution2 no longer exists
+        String execution2Id = execution2.getId();
+        assertThatThrownBy(() -> runtimeService.messageEventReceived("messageName_2", execution2Id));
 
         // only process instance and running execution left
         assertEquals(2, runtimeService.createExecutionQuery().count());
@@ -225,6 +223,7 @@ public class MessageBoundaryEventTest extends PluggableFlowableTestCase {
         assertProcessEnded(processInstance.getId());
     }
 
+    @Test
     @Deployment
     public void testBoundaryMessageEventInsideSubprocess() {
 
@@ -271,6 +270,7 @@ public class MessageBoundaryEventTest extends PluggableFlowableTestCase {
         assertEquals(0, runtimeService.createProcessInstanceQuery().count());
     }
 
+    @Test
     @Deployment
     public void testBoundaryMessageEventOnSubprocessAndInsideSubprocess() {
 
@@ -385,6 +385,7 @@ public class MessageBoundaryEventTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     @Deployment
     public void testBoundaryMessageEventOnSubprocess() {
         runtimeService.startProcessInstanceByKey("process");
@@ -444,6 +445,7 @@ public class MessageBoundaryEventTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     @Deployment
     public void testBoundaryMessageEventOnSubprocessAndInsideSubprocessMultiInstance() {
 
@@ -488,6 +490,7 @@ public class MessageBoundaryEventTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     @Deployment
     public void testSingleBoundaryMessageEventWithBoundaryTimerEvent() {
         final Date startTime = new Date();
@@ -513,7 +516,7 @@ public class MessageBoundaryEventTest extends PluggableFlowableTestCase {
 
         // After setting the clock to time '1 hour and 5 seconds', the timer should fire.
         processEngineConfiguration.getClock().setCurrentTime(new Date(startTime.getTime() + ((60 * 60 * 1000) + 5000)));
-        waitForJobExecutorOnCondition(5000L, 100L, new Callable<Boolean>() {
+        waitForJobExecutorOnCondition(7000L, 100L, new Callable<Boolean>() {
             @Override
             public Boolean call() throws Exception {
                 return taskService.createTaskQuery().count() == 2;

@@ -67,7 +67,7 @@ public interface HistoricTaskInstanceEntity extends Entity, HistoricTaskInstance
 
     void setQueryVariables(List<HistoricVariableInstanceEntity> queryVariables);
     
-    void markEnded(String deleteReason);
+    void markEnded(String deleteReason, Date endTime);
 
     void setProcessInstanceId(String processInstanceId);
 
@@ -83,7 +83,15 @@ public interface HistoricTaskInstanceEntity extends Entity, HistoricTaskInstance
 
     void setScopeDefinitionId(String scopeDefinitionId);
 
-    void setStartTime(Date startTime);
+    void setCreateTime(Date createTime);
+
+    /**
+     * @deprecated use {@link #setCreateTime(Date)} instead
+     */
+    @Deprecated
+    default void setStartTime(Date startTime) {
+        setCreateTime(startTime);
+    }
 
     void setEndTime(Date endTime);
 

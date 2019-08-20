@@ -18,12 +18,16 @@ import java.util.Map;
 
 import org.flowable.common.engine.api.management.TablePage;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 
 /**
  * @author Joram Barrez
  */
+@DisabledIfSystemProperty(named = "database", matches = "cockroachdb")
 public class TablePageQueryTest extends PluggableFlowableTestCase {
 
+    @Test
     public void testGetTablePage() {
         String tablePrefix = processEngineConfiguration.getDatabaseTablePrefix();
         List<String> taskIds = generateDummyTasks(20);
@@ -45,6 +49,7 @@ public class TablePageQueryTest extends PluggableFlowableTestCase {
         taskService.deleteTasks(taskIds, true);
     }
 
+    @Test
     public void testGetSortedTablePage() {
         String tablePrefix = processEngineConfiguration.getDatabaseTablePrefix();
         List<String> taskIds = generateDummyTasks(15);

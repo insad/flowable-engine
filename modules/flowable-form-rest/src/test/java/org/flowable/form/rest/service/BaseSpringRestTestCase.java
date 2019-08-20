@@ -1,8 +1,19 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.form.rest.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import junit.framework.AssertionFailedError;
 import junit.framework.TestCase;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -21,7 +32,6 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicHeader;
 import org.eclipse.jetty.server.Server;
-import org.flowable.common.engine.impl.identity.Authentication;
 import org.flowable.form.api.FormManagementService;
 import org.flowable.form.api.FormRepositoryService;
 import org.flowable.form.api.FormService;
@@ -41,6 +51,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -136,7 +147,7 @@ public abstract class BaseSpringRestTestCase extends TestCase {
 
             super.runTest();
 
-        } catch (AssertionFailedError e) {
+        } catch (AssertionError e) {
             LOGGER.error(EMPTY_LINE);
             LOGGER.error("ASSERTION FAILED: {}", e, e);
             throw e;
@@ -160,7 +171,7 @@ public abstract class BaseSpringRestTestCase extends TestCase {
 
             super.runBare();
 
-        } catch (AssertionFailedError e) {
+        } catch (AssertionError e) {
             LOGGER.error(EMPTY_LINE);
             LOGGER.error("ASSERTION FAILED: {}", e, e);
             exception = e;
@@ -217,9 +228,8 @@ public abstract class BaseSpringRestTestCase extends TestCase {
             return response;
 
         } catch (IOException e) {
-            Assert.fail(e.getMessage());
+            throw new UncheckedIOException(e);
         }
-        return null;
     }
 
     public void closeResponse(CloseableHttpResponse response) {
@@ -227,7 +237,7 @@ public abstract class BaseSpringRestTestCase extends TestCase {
             try {
                 response.close();
             } catch (IOException e) {
-                fail("Could not close http connection");
+                throw new AssertionError("Could not close http connection", e);
             }
         }
     }
@@ -261,27 +271,23 @@ public abstract class BaseSpringRestTestCase extends TestCase {
     }
 
     protected void storeFormInstance(String url, String body) throws IOException {
-
         HttpPost post = new HttpPost(SERVER_URL_PREFIX + url);
         post.setEntity(new StringEntity(body));
         CloseableHttpResponse response = executeRequest(post, HttpStatus.SC_OK);
         closeResponse(response);
-
     }
 
     /**
      * Checks if the returned "data" array (child-node of root-json node returned by invoking a GET on the given url) contains entries with the given ID's.
      */
     protected void assertResultsPresentInDataResponse(String url, String submittedBy, String... expectedResourceIds) throws IOException {
-        int numberOfResultsExpected = expectedResourceIds.length;
-
         // Do the actual call
         CloseableHttpResponse response = executeRequest(new HttpGet(SERVER_URL_PREFIX + url), HttpStatus.SC_OK);
 
         // Check status and size
         JsonNode dataNode = objectMapper.readTree(response.getEntity().getContent()).get("data");
         closeResponse(response);
-       // assertEquals(numberOfResultsExpected, dataNode.size());
+        // assertEquals(numberOfResultsExpected, dataNode.size());
 
         // Check presence of ID's
         List<String> toBeFound = new ArrayList<>(Arrays.asList(expectedResourceIds));

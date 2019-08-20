@@ -19,6 +19,9 @@ import java.util.Map;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.runtime.ProcessInstanceQuery;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Tijs Rademakers
@@ -28,17 +31,19 @@ public class ProcessInstanceAndVariablesQueryTest extends PluggableFlowableTestC
     private static final String PROCESS_DEFINITION_KEY = "oneTaskProcess";
     private static final String PROCESS_DEFINITION_KEY_2 = "oneTaskProcess2";
     private static final String PROCESS_DEFINITION_KEY_3 = "oneTaskProcess3";
+    private static final String PROCESS_DEFINITION_KEY_4 = "oneTaskProcess4";
 
     /**
      * Setup starts 4 process instances of oneTaskProcess and 1 instance of oneTaskProcess2
+     * oneTaskProcess4 contains a task variable added via an execution task listener (which shouldn't be returned in the query)
      */
-    @Override
+    @BeforeEach
     protected void setUp() throws Exception {
-        super.setUp();
         repositoryService.createDeployment()
                 .addClasspathResource("org/flowable/engine/test/api/runtime/oneTaskProcess.bpmn20.xml")
                 .addClasspathResource("org/flowable/engine/test/api/runtime/oneTaskProcess2.bpmn20.xml")
                 .addClasspathResource("org/flowable/engine/test/api/runtime/oneTaskProcess3.bpmn20.xml")
+            .addClasspathResource("org/flowable/engine/test/api/runtime/oneTaskProcess4.bpmn20.xml")
                 .deploy();
 
         Map<String, Object> startMap = new HashMap<>();
@@ -55,16 +60,20 @@ public class ProcessInstanceAndVariablesQueryTest extends PluggableFlowableTestC
         startMap.clear();
         startMap.put("casetest", "MyCaseTest");
         runtimeService.startProcessInstanceByKey(PROCESS_DEFINITION_KEY_3, "1", startMap);
+
+        startMap.clear();
+        startMap.put("test4", "test4");
+        runtimeService.startProcessInstanceByKey(PROCESS_DEFINITION_KEY_4, "1", startMap);
     }
 
-    @Override
+    @AfterEach
     protected void tearDown() throws Exception {
         for (org.flowable.engine.repository.Deployment deployment : repositoryService.createDeploymentQuery().list()) {
             repositoryService.deleteDeployment(deployment.getId(), true);
         }
-        super.tearDown();
     }
 
+    @Test
     public void testQuery() {
         ProcessInstance processInstance = runtimeService.createProcessInstanceQuery().includeProcessVariables().variableValueEquals("anothertest", 123).singleResult();
         Map<String, Object> variableMap = processInstance.getProcessVariables();
@@ -72,7 +81,7 @@ public class ProcessInstanceAndVariablesQueryTest extends PluggableFlowableTestC
         assertEquals(123, variableMap.get("anothertest"));
 
         List<ProcessInstance> instanceList = runtimeService.createProcessInstanceQuery().includeProcessVariables().list();
-        assertEquals(6, instanceList.size());
+        assertEquals(7, instanceList.size());
 
         processInstance = runtimeService.createProcessInstanceQuery().includeProcessVariables()
                 .variableValueLike("casetest", "MyCase%").singleResult();
@@ -129,8 +138,14 @@ public class ProcessInstanceAndVariablesQueryTest extends PluggableFlowableTestC
 
         instanceList = runtimeService.createProcessInstanceQuery().includeProcessVariables().processDefinitionKey(PROCESS_DEFINITION_KEY).orderByProcessDefinitionKey().asc().listPage(4, 5);
         assertEquals(0, instanceList.size());
+
+        processInstance = runtimeService.createProcessInstanceQuery().includeProcessVariables().variableValueEquals("test4", "test4").singleResult();
+        variableMap = processInstance.getProcessVariables();
+        assertEquals(1, variableMap.size());
+        assertEquals("test4", variableMap.get("test4"));
     }
 
+    @Test
     public void testOrQuery() {
         ProcessInstance processInstance = runtimeService.createProcessInstanceQuery().includeProcessVariables()
                 .or().variableValueEquals("undefined", 999).variableValueEquals("anothertest", 123).endOr().singleResult();
@@ -159,6 +174,7 @@ public class ProcessInstanceAndVariablesQueryTest extends PluggableFlowableTestC
         assertEquals(123, variableMap.get("anothertest"));
     }
 
+    @Test
     public void testOrQueryMultipleVariableValues() {
         ProcessInstanceQuery query0 = runtimeService.createProcessInstanceQuery().includeProcessVariables().or();
         for (int i = 0; i < 20; i++) {
@@ -204,6 +220,7 @@ public class ProcessInstanceAndVariablesQueryTest extends PluggableFlowableTestC
         assertEquals(123, variableMap.get("anothertest"));
     }
 
+    @Test
     public void testOrProcessVariablesLikeIgnoreCase() {
         List<ProcessInstance> instanceList = runtimeService
                 .createProcessInstanceQuery().or()

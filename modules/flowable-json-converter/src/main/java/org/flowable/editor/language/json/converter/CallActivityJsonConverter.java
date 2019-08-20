@@ -12,18 +12,19 @@
  */
 package org.flowable.editor.language.json.converter;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.commons.lang3.StringUtils;
 import org.flowable.bpmn.model.BaseElement;
 import org.flowable.bpmn.model.CallActivity;
 import org.flowable.bpmn.model.FlowElement;
 import org.flowable.bpmn.model.IOParameter;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * @author Tijs Rademakers
@@ -82,6 +83,14 @@ public class CallActivityJsonConverter extends BaseBpmnJsonConverter {
         
         if (callActivity.isUseLocalScopeForOutParameters()) {
             propertiesNode.put(PROPERTY_CALLACTIVITY_USE_LOCALSCOPE_FOR_OUTPARAMETERS, callActivity.isUseLocalScopeForOutParameters());
+        }
+        
+        if (callActivity.isCompleteAsync()) {
+            propertiesNode.put(PROPERTY_CALLACTIVITY_COMPLETE_ASYNC, callActivity.isCompleteAsync());
+        }
+
+        if (callActivity.getFallbackToDefaultTenant() != null) {
+            propertiesNode.put(PROPERTY_CALLACTIVITY_FALLBACK_TO_DEFAULT_TENANT, callActivity.getFallbackToDefaultTenant());
         }
 
         addJsonParameters(PROPERTY_CALLACTIVITY_IN, "inParameters", callActivity.getInParameters(), propertiesNode);
@@ -151,6 +160,14 @@ public class CallActivityJsonConverter extends BaseBpmnJsonConverter {
         
         if (getPropertyValueAsBoolean(PROPERTY_CALLACTIVITY_USE_LOCALSCOPE_FOR_OUTPARAMETERS, elementNode)) {
             callActivity.setUseLocalScopeForOutParameters(true);
+        }
+        
+        if (getPropertyValueAsBoolean(PROPERTY_CALLACTIVITY_COMPLETE_ASYNC, elementNode)) {
+            callActivity.setCompleteAsync(true);
+        }
+
+        if (StringUtils.isNotEmpty(getPropertyValueAsString(PROPERTY_CALLACTIVITY_FALLBACK_TO_DEFAULT_TENANT, elementNode))) {
+            callActivity.setFallbackToDefaultTenant(getPropertyValueAsBoolean(PROPERTY_CALLACTIVITY_FALLBACK_TO_DEFAULT_TENANT, elementNode));
         }
 
         callActivity.getInParameters().addAll(convertToIOParameters(PROPERTY_CALLACTIVITY_IN, "inParameters", elementNode));

@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.flowable.common.engine.api.FlowableException;
+import org.flowable.dmn.engine.impl.ExecuteDecisionInfo;
 import org.flowable.dmn.engine.impl.audit.DecisionExecutionAuditUtil;
 import org.flowable.dmn.model.Decision;
 import org.flowable.dmn.model.DecisionTable;
@@ -35,12 +36,13 @@ public class ELExecutionContextBuilder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ELExecutionContextBuilder.class);
 
-    public static ELExecutionContext build(Decision decision, Map<String, Object> inputVariables) {
-
+    public static ELExecutionContext build(Decision decision, ExecuteDecisionInfo executeDecisionInfo) {
         ELExecutionContext executionContext = new ELExecutionContext();
+        executionContext.setInstanceId(executeDecisionInfo.getInstanceId());
+        executionContext.setScopeType(executeDecisionInfo.getScopeType());
 
         // initialize audit trail
-        executionContext.setAuditContainer(DecisionExecutionAuditUtil.initializeRuleExecutionAudit(decision, inputVariables));
+        executionContext.setAuditContainer(DecisionExecutionAuditUtil.initializeRuleExecutionAudit(decision, executeDecisionInfo));
 
         DecisionTable decisionTable = (DecisionTable) decision.getExpression();
 
@@ -59,8 +61,8 @@ public class ELExecutionContextBuilder {
             executionContext.setAggregator(decisionTable.getAggregation());
         }
 
+        Map<String, Object> inputVariables = executeDecisionInfo.getVariables();
         preProcessInputVariables(decisionTable, inputVariables);
-
         executionContext.setStackVariables(inputVariables);
 
         LOGGER.debug("Execution Context created");
@@ -105,8 +107,12 @@ public class ELExecutionContextBuilder {
                 } else if (inputVariable.getValue() instanceof Long || inputVariable.getValue() instanceof Integer) {
                     BigInteger transformedNumber = new BigInteger(inputVariable.getValue().toString());
                     inputVariables.put(inputVariable.getKey(), transformedNumber);
-                } else if (inputVariable.getValue() instanceof Double || inputVariable.getValue() instanceof Float) {
-                    BigDecimal transformedNumber = new BigDecimal(inputVariable.getValue().toString());
+                } else if (inputVariable.getValue() instanceof Double ) {
+                    BigDecimal transformedNumber = new BigDecimal((Double) inputVariable.getValue());
+                    inputVariables.put(inputVariable.getKey(), transformedNumber);
+                } else if (inputVariable.getValue() instanceof Float) {
+                    Double doubleValue = Double.valueOf(inputVariable.getValue().toString());
+                    BigDecimal transformedNumber = new BigDecimal(doubleValue);
                     inputVariables.put(inputVariable.getKey(), transformedNumber);
                 }
             } catch (Exception ex) {

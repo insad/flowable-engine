@@ -17,6 +17,8 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -32,10 +34,12 @@ import java.util.Set;
 import javax.naming.InitialContext;
 import javax.sql.DataSource;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.builder.xml.XMLConfigBuilder;
 import org.apache.ibatis.builder.xml.XMLMapperBuilder;
 import org.apache.ibatis.datasource.pooled.PooledDataSource;
 import org.apache.ibatis.mapping.Environment;
+import org.apache.ibatis.plugin.Interceptor;
 import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.ibatis.session.defaults.DefaultSqlSessionFactory;
@@ -50,12 +54,14 @@ import org.flowable.common.engine.impl.cfg.IdGenerator;
 import org.flowable.common.engine.impl.cfg.TransactionContextFactory;
 import org.flowable.common.engine.impl.cfg.standalone.StandaloneMybatisTransactionContextFactory;
 import org.flowable.common.engine.impl.db.CommonDbSchemaManager;
-import org.flowable.common.engine.impl.db.DbSchemaManager;
 import org.flowable.common.engine.impl.db.DbSqlSessionFactory;
 import org.flowable.common.engine.impl.db.LogSqlExecutionTimePlugin;
 import org.flowable.common.engine.impl.db.MybatisTypeAliasConfigurator;
 import org.flowable.common.engine.impl.db.MybatisTypeHandlerConfigurator;
+import org.flowable.common.engine.impl.db.SchemaManager;
 import org.flowable.common.engine.impl.event.EventDispatchAction;
+import org.flowable.common.engine.impl.interceptor.CrDbRetryInterceptor;
+import org.flowable.common.engine.impl.interceptor.Command;
 import org.flowable.common.engine.impl.interceptor.CommandConfig;
 import org.flowable.common.engine.impl.interceptor.CommandContextFactory;
 import org.flowable.common.engine.impl.interceptor.CommandContextInterceptor;
@@ -80,7 +86,7 @@ import org.slf4j.LoggerFactory;
 
 public abstract class AbstractEngineConfiguration {
 
-    protected static final Logger LOGGER = LoggerFactory.getLogger(AbstractEngineConfiguration.class);
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
 
     /** The tenant id indicating 'no tenant' */
     public static final String NO_TENANT_ID = "";
@@ -102,6 +108,8 @@ public abstract class AbstractEngineConfiguration {
      */
     public static final String DB_SCHEMA_UPDATE_TRUE = "true";
 
+    protected boolean forceCloseMybatisConnectionPool = true;
+
     protected String databaseType;
     protected String jdbcDriver = "org.h2.Driver";
     protected String jdbcUrl = "jdbc:h2:tcp://localhost/~/flowable";
@@ -117,8 +125,9 @@ public abstract class AbstractEngineConfiguration {
     protected int jdbcPingConnectionNotUsedFor;
     protected int jdbcDefaultTransactionIsolationLevel;
     protected DataSource dataSource;
-    protected DbSchemaManager commonDbSchemaManager;
-    protected DbSchemaManager dbSchemaManager;
+    protected SchemaManager commonSchemaManager;
+    protected SchemaManager schemaManager;
+    protected Command<Void> schemaManagementCmd;
 
     protected String databaseSchemaUpdate = DB_SCHEMA_UPDATE_FALSE;
 
@@ -172,6 +181,8 @@ public abstract class AbstractEngineConfiguration {
 
     protected Set<Class<?>> customMybatisMappers;
     protected Set<String> customMybatisXMLMappers;
+    protected List<Interceptor> customMybatisInterceptors;
+
 
     protected Set<String> dependentEngineMyBatisXmlMappers;
     protected List<MybatisTypeAliasConfigurator> dependentEngineMybatisTypeAliasConfigs;
@@ -190,8 +201,7 @@ public abstract class AbstractEngineConfiguration {
     protected boolean transactionsExternallyManaged;
 
     /**
-     * Flag that can be set to configure or not a relational database is used. This is useful for custom implementations that do not use relational databases
-     * at all.
+     * Flag that can be set to configure or not a relational database is used. This is useful for custom implementations that do not use relational databases at all.
      *
      * If true (default), the {@link AbstractEngineConfiguration#getDatabaseSchemaUpdate()} value will be used to determine what needs to happen wrt the database schema.
      *
@@ -199,6 +209,12 @@ public abstract class AbstractEngineConfiguration {
      * correct. The {@link AbstractEngineConfiguration#getDatabaseSchemaUpdate()} value will not be used.
      */
     protected boolean usingRelationalDatabase = true;
+    
+    /**
+     * Flag that can be set to configure whether or not a schema is used. This is usefil for custom implementations that do not use relational databases at all.
+     * Setting {@link #usingRelationalDatabase} to true will automotically imply using a schema.
+     */
+    protected boolean usingSchemaMgmt = true;
 
     /**
      * Allows configuring a database table prefix which is used for all runtime operations of the process engine. For example, if you specify a prefix named 'PRE1.', Flowable will query for executions
@@ -233,6 +249,21 @@ public abstract class AbstractEngineConfiguration {
      * will not be used here - since the schema is taken into account already, adding a prefix for the table-check will result in wrong table-names.
      */
     protected boolean tablePrefixIsSchema;
+    
+    /**
+     * Set to true if the latest version of a definition should be retrieved, ignoring a possible parent deployment id value
+     */
+    protected boolean alwaysLookupLatestDefinitionVersion;
+    
+    /**
+     * Set to true if by default lookups should fallback to the default tenant (an empty string by default or a defined tenant value)
+     */
+    protected boolean fallbackToDefaultTenant;
+
+    /**
+     * Default tenant provider that is executed when looking up definitions, in case the global or local fallback to default tenant value is true
+     */
+    protected DefaultTenantProvider defaultTenantProvider = (tenantId, scope, scopeKey) -> NO_TENANT_ID;
 
     /**
      * Enables the MyBatis plugin that logs the execution time of sql statements.
@@ -252,6 +283,9 @@ public abstract class AbstractEngineConfiguration {
     protected List<EngineConfigurator> allConfigurators; // Including auto-discovered configurators
     protected EngineConfigurator idmEngineConfigurator;
 
+    public static final String PRODUCT_NAME_POSTGRES = "PostgreSQL";
+    public static final String PRODUCT_NAME_CRDB = "CockroachDB";
+
     public static final String DATABASE_TYPE_H2 = "h2";
     public static final String DATABASE_TYPE_HSQL = "hsql";
     public static final String DATABASE_TYPE_MYSQL = "mysql";
@@ -259,14 +293,16 @@ public abstract class AbstractEngineConfiguration {
     public static final String DATABASE_TYPE_POSTGRES = "postgres";
     public static final String DATABASE_TYPE_MSSQL = "mssql";
     public static final String DATABASE_TYPE_DB2 = "db2";
+    public static final String DATABASE_TYPE_COCKROACHDB = "cockroachdb";
 
     public static Properties getDefaultDatabaseTypeMappings() {
         Properties databaseTypeMappings = new Properties();
         databaseTypeMappings.setProperty("H2", DATABASE_TYPE_H2);
         databaseTypeMappings.setProperty("HSQL Database Engine", DATABASE_TYPE_HSQL);
         databaseTypeMappings.setProperty("MySQL", DATABASE_TYPE_MYSQL);
+        databaseTypeMappings.setProperty("MariaDB", DATABASE_TYPE_MYSQL);
         databaseTypeMappings.setProperty("Oracle", DATABASE_TYPE_ORACLE);
-        databaseTypeMappings.setProperty("PostgreSQL", DATABASE_TYPE_POSTGRES);
+        databaseTypeMappings.setProperty(PRODUCT_NAME_POSTGRES, DATABASE_TYPE_POSTGRES);
         databaseTypeMappings.setProperty("Microsoft SQL Server", DATABASE_TYPE_MSSQL);
         databaseTypeMappings.setProperty(DATABASE_TYPE_DB2, DATABASE_TYPE_DB2);
         databaseTypeMappings.setProperty("DB2", DATABASE_TYPE_DB2);
@@ -289,12 +325,14 @@ public abstract class AbstractEngineConfiguration {
         databaseTypeMappings.setProperty("DB2/PTX", DATABASE_TYPE_DB2);
         databaseTypeMappings.setProperty("DB2/2", DATABASE_TYPE_DB2);
         databaseTypeMappings.setProperty("DB2 UDB AS400", DATABASE_TYPE_DB2);
+        databaseTypeMappings.setProperty(PRODUCT_NAME_CRDB, DATABASE_TYPE_COCKROACHDB);
         return databaseTypeMappings;
     }
 
     protected Map<Object, Object> beans;
 
     protected IdGenerator idGenerator;
+    protected boolean usePrefixId;
 
     protected Clock clock;
 
@@ -329,13 +367,13 @@ public abstract class AbstractEngineConfiguration {
                     throw new FlowableException("DataSource or JDBC properties have to be specified in a process engine configuration");
                 }
 
-                LOGGER.debug("initializing datasource to db: {}", jdbcUrl);
+                logger.debug("initializing datasource to db: {}", jdbcUrl);
 
-                if (LOGGER.isInfoEnabled()) {
-                    LOGGER.info("Configuring Datasource with following properties (omitted password for security)");
-                    LOGGER.info("datasource driver : {}", jdbcDriver);
-                    LOGGER.info("datasource url : {}", jdbcUrl);
-                    LOGGER.info("datasource user name : {}", jdbcUsername);
+                if (logger.isInfoEnabled()) {
+                    logger.info("Configuring Datasource with following properties (omitted password for security)");
+                    logger.info("datasource driver : {}", jdbcDriver);
+                    logger.info("datasource url : {}", jdbcUrl);
+                    logger.info("datasource user name : {}", jdbcUsername);
                 }
 
                 PooledDataSource pooledDataSource = new PooledDataSource(this.getClass().getClassLoader(), jdbcDriver, jdbcUrl, jdbcUsername, jdbcPassword);
@@ -364,12 +402,6 @@ public abstract class AbstractEngineConfiguration {
                 }
                 dataSource = pooledDataSource;
             }
-
-            if (dataSource instanceof PooledDataSource) {
-                // ACT-233: connection pool of Ibatis is not properly
-                // initialized if this is not called!
-                ((PooledDataSource) dataSource).forceCloseAll();
-            }
         }
 
         if (databaseType == null) {
@@ -383,22 +415,39 @@ public abstract class AbstractEngineConfiguration {
             connection = dataSource.getConnection();
             DatabaseMetaData databaseMetaData = connection.getMetaData();
             String databaseProductName = databaseMetaData.getDatabaseProductName();
-            LOGGER.debug("database product name: '{}'", databaseProductName);
+            logger.debug("database product name: '{}'", databaseProductName);
+
+            // CRDB does not expose the version through the jdbc driver, so we need to fetch it through version().
+            if (PRODUCT_NAME_POSTGRES.equalsIgnoreCase(databaseProductName)) {
+                PreparedStatement preparedStatement = connection.prepareStatement("select version() as version;");
+                ResultSet resultSet = preparedStatement.executeQuery();
+                String version = null;
+                if (resultSet.next()) {
+                    version = resultSet.getString("version");
+                }
+                resultSet.close();
+
+                if (StringUtils.isNotEmpty(version) && version.toLowerCase().startsWith(PRODUCT_NAME_CRDB.toLowerCase())) {
+                    databaseProductName = PRODUCT_NAME_CRDB;
+                    logger.info("CockroachDB version '{}' detected", version);
+                }
+            }
+
             databaseType = databaseTypeMappings.getProperty(databaseProductName);
             if (databaseType == null) {
                 throw new FlowableException("couldn't deduct database type from database product name '" + databaseProductName + "'");
             }
-            LOGGER.debug("using database type: {}", databaseType);
+            logger.debug("using database type: {}", databaseType);
 
         } catch (SQLException e) {
-            LOGGER.error("Exception while initializing Database connection", e);
+            logger.error("Exception while initializing Database connection", e);
         } finally {
             try {
                 if (connection != null) {
                     connection.close();
                 }
             } catch (SQLException e) {
-                LOGGER.error("Exception while closing the Database connection", e);
+                logger.error("Exception while closing the Database connection", e);
             }
         }
 
@@ -409,9 +458,9 @@ public abstract class AbstractEngineConfiguration {
         }
     }
 
-    public void initDbSchemaManager() {
-        if (this.commonDbSchemaManager == null) {
-            this.commonDbSchemaManager = new CommonDbSchemaManager();
+    public void initSchemaManager() {
+        if (this.commonSchemaManager == null) {
+            this.commonSchemaManager = new CommonDbSchemaManager();
         }
     }
 
@@ -478,6 +527,10 @@ public abstract class AbstractEngineConfiguration {
         if (defaultCommandInterceptors == null) {
             List<CommandInterceptor> interceptors = new ArrayList<>();
             interceptors.add(new LogInterceptor());
+
+            if (DATABASE_TYPE_COCKROACHDB.equals(databaseType)) {
+                interceptors.add(new CrDbRetryInterceptor());
+            }
 
             CommandInterceptor transactionInterceptor = createTransactionInterceptor();
             if (transactionInterceptor != null) {
@@ -605,7 +658,7 @@ public abstract class AbstractEngineConfiguration {
     }
 
     public DbSqlSessionFactory createDbSqlSessionFactory() {
-        return new DbSqlSessionFactory();
+        return new DbSqlSessionFactory(usePrefixId);
     }
 
     protected abstract void initDbSqlSessionFactoryEntitySettings();
@@ -698,7 +751,7 @@ public abstract class AbstractEngineConfiguration {
 
         initCustomMybatisMappers(configuration);
         initMybatisTypeHandlers(configuration);
-
+        initCustomMybatisInterceptors(configuration);
         if (isEnableLogSqlExecutionTime()) {
             initMyBatisLogSqlExecutionTimePlugin(configuration);
         }
@@ -717,6 +770,14 @@ public abstract class AbstractEngineConfiguration {
 
     public void initMybatisTypeHandlers(Configuration configuration) {
         // To be extended
+    }
+
+    public void initCustomMybatisInterceptors(Configuration configuration) {
+      if (customMybatisInterceptors!=null){
+        for (Interceptor interceptor :customMybatisInterceptors){
+            configuration.addInterceptor(interceptor);
+        }
+      }
     }
 
     public void initMyBatisLogSqlExecutionTimePlugin(Configuration configuration) {
@@ -800,7 +861,7 @@ public abstract class AbstractEngineConfiguration {
             }
 
             if (nrOfServiceLoadedConfigurators > 0) {
-                LOGGER.info("Found {} auto-discoverable Process Engine Configurator{}", nrOfServiceLoadedConfigurators++, nrOfServiceLoadedConfigurators > 1 ? "s" : "");
+                logger.info("Found {} auto-discoverable Process Engine Configurator{}", nrOfServiceLoadedConfigurators, nrOfServiceLoadedConfigurators > 1 ? "s" : "");
             }
 
             if (!allConfigurators.isEmpty()) {
@@ -823,16 +884,27 @@ public abstract class AbstractEngineConfiguration {
                 });
 
                 // Execute the configurators
-                LOGGER.info("Found {} Engine Configurators in total:", allConfigurators.size());
+                logger.info("Found {} Engine Configurators in total:", allConfigurators.size());
                 for (EngineConfigurator configurator : allConfigurators) {
-                    LOGGER.info("{} (priority:{})", configurator.getClass(), configurator.getPriority());
+                    logger.info("{} (priority:{})", configurator.getClass(), configurator.getPriority());
                 }
 
             }
 
         }
     }
-    
+
+    public void close() {
+        if (forceCloseMybatisConnectionPool && dataSource instanceof PooledDataSource) {
+            /*
+             * When the datasource is created by a Flowable engine (i.e. it's an instance of PooledDataSource),
+             * the connection pool needs to be closed when closing the engine.
+             * Note that calling forceCloseAll() multiple times (as is the case when running with multiple engine) is ok.
+             */
+            ((PooledDataSource) dataSource).forceCloseAll();
+        }
+    }
+
     protected List<EngineConfigurator> getEngineSpecificEngineConfigurators() {
         // meant to be overridden if needed
         return Collections.emptyList();
@@ -840,14 +912,14 @@ public abstract class AbstractEngineConfiguration {
 
     public void configuratorsBeforeInit() {
         for (EngineConfigurator configurator : allConfigurators) {
-            LOGGER.info("Executing beforeInit() of {} (priority:{})", configurator.getClass(), configurator.getPriority());
+            logger.info("Executing beforeInit() of {} (priority:{})", configurator.getClass(), configurator.getPriority());
             configurator.beforeInit(this);
         }
     }
     
     public void configuratorsAfterInit() {
         for (EngineConfigurator configurator : allConfigurators) {
-            LOGGER.info("Executing configure() of {} (priority:{})", configurator.getClass(), configurator.getPriority());
+            logger.info("Executing configure() of {} (priority:{})", configurator.getClass(), configurator.getPriority());
             configurator.configure(this);
         }
     }    
@@ -893,21 +965,30 @@ public abstract class AbstractEngineConfiguration {
         return this;
     }
 
-    public DbSchemaManager getDbSchemaManager() {
-        return dbSchemaManager;
+    public SchemaManager getSchemaManager() {
+        return schemaManager;
     }
 
-    public AbstractEngineConfiguration setDbSchemaManager(DbSchemaManager dbSchemaManager) {
-        this.dbSchemaManager = dbSchemaManager;
+    public AbstractEngineConfiguration setSchemaManager(SchemaManager schemaManager) {
+        this.schemaManager = schemaManager;
         return this;
     }
 
-    public DbSchemaManager getCommonDbSchemaManager() {
-        return commonDbSchemaManager;
+    public SchemaManager getCommonSchemaManager() {
+        return commonSchemaManager;
     }
 
-    public AbstractEngineConfiguration setCommonDbSchemaManager(DbSchemaManager commonDbSchemaManager) {
-        this.commonDbSchemaManager = commonDbSchemaManager;
+    public AbstractEngineConfiguration setCommonSchemaManager(SchemaManager commonSchemaManager) {
+        this.commonSchemaManager = commonSchemaManager;
+        return this;
+    }
+    
+    public Command<Void> getSchemaManagementCmd() {
+        return schemaManagementCmd;
+    }
+
+    public AbstractEngineConfiguration setSchemaManagementCmd(Command<Void> schemaManagementCmd) {
+        this.schemaManagementCmd = schemaManagementCmd;
         return this;
     }
 
@@ -1061,6 +1142,15 @@ public abstract class AbstractEngineConfiguration {
 
     public AbstractEngineConfiguration setIdGenerator(IdGenerator idGenerator) {
         this.idGenerator = idGenerator;
+        return this;
+    }
+
+    public boolean isUsePrefixId() {
+        return usePrefixId;
+    }
+
+    public AbstractEngineConfiguration setUsePrefixId(boolean usePrefixId) {
+        this.usePrefixId = usePrefixId;
         return this;
     }
 
@@ -1257,6 +1347,15 @@ public abstract class AbstractEngineConfiguration {
         return dependentEngineMyBatisXmlMappers;
     }
 
+    public AbstractEngineConfiguration setCustomMybatisInterceptors(List<Interceptor> customMybatisInterceptors) {
+        this.customMybatisInterceptors = customMybatisInterceptors;
+        return  this;
+    }
+
+    public List<Interceptor> getCustomMybatisInterceptors() {
+        return customMybatisInterceptors;
+    }
+
     public AbstractEngineConfiguration setDependentEngineMyBatisXmlMappers(Set<String> dependentEngineMyBatisXmlMappers) {
         this.dependentEngineMyBatisXmlMappers = dependentEngineMyBatisXmlMappers;
         return this;
@@ -1284,6 +1383,14 @@ public abstract class AbstractEngineConfiguration {
         return customSessionFactories;
     }
 
+    public AbstractEngineConfiguration addCustomSessionFactory(SessionFactory sessionFactory) {
+        if (customSessionFactories == null) {
+            customSessionFactories = new ArrayList<>();
+        }
+        customSessionFactories.add(sessionFactory);
+        return this;
+    }
+
     public AbstractEngineConfiguration setCustomSessionFactories(List<SessionFactory> customSessionFactories) {
         this.customSessionFactories = customSessionFactories;
         return this;
@@ -1295,6 +1402,15 @@ public abstract class AbstractEngineConfiguration {
 
     public AbstractEngineConfiguration setUsingRelationalDatabase(boolean usingRelationalDatabase) {
         this.usingRelationalDatabase = usingRelationalDatabase;
+        return this;
+    }
+    
+    public boolean isUsingSchemaMgmt() {
+        return usingSchemaMgmt;
+    }
+
+    public AbstractEngineConfiguration setUsingSchemaMgmt(boolean usingSchema) {
+        this.usingSchemaMgmt = usingSchema;
         return this;
     }
 
@@ -1340,6 +1456,47 @@ public abstract class AbstractEngineConfiguration {
 
     public AbstractEngineConfiguration setTablePrefixIsSchema(boolean tablePrefixIsSchema) {
         this.tablePrefixIsSchema = tablePrefixIsSchema;
+        return this;
+    }
+
+    public boolean isAlwaysLookupLatestDefinitionVersion() {
+        return alwaysLookupLatestDefinitionVersion;
+    }
+
+    public AbstractEngineConfiguration setAlwaysLookupLatestDefinitionVersion(boolean alwaysLookupLatestDefinitionVersion) {
+        this.alwaysLookupLatestDefinitionVersion = alwaysLookupLatestDefinitionVersion;
+        return this;
+    }
+
+    public boolean isFallbackToDefaultTenant() {
+        return fallbackToDefaultTenant;
+    }
+
+    public AbstractEngineConfiguration setFallbackToDefaultTenant(boolean fallbackToDefaultTenant) {
+        this.fallbackToDefaultTenant = fallbackToDefaultTenant;
+        return this;
+    }
+
+    /**
+     * @return name of the default tenant
+     * @deprecated use {@link AbstractEngineConfiguration#getDefaultTenantProvider()} instead
+     */
+    @Deprecated
+    public String getDefaultTenantValue() {
+        return getDefaultTenantProvider().getDefaultTenant(null, null, null);
+    }
+
+    public AbstractEngineConfiguration setDefaultTenantValue(String defaultTenantValue) {
+        this.defaultTenantProvider = (tenantId, scope, scopeKey) -> defaultTenantValue;
+        return this;
+    }
+
+    public DefaultTenantProvider getDefaultTenantProvider() {
+        return defaultTenantProvider;
+    }
+
+    public AbstractEngineConfiguration setDefaultTenantProvider(DefaultTenantProvider defaultTenantProvider) {
+        this.defaultTenantProvider = defaultTenantProvider;
         return this;
     }
 
@@ -1506,4 +1663,12 @@ public abstract class AbstractEngineConfiguration {
         return this;
     }
 
+    public AbstractEngineConfiguration setForceCloseMybatisConnectionPool(boolean forceCloseMybatisConnectionPool) {
+        this.forceCloseMybatisConnectionPool = forceCloseMybatisConnectionPool;
+        return this;
+    }
+
+    public boolean isForceCloseMybatisConnectionPool() {
+        return forceCloseMybatisConnectionPool;
+    }
 }

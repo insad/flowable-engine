@@ -13,6 +13,8 @@
 
 package org.flowable.cmmn.rest.service.api.runtime.task;
 
+import static org.flowable.common.rest.api.PaginateListUtil.paginateList;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -184,6 +186,9 @@ public class TaskBaseResource {
         if (request.getCaseInstanceId() != null) {
             taskQuery.caseInstanceId(request.getCaseInstanceId());
         }
+        if (request.getCaseInstanceIdWithChildren() != null) {
+            taskQuery.caseInstanceIdWithChildren(request.getCaseInstanceIdWithChildren());
+        }
         if (request.getCreatedOn() != null) {
             taskQuery.taskCreatedOn(request.getCreatedOn());
         }
@@ -262,10 +267,10 @@ public class TaskBaseResource {
         }
         
         if (restApiInterceptor != null) {
-            restApiInterceptor.accessTaskInfoWithQuery(taskQuery);
+            restApiInterceptor.accessTaskInfoWithQuery(taskQuery, request);
         }
 
-        return new TaskPaginateList(restResponseFactory).paginateList(requestParams, request, taskQuery, "id", properties);
+        return paginateList(requestParams, request, taskQuery, "id", properties, restResponseFactory::createTaskResponseList);
     }
 
     protected void addTaskvariables(TaskQuery taskQuery, List<QueryVariable> variables) {

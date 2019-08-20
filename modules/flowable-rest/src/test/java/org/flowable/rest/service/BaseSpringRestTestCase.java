@@ -17,6 +17,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -47,9 +48,11 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicHeader;
+import org.assertj.core.api.Assertions;
 import org.eclipse.jetty.server.Server;
 import org.flowable.common.engine.api.FlowableException;
-import org.flowable.common.engine.impl.db.DbSchemaManager;
+import org.flowable.common.engine.impl.db.SchemaManager;
+import org.flowable.common.engine.impl.identity.Authentication;
 import org.flowable.common.engine.impl.interceptor.Command;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.common.engine.impl.interceptor.CommandExecutor;
@@ -60,6 +63,7 @@ import org.flowable.engine.HistoryService;
 import org.flowable.engine.IdentityService;
 import org.flowable.engine.ManagementService;
 import org.flowable.engine.ProcessEngine;
+import org.flowable.engine.ProcessMigrationService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
@@ -68,6 +72,7 @@ import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.impl.test.TestHelper;
 import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.form.api.FormRepositoryService;
 import org.flowable.idm.api.Group;
 import org.flowable.idm.api.User;
 import org.flowable.job.service.impl.asyncexecutor.AsyncExecutor;
@@ -91,15 +96,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.util.ISO8601DateFormat;
 
-import junit.framework.AssertionFailedError;
-
 public class BaseSpringRestTestCase {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseSpringRestTestCase.class);
     
     protected static final List<String> TABLENAMES_EXCLUDED_FROM_DB_CLEAN_CHECK = Arrays.asList(
             "ACT_GE_PROPERTY",
-            "ACT_ID_PROPERTY");
+            "ACT_ID_PROPERTY",
+            "ACT_FO_DATABASECHANGELOG",
+            "ACT_FO_DATABASECHANGELOGLOCK");
     
     @Rule 
     public TestName testName = new TestName();
@@ -122,6 +127,9 @@ public class BaseSpringRestTestCase {
     protected IdentityService identityService;
     protected ManagementService managementService;
     protected DynamicBpmnService dynamicBpmnService;
+    protected FormRepositoryService formRepositoryService;
+    protected org.flowable.form.api.FormService formEngineFormService;
+    protected ProcessMigrationService processInstanceMigrationService;
 
     protected static CloseableHttpClient client;
     protected static LinkedList<CloseableHttpResponse> httpResponses = new LinkedList<>();
@@ -168,6 +176,9 @@ public class BaseSpringRestTestCase {
         identityService = appContext.getBean(IdentityService.class);
         managementService = appContext.getBean(ManagementService.class);
         dynamicBpmnService = appContext.getBean(DynamicBpmnService.class);
+        formRepositoryService = appContext.getBean(FormRepositoryService.class);
+        formEngineFormService = appContext.getBean(org.flowable.form.api.FormService.class);
+        processInstanceMigrationService = appContext.getBean(ProcessMigrationService.class);
         
         if (server == null) {
             TestServer testServer = TestServerUtil.createAndStartServer(appContext);
@@ -226,7 +237,7 @@ public class BaseSpringRestTestCase {
         try {
             TestHelper.annotationDeploymentTearDown(processEngine, deploymentId, getClass(), testName.getMethodName());
 
-        } catch (AssertionFailedError e) {
+        } catch (AssertionError e) {
             LOGGER.error(System.lineSeparator());
             LOGGER.error("ASSERTION FAILED: {}", e, e);
             exception = e;
@@ -239,6 +250,7 @@ public class BaseSpringRestTestCase {
             throw e;
 
         } finally {
+            Authentication.setAuthenticatedUserId(null);
             TestHelper.annotationDeploymentTearDown(processEngine, deploymentId, getClass(), testName.getMethodName());
             dropUsers();
             assertAndEnsureCleanDb();
@@ -258,8 +270,20 @@ public class BaseSpringRestTestCase {
         Group group = identityService.newGroup("admin");
         group.setName("Administrators");
         identityService.saveGroup(group);
-
+        
         identityService.createMembership(user.getId(), group.getId());
+        
+        user = identityService.newUser("aSalesUser");
+        user.setFirstName("Sales");
+        user.setLastName("User");
+        user.setPassword("sales");
+        identityService.saveUser(user);
+        
+        Group salesGroup = identityService.newGroup("sales");
+        salesGroup.setName("Administrators");
+        identityService.saveGroup(salesGroup);
+        
+        identityService.createMembership(user.getId(), salesGroup.getId());
     }
 
     /**
@@ -293,7 +317,9 @@ public class BaseSpringRestTestCase {
             int responseStatusCode = response.getStatusLine().getStatusCode();
             if (expectedStatusCode != responseStatusCode) {
                 LOGGER.info("Wrong status code : {}, but should be {}", responseStatusCode, expectedStatusCode);
-                LOGGER.info("Response body: {}", IOUtils.toString(response.getEntity().getContent()));
+                if (response.getEntity() != null && response.getEntity().getContent() != null) {
+                    LOGGER.info("Response body: {}", IOUtils.toString(response.getEntity().getContent()));
+                }
             }
 
             Assert.assertEquals(expectedStatusCode, responseStatusCode);
@@ -301,11 +327,17 @@ public class BaseSpringRestTestCase {
             return response;
 
         } catch (IOException e) {
-            fail(e.getMessage(), e);
+            throw new UncheckedIOException(e);
         }
-        return null;
     }
 
+    public JsonNode readContent(CloseableHttpResponse response) {
+        try {
+            return objectMapper.readTree(response.getEntity().getContent());
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
     public void closeResponse(CloseableHttpResponse response) {
         if (response != null) {
             try {
@@ -322,6 +354,10 @@ public class BaseSpringRestTestCase {
         identityService.deleteUser("kermit");
         identityService.deleteGroup("admin");
         identityService.deleteMembership("kermit", "admin");
+        
+        identityService.deleteUser("aSalesUser");
+        identityService.deleteGroup("sales");
+        identityService.deleteMembership("aSalesUser", "sales");
     }
 
     /**
@@ -337,7 +373,7 @@ public class BaseSpringRestTestCase {
             if (!TABLENAMES_EXCLUDED_FROM_DB_CLEAN_CHECK.contains(tableNameWithoutPrefix)) {
                 Long count = tableCounts.get(tableName);
                 if (count != 0L) {
-                    outputMessage.append("  ").append(tableName).append(": ").append(count.toString()).append(" record(s) ");
+                    outputMessage.append("  ").append(tableName).append(": ").append(count).append(" record(s) ");
                 }
             }
         }
@@ -352,9 +388,9 @@ public class BaseSpringRestTestCase {
             commandExecutor.execute(new Command<Object>() {
                 @Override
                 public Object execute(CommandContext commandContext) {
-                    DbSchemaManager dbSchemaManager = CommandContextUtil.getProcessEngineConfiguration(commandContext).getDbSchemaManager();
-                    dbSchemaManager.dbSchemaDrop();
-                    dbSchemaManager.dbSchemaCreate();
+                    SchemaManager schemaManager = CommandContextUtil.getProcessEngineConfiguration(commandContext).getSchemaManager();
+                    schemaManager.schemaDrop();
+                    schemaManager.schemaCreate();
                     return null;
                 }
             });
@@ -397,7 +433,7 @@ public class BaseSpringRestTestCase {
         ProcessInstance processInstance = processEngine.getRuntimeService().createProcessInstanceQuery().processInstanceId(processInstanceId).singleResult();
 
         if (processInstance != null) {
-            throw new AssertionFailedError("Expected finished process instance '" + processInstanceId + "' but it was still in the db");
+            throw new AssertionError("Expected finished process instance '" + processInstanceId + "' but it was still in the db");
         }
     }
 
@@ -503,6 +539,23 @@ public class BaseSpringRestTestCase {
         }
         assertTrue("Not all expected ids have been found in result, missing: " + StringUtils.join(toBeFound, ", "), toBeFound.isEmpty());
     }
+
+    /**
+     * Checks if the returned "data" array (child-node of root-json node returned by invoking a GET on the given url) contains entries with the given ID's.
+     */
+    protected void assertResultsExactlyPresentInDataResponse(String url, String... expectedResourceIds) throws IOException {
+        // Do the actual call
+        CloseableHttpResponse response = executeRequest(new HttpGet(SERVER_URL_PREFIX + url), HttpStatus.SC_OK);
+
+        // Check status and size
+        JsonNode dataNode = objectMapper.readTree(response.getEntity().getContent()).get("data");
+        closeResponse(response);
+        Assertions.assertThat(dataNode)
+            .extracting(node -> node.get("id").textValue())
+            .as("Expected result ids")
+            .containsExactly(expectedResourceIds);
+    }
+
 
     protected void assertEmptyResultsPresentInDataResponse(String url) throws JsonProcessingException, IOException {
         // Do the actual call

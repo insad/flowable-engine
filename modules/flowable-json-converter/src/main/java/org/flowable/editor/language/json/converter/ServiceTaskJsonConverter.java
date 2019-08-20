@@ -12,20 +12,20 @@
  */
 package org.flowable.editor.language.json.converter;
 
-import java.util.Map;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.BooleanNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.StringUtils;
 import org.flowable.bpmn.model.BaseElement;
 import org.flowable.bpmn.model.FieldExtension;
 import org.flowable.bpmn.model.FlowElement;
 import org.flowable.bpmn.model.HttpServiceTask;
 import org.flowable.bpmn.model.ImplementationType;
+import org.flowable.bpmn.model.MapExceptionEntry;
 import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.editor.language.json.model.ModelInfo;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.BooleanNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.Map;
 
 /**
  * @author Tijs Rademakers
@@ -61,6 +61,7 @@ public class ServiceTaskJsonConverter extends BaseBpmnJsonConverter implements D
         setPropertyValue(PROPERTY_SKIP_EXPRESSION, serviceTask.getSkipExpression(), propertiesNode);
 
         if ("mail".equalsIgnoreCase(serviceTask.getType())) {
+            setPropertyFieldValue(PROPERTY_MAILTASK_HEADERS, serviceTask, propertiesNode);
             setPropertyFieldValue(PROPERTY_MAILTASK_TO, serviceTask, propertiesNode);
             setPropertyFieldValue(PROPERTY_MAILTASK_FROM, serviceTask, propertiesNode);
             setPropertyFieldValue(PROPERTY_MAILTASK_SUBJECT, serviceTask, propertiesNode);
@@ -95,6 +96,11 @@ public class ServiceTaskJsonConverter extends BaseBpmnJsonConverter implements D
                     propertiesNode.set(PROPERTY_DECISIONTABLE_THROW_ERROR_NO_HITS,
                             BooleanNode.valueOf(Boolean.parseBoolean(fieldExtension.getStringValue())));
                 }
+                if (PROPERTY_DECISIONTABLE_FALLBACK_TO_DEFAULT_TENANT_KEY.equals(fieldExtension.getFieldName())) {
+                    propertiesNode.set(PROPERTY_DECISIONTABLE_FALLBACK_TO_DEFAULT_TENANT,
+                        BooleanNode.valueOf(Boolean.parseBoolean(fieldExtension.getStringValue()))
+                    );
+                }
             }
 
         } else if ("http".equalsIgnoreCase(serviceTask.getType())) {
@@ -102,6 +108,7 @@ public class ServiceTaskJsonConverter extends BaseBpmnJsonConverter implements D
             setPropertyFieldValue(PROPERTY_HTTPTASK_REQ_URL, "requestUrl", serviceTask, propertiesNode);
             setPropertyFieldValue(PROPERTY_HTTPTASK_REQ_HEADERS, "requestHeaders", serviceTask, propertiesNode);
             setPropertyFieldValue(PROPERTY_HTTPTASK_REQ_BODY, "requestBody", serviceTask, propertiesNode);
+            setPropertyFieldValue(PROPERTY_HTTPTASK_REQ_BODY_ENCODING, "requestBodyEncoding", serviceTask, propertiesNode);
             setPropertyFieldValue(PROPERTY_HTTPTASK_REQ_TIMEOUT, "requestTimeout", serviceTask, propertiesNode);
             setPropertyFieldValue(PROPERTY_HTTPTASK_REQ_DISALLOW_REDIRECTS, "disallowRedirects", serviceTask, propertiesNode);
             setPropertyFieldValue(PROPERTY_HTTPTASK_REQ_FAIL_STATUS_CODES, "failStatusCodes", serviceTask, propertiesNode);
@@ -149,6 +156,7 @@ public class ServiceTaskJsonConverter extends BaseBpmnJsonConverter implements D
             }
 
             addFieldExtensions(serviceTask.getFieldExtensions(), propertiesNode);
+            addMapException(serviceTask.getMapExceptions(), propertiesNode);
         }
     }
 
@@ -201,6 +209,24 @@ public class ServiceTaskJsonConverter extends BaseBpmnJsonConverter implements D
                         }
                         task.getFieldExtensions().add(field);
                     }
+                }
+            }
+        }
+
+        JsonNode exceptionsNode = getProperty(PROPERTY_SERVICETASK_EXCEPTIONS, elementNode);
+        if (exceptionsNode != null) {
+            JsonNode itemsArrayNode = exceptionsNode.get("exceptions");
+            if (itemsArrayNode != null) {
+                for (JsonNode itemNode : itemsArrayNode) {
+
+                    MapExceptionEntry exception = new MapExceptionEntry();
+
+
+                    exception.setClassName(getValueAsString(PROPERTY_SERVICETASK_EXCEPTION_CLASS, itemNode));
+                    exception.setErrorCode(getValueAsString(PROPERTY_SERVICETASK_EXCEPTION_CODE, itemNode));
+                    exception.setAndChildren(getValueAsBoolean(PROPERTY_SERVICETASK_EXCEPTION_CHILDREN, itemNode));
+                    task.getMapExceptions().add(exception);
+
                 }
             }
         }

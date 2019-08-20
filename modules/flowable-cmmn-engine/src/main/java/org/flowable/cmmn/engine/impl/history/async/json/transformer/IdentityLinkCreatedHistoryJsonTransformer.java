@@ -12,6 +12,11 @@
  */
 package org.flowable.cmmn.engine.impl.history.async.json.transformer;
 
+import static org.flowable.job.service.impl.history.async.util.AsyncHistoryJsonUtil.getStringFromJson;
+
+import java.util.Collections;
+import java.util.List;
+
 import org.flowable.cmmn.engine.impl.history.async.CmmnAsyncHistoryConstants;
 import org.flowable.cmmn.engine.impl.util.CommandContextUtil;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
@@ -21,16 +26,14 @@ import org.flowable.job.service.impl.persistence.entity.HistoryJobEntity;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import static org.flowable.job.service.impl.history.async.util.AsyncHistoryJsonUtil.getStringFromJson;
-
 /**
  * @author Joram Barrez
  */
 public class IdentityLinkCreatedHistoryJsonTransformer extends AbstractHistoryJsonTransformer {
 
     @Override
-    public String getType() {
-        return CmmnAsyncHistoryConstants.TYPE_IDENTITY_LINK_CREATED;
+    public List<String> getTypes() {
+        return Collections.singletonList(CmmnAsyncHistoryConstants.TYPE_IDENTITY_LINK_CREATED);
     }
 
     @Override
@@ -48,6 +51,7 @@ public class IdentityLinkCreatedHistoryJsonTransformer extends AbstractHistoryJs
         historicIdentityLinkEntity.setScopeType(getStringFromJson(historicalData, CmmnAsyncHistoryConstants.FIELD_SCOPE_TYPE));
         historicIdentityLinkEntity.setScopeDefinitionId(getStringFromJson(historicalData, CmmnAsyncHistoryConstants.FIELD_SCOPE_DEFINITION_ID));
         historicIdentityLinkEntity.setTaskId(getStringFromJson(historicalData, CmmnAsyncHistoryConstants.FIELD_TASK_ID));
+        historicIdentityLinkEntity.setProcessInstanceId(getStringFromJson(historicalData, CmmnAsyncHistoryConstants.FIELD_PROCESS_INSTANCE_ID));
         historicIdentityLinkEntity.setType(getStringFromJson(historicalData, CmmnAsyncHistoryConstants.FIELD_IDENTITY_LINK_TYPE));
         historicIdentityLinkEntity.setUserId(getStringFromJson(historicalData, CmmnAsyncHistoryConstants.FIELD_USER_ID));
         historicIdentityLinkService.insertHistoricIdentityLink(historicIdentityLinkEntity, false);

@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.form.api.FormDeployment;
 import org.flowable.form.api.FormDeploymentBuilder;
@@ -43,7 +44,6 @@ public abstract class FormTestHelper {
     // Test annotation support /////////////////////////////////////////////
 
     public static String annotationDeploymentSetUp(FormEngine formEngine, Class<?> testClass, String methodName) {
-        String deploymentId = null;
         Method method = null;
         try {
             method = testClass.getMethod(methodName, (Class<?>[]) null);
@@ -52,7 +52,13 @@ public abstract class FormTestHelper {
             return null;
         }
         FormDeploymentAnnotation deploymentAnnotation = method.getAnnotation(FormDeploymentAnnotation.class);
+        return annotationDeploymentSetUp(formEngine, testClass, method, deploymentAnnotation);
+    }
+
+    public static String annotationDeploymentSetUp(FormEngine formEngine, Class<?> testClass, Method method, FormDeploymentAnnotation deploymentAnnotation) {
+        String deploymentId = null;
         if (deploymentAnnotation != null) {
+            String methodName = method.getName();
             LOGGER.debug("annotation @Deployment creates deployment for {}.{}", testClass.getSimpleName(), methodName);
             String[] resources = deploymentAnnotation.resources();
             if (resources.length == 0) {
@@ -65,6 +71,10 @@ public abstract class FormTestHelper {
 
             for (String resource : resources) {
                 deploymentBuilder.addClasspathResource(resource);
+            }
+            
+            if (StringUtils.isNotEmpty(deploymentAnnotation.tenantId())) {
+                deploymentBuilder.tenantId(deploymentAnnotation.tenantId());
             }
 
             deploymentId = deploymentBuilder.deploy().getId();

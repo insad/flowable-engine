@@ -12,6 +12,8 @@
  */
 package org.flowable.examples.bpmn.servicetask;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -24,15 +26,14 @@ import org.flowable.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
 import org.flowable.task.api.Task;
-
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Christian Stettler
  */
 public class ExpressionServiceTaskTest extends PluggableFlowableTestCase {
 
+    @Test
     @Deployment
     public void testSetServiceResultToProcessVariables() {
         Map<String, Object> variables = new HashMap<>();
@@ -41,6 +42,7 @@ public class ExpressionServiceTaskTest extends PluggableFlowableTestCase {
         assertEquals("ok", runtimeService.getVariable(pi.getId(), "result"));
     }
 
+    @Test
     @Deployment
     public void testSetServiceResultToProcessVariablesWithSkipExpression() {
         Map<String, Object> variables = new HashMap<>();
@@ -61,7 +63,8 @@ public class ExpressionServiceTaskTest extends PluggableFlowableTestCase {
             HistoricActivityInstance skipActivityInstance = historyService.createHistoricActivityInstanceQuery().processInstanceId(pi2.getId())
                     .activityId("valueExpressionServiceWithResultVariableNameSet")
                     .singleResult();
-            
+            assertActivityInstancesAreSame(skipActivityInstance, runtimeService.createActivityInstanceQuery().activityInstanceId(skipActivityInstance .getId()).singleResult());
+
             assertNotNull(skipActivityInstance);
         }
 
@@ -72,6 +75,7 @@ public class ExpressionServiceTaskTest extends PluggableFlowableTestCase {
         assertEquals("okBean", runtimeService.getVariable(pi3.getId(), "result"));
     }
 
+    @Test
     @Deployment
     public void testBackwardsCompatibleExpression() {
         Map<String, Object> variables = new HashMap<>();
@@ -80,6 +84,7 @@ public class ExpressionServiceTaskTest extends PluggableFlowableTestCase {
         assertEquals("...---...", runtimeService.getVariable(pi.getId(), "result"));
     }
 
+    @Test
     @Deployment
     public void testSetServiceResultWithParallelMultiInstance() {
         Map<String, Object> variables = new HashMap<>();
@@ -94,10 +99,11 @@ public class ExpressionServiceTaskTest extends PluggableFlowableTestCase {
             .processInstanceId(pi.getProcessInstanceId())
             .list();
 
-        assertThat(tasks.size(), is(1));
-        assertThat(tasks.get(0).getTaskDefinitionKey(), is("processWaitState"));
+        assertThat(tasks.size()).isEqualTo(1);
+        assertThat(tasks.get(0).getTaskDefinitionKey()).isEqualTo("processWaitState");
     }
 
+    @Test
     @Deployment
     public void testSetServiceLocalScopedResultWithParallelMultiInstance() {
         Map<String, Object> variables = new HashMap<>();
@@ -112,7 +118,16 @@ public class ExpressionServiceTaskTest extends PluggableFlowableTestCase {
             .processInstanceId(pi.getProcessInstanceId())
             .list();
 
-        assertThat(tasks.size(), is(1));
-        assertThat(tasks.get(0).getTaskDefinitionKey(), is("subProcessWaitState"));
+        assertThat(tasks.size()).isEqualTo(1);
+        assertThat(tasks.get(0).getTaskDefinitionKey()).isEqualTo("subProcessWaitState");
+    }
+
+    @Test
+    @Deployment
+    public void testVarargs() {
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("bean", new TestVarargsBean());
+        ProcessInstance pi = runtimeService.startProcessInstanceByKey("testVarargsInExpression", variables);
+        assertEquals("ABC", runtimeService.getVariable(pi.getId(), "result"));
     }
 }

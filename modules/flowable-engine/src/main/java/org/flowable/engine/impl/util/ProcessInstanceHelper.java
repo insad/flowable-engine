@@ -43,11 +43,14 @@ import org.flowable.engine.delegate.event.impl.FlowableEventBuilder;
 import org.flowable.engine.impl.jobexecutor.TimerEventHandler;
 import org.flowable.engine.impl.jobexecutor.TriggerTimerEventJobHandler;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
-import org.flowable.engine.impl.persistence.entity.MessageEventSubscriptionEntity;
-import org.flowable.engine.impl.persistence.entity.SignalEventSubscriptionEntity;
 import org.flowable.engine.impl.runtime.callback.ProcessInstanceState;
+import org.flowable.engine.interceptor.StartProcessInstanceAfterContext;
+import org.flowable.engine.interceptor.StartProcessInstanceBeforeContext;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.eventsubscription.service.impl.persistence.entity.EventSubscriptionEntity;
+import org.flowable.eventsubscription.service.impl.persistence.entity.MessageEventSubscriptionEntity;
+import org.flowable.eventsubscription.service.impl.persistence.entity.SignalEventSubscriptionEntity;
 import org.flowable.job.service.impl.persistence.entity.TimerJobEntity;
 
 /**
@@ -59,17 +62,18 @@ public class ProcessInstanceHelper {
     public ProcessInstance createProcessInstance(ProcessDefinition processDefinition, String businessKey, String processInstanceName, 
                     Map<String, Object> variables, Map<String, Object> transientVariables) {
         
-        return createProcessInstance(processDefinition, businessKey, processInstanceName, variables, transientVariables, null, null, false);
+        return createProcessInstance(processDefinition, businessKey, processInstanceName, null, null, variables, transientVariables, null, null, false);
     }
 
     public ProcessInstance createAndStartProcessInstance(ProcessDefinition processDefinition, String businessKey, String processInstanceName, 
                     Map<String, Object> variables, Map<String, Object> transientVariables) {
         
-        return createProcessInstance(processDefinition, businessKey, processInstanceName, variables, transientVariables, null, null, true);
+        return createProcessInstance(processDefinition, businessKey, processInstanceName, null, null, variables, transientVariables, null, null, true);
     }
 
-    public ProcessInstance createProcessInstance(ProcessDefinition processDefinition, String businessKey, String processInstanceName, Map<String, Object> variables, 
-                    Map<String, Object> transientVariables, String callbackId,String callbackType, boolean startProcessInstance) {
+    public ProcessInstance createProcessInstance(ProcessDefinition processDefinition, String businessKey, String processInstanceName, 
+                    String overrideDefinitionTenantId, String predefinedProcessInstanceId, Map<String, Object> variables, Map<String, Object> transientVariables, 
+                    String callbackId, String callbackType, boolean startProcessInstance) {
 
         CommandContext commandContext = Context.getCommandContext();
         if (Flowable5Util.isFlowable5ProcessDefinition(processDefinition, commandContext)) {
@@ -94,8 +98,9 @@ public class ProcessInstanceHelper {
             throw new FlowableException("No start element found for process definition " + processDefinition.getId());
         }
 
-        return createAndStartProcessInstanceWithInitialFlowElement(processDefinition, businessKey, processInstanceName, initialFlowElement, process, 
-                        variables, transientVariables, callbackId, callbackType, startProcessInstance);
+        return createAndStartProcessInstanceWithInitialFlowElement(processDefinition, businessKey, processInstanceName, overrideDefinitionTenantId, 
+                        predefinedProcessInstanceId, initialFlowElement, process, variables, transientVariables, 
+                        callbackId, callbackType, startProcessInstance);
     }
 
     public ProcessInstance createAndStartProcessInstanceByMessage(ProcessDefinition processDefinition, String messageName, String businessKey, 
@@ -136,21 +141,21 @@ public class ProcessInstanceHelper {
             throw new FlowableException("No message start event found for process definition " + processDefinition.getId() + " and message name " + messageName);
         }
 
-        return createAndStartProcessInstanceWithInitialFlowElement(processDefinition, businessKey, null, initialFlowElement, process, variables, 
-                        transientVariables, callbackId, callbackType, true);
+        return createAndStartProcessInstanceWithInitialFlowElement(processDefinition, businessKey, null, null, null, initialFlowElement, 
+                        process, variables, transientVariables, callbackId, callbackType, true);
     }
     
     public ProcessInstance createAndStartProcessInstanceWithInitialFlowElement(ProcessDefinition processDefinition,
             String businessKey, String processInstanceName, FlowElement initialFlowElement, Process process, Map<String, Object> variables, 
             Map<String, Object> transientVariables, boolean startProcessInstance) {
         
-        return createAndStartProcessInstanceWithInitialFlowElement(processDefinition, businessKey, processInstanceName, initialFlowElement, 
+        return createAndStartProcessInstanceWithInitialFlowElement(processDefinition, businessKey, processInstanceName, null, null, initialFlowElement, 
                         process, variables, transientVariables, null, null, startProcessInstance);
     }
 
     public ProcessInstance createAndStartProcessInstanceWithInitialFlowElement(ProcessDefinition processDefinition, String businessKey, String processInstanceName, 
-                    FlowElement initialFlowElement, Process process, Map<String, Object> variables, Map<String, Object> transientVariables, 
-                    String callbackId, String callbackType, boolean startProcessInstance) {
+                    String overrideDefinitionTenantId, String predefinedProcessInstanceId, FlowElement initialFlowElement, Process process, Map<String, Object> variables, 
+                    Map<String, Object> transientVariables, String callbackId, String callbackType, boolean startProcessInstance) {
 
         CommandContext commandContext = Context.getCommandContext();
 
@@ -159,59 +164,78 @@ public class ProcessInstanceHelper {
         if (initialFlowElement instanceof StartEvent) {
             initiatorVariableName = ((StartEvent) initialFlowElement).getInitiator();
         }
+        
+        String tenantId = null;
+        if (overrideDefinitionTenantId != null) {
+            tenantId = overrideDefinitionTenantId;
+        } else {
+            tenantId = processDefinition.getTenantId();
+        }
+        
+        StartProcessInstanceBeforeContext startInstanceBeforeContext = new StartProcessInstanceBeforeContext(businessKey, processInstanceName, callbackId, 
+                        callbackType, variables, transientVariables, tenantId, initiatorVariableName, initialFlowElement.getId(), 
+                        initialFlowElement, process, processDefinition, overrideDefinitionTenantId, predefinedProcessInstanceId);
+        
+        if (CommandContextUtil.getProcessEngineConfiguration().getStartProcessInstanceInterceptor() != null) {
+            CommandContextUtil.getProcessEngineConfiguration().getStartProcessInstanceInterceptor().beforeStartProcessInstance(startInstanceBeforeContext);
+        }
 
         ExecutionEntity processInstance = CommandContextUtil.getExecutionEntityManager(commandContext)
-                .createProcessInstanceExecution(processDefinition, businessKey, processDefinition.getTenantId(), 
-                                initiatorVariableName, initialFlowElement.getId());
-
-        processInstance.setName(processInstanceName);
-        
-        // Callbacks
-        if (callbackId != null) {
-            processInstance.setCallbackId(callbackId);
-        }
-        if (callbackType != null) {
-            processInstance.setCallbackType(callbackType);
-        }
+                .createProcessInstanceExecution(startInstanceBeforeContext.getProcessDefinition(), startInstanceBeforeContext.getPredefinedProcessInstanceId(), 
+                                startInstanceBeforeContext.getBusinessKey(), startInstanceBeforeContext.getProcessInstanceName(),
+                                startInstanceBeforeContext.getCallbackId(), startInstanceBeforeContext.getCallbackType(), startInstanceBeforeContext.getTenantId(), 
+                                startInstanceBeforeContext.getInitiatorVariableName(), startInstanceBeforeContext.getInitialActivityId());
 
         CommandContextUtil.getHistoryManager(commandContext).recordProcessInstanceStart(processInstance);
 
-        boolean eventDispatcherEnabled = CommandContextUtil.getProcessEngineConfiguration().getEventDispatcher().isEnabled();
+        FlowableEventDispatcher eventDispatcher = CommandContextUtil.getProcessEngineConfiguration().getEventDispatcher();
+        boolean eventDispatcherEnabled = eventDispatcher != null && eventDispatcher.isEnabled();
         if (eventDispatcherEnabled) {
-            CommandContextUtil.getProcessEngineConfiguration().getEventDispatcher().dispatchEvent(
+            eventDispatcher.dispatchEvent(
                     FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.PROCESS_CREATED, processInstance));
         }
 
         processInstance.setVariables(processDataObjects(process.getDataObjects()));
 
         // Set the variables passed into the start command
-        if (variables != null) {
-            for (String varName : variables.keySet()) {
-                processInstance.setVariable(varName, variables.get(varName));
+        if (startInstanceBeforeContext.getVariables() != null) {
+            for (String varName : startInstanceBeforeContext.getVariables().keySet()) {
+                processInstance.setVariable(varName, startInstanceBeforeContext.getVariables().get(varName));
             }
         }
-        if (transientVariables != null) {
-            for (String varName : transientVariables.keySet()) {
-                processInstance.setTransientVariable(varName, transientVariables.get(varName));
+        if (startInstanceBeforeContext.getTransientVariables() != null) {
+            for (String varName : startInstanceBeforeContext.getTransientVariables().keySet()) {
+                processInstance.setTransientVariable(varName, startInstanceBeforeContext.getTransientVariables().get(varName));
             }
         }
         
         // Fire events
         if (eventDispatcherEnabled) {
-            CommandContextUtil.getProcessEngineConfiguration().getEventDispatcher()
-                    .dispatchEvent(FlowableEventBuilder.createEntityWithVariablesEvent(FlowableEngineEventType.ENTITY_INITIALIZED, processInstance, variables, false));
+            eventDispatcher.dispatchEvent(FlowableEventBuilder.createEntityWithVariablesEvent(FlowableEngineEventType.ENTITY_INITIALIZED, 
+                            processInstance, startInstanceBeforeContext.getVariables(), false));
         }
 
         // Create the first execution that will visit all the process definition elements
         ExecutionEntity execution = CommandContextUtil.getExecutionEntityManager(commandContext).createChildExecution(processInstance);
-        execution.setCurrentFlowElement(initialFlowElement);
+        execution.setCurrentFlowElement(startInstanceBeforeContext.getInitialFlowElement());
+
+        CommandContextUtil.getActivityInstanceEntityManager(commandContext).recordActivityStart(execution);
 
         if (startProcessInstance) {
-            startProcessInstance(processInstance, commandContext, variables);
+            startProcessInstance(processInstance, commandContext, startInstanceBeforeContext.getVariables());
         }
         
         if (callbackId != null) {
             callCaseInstanceStateChangeCallbacks(commandContext, processInstance, null, ProcessInstanceState.RUNNING);
+        }
+        
+        if (CommandContextUtil.getProcessEngineConfiguration().getStartProcessInstanceInterceptor() != null) {
+            StartProcessInstanceAfterContext startInstanceAfterContext = new StartProcessInstanceAfterContext(processInstance, execution, 
+                            startInstanceBeforeContext.getVariables(), startInstanceBeforeContext.getTransientVariables(), 
+                            startInstanceBeforeContext.getInitialFlowElement(), startInstanceBeforeContext.getProcess(), 
+                            startInstanceBeforeContext.getProcessDefinition());
+            
+            CommandContextUtil.getProcessEngineConfiguration().getStartProcessInstanceInterceptor().afterStartProcessInstance(startInstanceAfterContext);
         }
 
         return processInstance;
@@ -226,97 +250,123 @@ public class ProcessInstanceHelper {
         ExecutionEntity execution = processInstance.getExecutions().get(0); // There will always be one child execution created
         CommandContextUtil.getAgenda(commandContext).planContinueProcessOperation(execution);
 
-        if (CommandContextUtil.getProcessEngineConfiguration().getEventDispatcher().isEnabled()) {
-            FlowableEventDispatcher eventDispatcher = CommandContextUtil.getProcessEngineConfiguration().getEventDispatcher();
+        FlowableEventDispatcher eventDispatcher = CommandContextUtil.getProcessEngineConfiguration(commandContext).getEventDispatcher();
+        if (eventDispatcher != null && eventDispatcher.isEnabled()) {
             eventDispatcher.dispatchEvent(FlowableEventBuilder.createProcessStartedEvent(execution, variables, false));
         }
     }
     
     public void processAvailableEventSubProcesses(ExecutionEntity parentExecution, FlowElementsContainer parentContainer, CommandContext commandContext) {
-        // Event sub process handling
-        List<MessageEventSubscriptionEntity> messageEventSubscriptions = new LinkedList<>();
-        List<SignalEventSubscriptionEntity> signalEventSubscriptions = new LinkedList<>();
 
         for (FlowElement flowElement : parentContainer.getFlowElements()) {
             if (!(flowElement instanceof EventSubProcess)) {
                 continue;
             }
+            processEventSubProcess(parentExecution, (EventSubProcess) flowElement, commandContext);
+        }
+    }
 
-            EventSubProcess eventSubProcess = (EventSubProcess) flowElement;
-            for (FlowElement subElement : eventSubProcess.getFlowElements()) {
-                if (!(subElement instanceof StartEvent)) {
-                    continue;
+    public void processEventSubProcess(ExecutionEntity parentExecution, EventSubProcess eventSubProcess, CommandContext commandContext) {
+        List<EventSubscriptionEntity> messageEventSubscriptions = new LinkedList<>();
+        List<EventSubscriptionEntity> signalEventSubscriptions = new LinkedList<>();
+
+        for (FlowElement subElement : eventSubProcess.getFlowElements()) {
+            if (!(subElement instanceof StartEvent)) {
+                continue;
+            }
+
+            StartEvent startEvent = (StartEvent) subElement;
+            if (CollectionUtil.isEmpty(startEvent.getEventDefinitions())) {
+                continue;
+            }
+
+            EventDefinition eventDefinition = startEvent.getEventDefinitions().get(0);
+            if (eventDefinition instanceof MessageEventDefinition) {
+                MessageEventDefinition messageEventDefinition = (MessageEventDefinition) eventDefinition;
+                BpmnModel bpmnModel = ProcessDefinitionUtil.getBpmnModel(parentExecution.getProcessDefinitionId());
+                if (bpmnModel.containsMessageId(messageEventDefinition.getMessageRef())) {
+                    messageEventDefinition.setMessageRef(bpmnModel.getMessage(messageEventDefinition.getMessageRef()).getName());
                 }
 
-                StartEvent startEvent = (StartEvent) subElement;
-                if (CollectionUtil.isEmpty(startEvent.getEventDefinitions())) {
-                    continue;
+                ExecutionEntity messageExecution = CommandContextUtil.getExecutionEntityManager(commandContext).createChildExecution(parentExecution);
+                messageExecution.setCurrentFlowElement(startEvent);
+                messageExecution.setEventScope(true);
+                messageExecution.setActive(false);
+
+                EventSubscriptionEntity eventSubscription = (EventSubscriptionEntity) CommandContextUtil.getEventSubscriptionService(commandContext).createEventSubscriptionBuilder()
+                                .eventType(MessageEventSubscriptionEntity.EVENT_TYPE)
+                                .eventName(messageEventDefinition.getMessageRef())
+                                .executionId(messageExecution.getId())
+                                .processInstanceId(messageExecution.getProcessInstanceId())
+                                .activityId(messageExecution.getCurrentActivityId())
+                                .processDefinitionId(messageExecution.getProcessDefinitionId())
+                                .tenantId(messageExecution.getTenantId())
+                                .create();
+                
+                CountingEntityUtil.handleInsertEventSubscriptionEntityCount(eventSubscription);
+                messageEventSubscriptions.add(eventSubscription);
+                messageExecution.getEventSubscriptions().add(eventSubscription);
+
+            } else if (eventDefinition instanceof SignalEventDefinition) {
+                SignalEventDefinition signalEventDefinition = (SignalEventDefinition) eventDefinition;
+                BpmnModel bpmnModel = ProcessDefinitionUtil.getBpmnModel(parentExecution.getProcessDefinitionId());
+                Signal signal = null;
+                if (bpmnModel.containsSignalId(signalEventDefinition.getSignalRef())) {
+                    signal = bpmnModel.getSignal(signalEventDefinition.getSignalRef());
+                    signalEventDefinition.setSignalRef(signal.getName());
                 }
 
-                EventDefinition eventDefinition = startEvent.getEventDefinitions().get(0);
-                if (eventDefinition instanceof MessageEventDefinition) {
-                    MessageEventDefinition messageEventDefinition = (MessageEventDefinition) eventDefinition;
-                    BpmnModel bpmnModel = ProcessDefinitionUtil.getBpmnModel(parentExecution.getProcessDefinitionId());
-                    if (bpmnModel.containsMessageId(messageEventDefinition.getMessageRef())) {
-                        messageEventDefinition.setMessageRef(bpmnModel.getMessage(messageEventDefinition.getMessageRef()).getName());
-                    }
+                ExecutionEntity signalExecution = CommandContextUtil.getExecutionEntityManager(commandContext).createChildExecution(parentExecution);
+                signalExecution.setCurrentFlowElement(startEvent);
+                signalExecution.setEventScope(true);
+                signalExecution.setActive(false);
 
-                    ExecutionEntity messageExecution = CommandContextUtil.getExecutionEntityManager(commandContext).createChildExecution(parentExecution);
-                    messageExecution.setCurrentFlowElement(startEvent);
-                    messageExecution.setEventScope(true);
-                    messageExecution.setActive(false);
+                EventSubscriptionEntity eventSubscription = (EventSubscriptionEntity) CommandContextUtil.getEventSubscriptionService(commandContext).createEventSubscriptionBuilder()
+                                .eventType(SignalEventSubscriptionEntity.EVENT_TYPE)
+                                .eventName(signalEventDefinition.getSignalRef())
+                                .signal(signal)
+                                .executionId(signalExecution.getId())
+                                .processInstanceId(signalExecution.getProcessInstanceId())
+                                .activityId(signalExecution.getCurrentActivityId())
+                                .processDefinitionId(signalExecution.getProcessDefinitionId())
+                                .tenantId(signalExecution.getTenantId())
+                                .create();
+                
+                CountingEntityUtil.handleInsertEventSubscriptionEntityCount(eventSubscription);
+                signalEventSubscriptions.add(eventSubscription);
+                signalExecution.getEventSubscriptions().add(eventSubscription);
 
-                    messageEventSubscriptions.add(CommandContextUtil.getEventSubscriptionEntityManager(commandContext).insertMessageEvent(
-                            messageEventDefinition.getMessageRef(), messageExecution));
+            } else if (eventDefinition instanceof TimerEventDefinition) {
+                TimerEventDefinition timerEventDefinition = (TimerEventDefinition) eventDefinition;
 
-                } else if (eventDefinition instanceof SignalEventDefinition) {
-                    SignalEventDefinition signalEventDefinition = (SignalEventDefinition) eventDefinition;
-                    BpmnModel bpmnModel = ProcessDefinitionUtil.getBpmnModel(parentExecution.getProcessDefinitionId());
-                    Signal signal = null;
-                    if (bpmnModel.containsSignalId(signalEventDefinition.getSignalRef())) {
-                        signal = bpmnModel.getSignal(signalEventDefinition.getSignalRef());
-                        signalEventDefinition.setSignalRef(signal.getName());
-                    }
+                ExecutionEntity timerExecution = CommandContextUtil.getExecutionEntityManager(commandContext).createChildExecution(parentExecution);
+                timerExecution.setCurrentFlowElement(startEvent);
+                timerExecution.setEventScope(true);
+                timerExecution.setActive(false);
 
-                    ExecutionEntity signalExecution = CommandContextUtil.getExecutionEntityManager(commandContext).createChildExecution(parentExecution);
-                    signalExecution.setCurrentFlowElement(startEvent);
-                    signalExecution.setEventScope(true);
-                    signalExecution.setActive(false);
+                TimerJobEntity timerJob = TimerUtil.createTimerEntityForTimerEventDefinition(timerEventDefinition, false, timerExecution, TriggerTimerEventJobHandler.TYPE,
+                    TimerEventHandler.createConfiguration(startEvent.getId(), timerEventDefinition.getEndDate(), timerEventDefinition.getCalendarName()));
 
-                    signalEventSubscriptions.add(CommandContextUtil.getEventSubscriptionEntityManager(commandContext).insertSignalEvent(
-                            signalEventDefinition.getSignalRef(), signal, signalExecution));
-
-                } else if (eventDefinition instanceof TimerEventDefinition) {
-                    TimerEventDefinition timerEventDefinition = (TimerEventDefinition) eventDefinition;
-
-                    ExecutionEntity timerExecution = CommandContextUtil.getExecutionEntityManager(commandContext).createChildExecution(parentExecution);
-                    timerExecution.setCurrentFlowElement(startEvent);
-                    timerExecution.setEventScope(true);
-                    timerExecution.setActive(false);
-
-                    TimerJobEntity timerJob = TimerUtil.createTimerEntityForTimerEventDefinition(timerEventDefinition, false, timerExecution, TriggerTimerEventJobHandler.TYPE, 
-                                    TimerEventHandler.createConfiguration(startEvent.getId(), timerEventDefinition.getEndDate(), timerEventDefinition.getCalendarName()));
-                    
-                    if (timerJob != null) {
-                        CommandContextUtil.getTimerJobService().scheduleTimerJob(timerJob);
-                    }
+                if (timerJob != null) {
+                    CommandContextUtil.getTimerJobService().scheduleTimerJob(timerJob);
                 }
             }
         }
 
-        if (CommandContextUtil.getProcessEngineConfiguration().getEventDispatcher().isEnabled()) {
-            for (MessageEventSubscriptionEntity messageEventSubscription : messageEventSubscriptions) {
+        FlowableEventDispatcher eventDispatcher = CommandContextUtil.getProcessEngineConfiguration(commandContext).getEventDispatcher();
+        if (eventDispatcher != null && eventDispatcher.isEnabled()) {
+            for (EventSubscriptionEntity messageEventSubscription : messageEventSubscriptions) {
                 CommandContextUtil.getProcessEngineConfiguration(commandContext).getEventDispatcher()
-                        .dispatchEvent(FlowableEventBuilder.createMessageEvent(FlowableEngineEventType.ACTIVITY_MESSAGE_WAITING, messageEventSubscription.getActivityId(),
-                                messageEventSubscription.getEventName(), null, messageEventSubscription.getExecution().getId(),
-                                messageEventSubscription.getProcessInstanceId(), messageEventSubscription.getProcessDefinitionId()));
+                    .dispatchEvent(FlowableEventBuilder.createMessageEvent(FlowableEngineEventType.ACTIVITY_MESSAGE_WAITING, messageEventSubscription.getActivityId(),
+                        messageEventSubscription.getEventName(), null, messageEventSubscription.getExecutionId(),
+                        messageEventSubscription.getProcessInstanceId(), messageEventSubscription.getProcessDefinitionId()));
             }
 
-            for (SignalEventSubscriptionEntity signalEventSubscription : signalEventSubscriptions) {
+            for (EventSubscriptionEntity signalEventSubscription : signalEventSubscriptions) {
                 CommandContextUtil.getProcessEngineConfiguration(commandContext).getEventDispatcher()
-                        .dispatchEvent(FlowableEventBuilder.createSignalEvent(FlowableEngineEventType.ACTIVITY_SIGNAL_WAITING, signalEventSubscription.getActivityId(),
-                                signalEventSubscription.getEventName(), null, signalEventSubscription.getExecution().getId(),
-                                signalEventSubscription.getProcessInstanceId(), signalEventSubscription.getProcessDefinitionId()));
+                    .dispatchEvent(FlowableEventBuilder.createSignalEvent(FlowableEngineEventType.ACTIVITY_SIGNAL_WAITING, signalEventSubscription.getActivityId(),
+                        signalEventSubscription.getEventName(), null, signalEventSubscription.getExecutionId(),
+                        signalEventSubscription.getProcessInstanceId(), signalEventSubscription.getProcessDefinitionId()));
             }
         }
     }

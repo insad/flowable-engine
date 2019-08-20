@@ -13,6 +13,7 @@
 
 package org.flowable.cmmn.rest.service.api.runtime.planitem;
 
+import java.util.Arrays;
 import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
@@ -40,7 +41,7 @@ import io.swagger.annotations.Authorization;
 public class PlanItemInstanceCollectionResource extends PlanItemInstanceBaseResource {
 
     // FIXME naming issue ?
-    @ApiOperation(value = "List of plan item instances", tags = { "Executions" }, nickname = "listPlanItemInstances")
+    @ApiOperation(value = "List of plan item instances", tags = { "Plan Item Instances" }, nickname = "listPlanItemInstances")
     @ApiImplicitParams({
             @ApiImplicitParam(name = "id", dataType = "string", value = "Only return models with the given version.", paramType = "query"),
             @ApiImplicitParam(name = "caseDefinitionId", dataType = "string", value = "Only return plan item instances with the given case definition id.", paramType = "query"),
@@ -48,6 +49,7 @@ public class PlanItemInstanceCollectionResource extends PlanItemInstanceBaseReso
             @ApiImplicitParam(name = "stageInstanceId", dataType = "string", value = "Only return plan item instances which are part of the given stage instance.", paramType = "query"),
             @ApiImplicitParam(name = "planItemDefinitionId", dataType = "string", value = "Only return plan item instances which have the given plan item definition id.", paramType = "query"),
             @ApiImplicitParam(name = "planItemDefinitionType", dataType = "string", value = "Only return plan item instances which have the given plan item definition type.", paramType = "query"),
+            @ApiImplicitParam(name = "planItemDefinitionTypes", dataType = "string", value = "Only return plan item instances which have any of the given plan item definition types. Comma-separated string e.g. humantask, stage", paramType = "query"),
             @ApiImplicitParam(name = "state", dataType = "string", value = "Only return plan item instances which have the given state.", paramType = "query"),
             @ApiImplicitParam(name = "name", dataType = "string", value = "Only return plan item instances which have the given name.", paramType = "query"),
             @ApiImplicitParam(name = "elementId", dataType = "string", value = "Only return plan item instances which have the given element id.", paramType = "query"),
@@ -58,7 +60,7 @@ public class PlanItemInstanceCollectionResource extends PlanItemInstanceBaseReso
             @ApiImplicitParam(name = "startUserId", dataType = "string", value = "Only return plan item instances which are started by the given user id.", paramType = "query"),
             @ApiImplicitParam(name = "tenantId", dataType = "string", value = "Only return process instances with the given tenantId.", paramType = "query"),
             @ApiImplicitParam(name = "withoutTenantId", dataType = "boolean", value = "If true, only returns process instances without a tenantId set. If false, the withoutTenantId parameter is ignored.", paramType = "query"),
-            @ApiImplicitParam(name = "sort", dataType = "string", value = "Property to sort on, to be used together with the order.", allowableValues = "processInstanceId ,processDefinitionId,processDefinitionKey ,tenantId", paramType = "query"),
+            @ApiImplicitParam(name = "sort", dataType = "string", value = "Property to sort on, to be used together with the order.", allowableValues = "processInstanceId,processDefinitionId,processDefinitionKey ,tenantId", paramType = "query"),
     })
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "Indicates request was successful and the executions are returned"),
@@ -92,6 +94,11 @@ public class PlanItemInstanceCollectionResource extends PlanItemInstanceBaseReso
         if (allRequestParams.containsKey("planItemDefinitionType")) {
             queryRequest.setPlanItemDefinitionType(allRequestParams.get("planItemDefinitionType"));
         }
+
+        if (allRequestParams.containsKey("planItemDefinitionTypes")) {
+            String typesString = allRequestParams.get("planItemDefinitionTypes");
+            queryRequest.setPlanItemDefinitionTypes(Arrays.asList(typesString.split(",")));
+        }
         
         if (allRequestParams.containsKey("state")) {
             queryRequest.setState(allRequestParams.get("state"));
@@ -109,12 +116,12 @@ public class PlanItemInstanceCollectionResource extends PlanItemInstanceBaseReso
             queryRequest.setReferenceType(allRequestParams.get("referenceType"));
         }
         
-        if (allRequestParams.containsKey("startedBefore")) {
-            queryRequest.setStartedBefore(RequestUtil.getDate(allRequestParams, "startedBefore"));
+        if (allRequestParams.containsKey("createdBefore")) {
+            queryRequest.setCreatedBefore(RequestUtil.getDate(allRequestParams, "createdBefore"));
         }
         
-        if (allRequestParams.containsKey("startedAfter")) {
-            queryRequest.setStartedAfter(RequestUtil.getDate(allRequestParams, "startedAfter"));
+        if (allRequestParams.containsKey("createdAfter")) {
+            queryRequest.setCreatedAfter(RequestUtil.getDate(allRequestParams, "createdAfter"));
         }
         
         if (allRequestParams.containsKey("startUserId")) {

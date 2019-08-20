@@ -18,9 +18,15 @@ import org.flowable.cmmn.api.history.HistoricCaseInstanceQuery;
 import org.flowable.cmmn.api.history.HistoricMilestoneInstanceQuery;
 import org.flowable.cmmn.api.history.HistoricPlanItemInstanceQuery;
 import org.flowable.cmmn.api.history.HistoricVariableInstanceQuery;
+import org.flowable.entitylink.api.history.HistoricEntityLink;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.identitylink.api.history.HistoricIdentityLink;
+import org.flowable.task.api.TaskInfo;
 import org.flowable.task.api.history.HistoricTaskInstanceQuery;
+import org.flowable.task.api.history.HistoricTaskLogEntry;
+import org.flowable.task.api.history.HistoricTaskLogEntryBuilder;
+import org.flowable.task.api.history.HistoricTaskLogEntryQuery;
+import org.flowable.task.api.history.NativeHistoricTaskLogEntryQuery;
 
 /**
  * @author Joram Barrez
@@ -46,6 +52,20 @@ public interface CmmnHistoryService {
     void deleteHistoricTaskInstance(String taskId);
     
     /**
+     * Deletes matching historic case instances
+     * 
+     * @param caseInstanceQuery the query to match case instances to delete
+     */
+    void deleteHistoricCaseInstances(HistoricCaseInstanceQuery caseInstanceQuery);
+    
+    /**
+     * Deletes matching historic case instances
+     * 
+     * @param caseInstanceQuery the query to match case instances to delete
+     */
+    void deleteHistoricCaseInstancesAndRelatedData(HistoricCaseInstanceQuery caseInstanceQuery);
+    
+    /**
      * Retrieves the {@link HistoricIdentityLink}s associated with the given task. Such an {@link IdentityLink} informs how a certain identity (eg. group or user) is associated with a certain task
      * (eg. as candidate, assignee, etc.), even if the task is completed as opposed to {@link IdentityLink}s which only exist for active tasks.
      */
@@ -56,4 +76,45 @@ public interface CmmnHistoryService {
      * certain case instance, even if the instance is completed as opposed to {@link IdentityLink}s which only exist for active instances.
      */
     List<HistoricIdentityLink> getHistoricIdentityLinksForCaseInstance(String caseInstanceId);
+    
+    /**
+     * Retrieves the {@link HistoricEntityLink}s associated with the given case instance.
+     */
+    List<HistoricEntityLink> getHistoricEntityLinkChildrenForCaseInstance(String caseInstanceId);
+
+    /**
+     * Retrieves the {@link HistoricEntityLink}s where the given case instance is referenced.
+     */
+    List<HistoricEntityLink> getHistoricEntityLinkParentsForCaseInstance(String caseInstanceId);
+
+    /**
+     * Deletes user task log entry by its log number
+     *
+     * @param logNumber user task log entry identifier
+     */
+    void deleteHistoricTaskLogEntry(long logNumber);
+
+    /**
+     * Create new task log entry builder to the log task event
+     *
+     * @param task to which is log related to
+     */
+    HistoricTaskLogEntryBuilder createHistoricTaskLogEntryBuilder(TaskInfo task);
+
+    /**
+     * Create new task log entry builder to the log task event without predefined values from the task
+     *
+     */
+    HistoricTaskLogEntryBuilder createHistoricTaskLogEntryBuilder();
+
+    /**
+     * Returns a new {@link HistoricTaskLogEntryQuery} that can be used to dynamically query task log entries.
+     */
+    HistoricTaskLogEntryQuery createHistoricTaskLogEntryQuery();
+
+    /**
+     * Returns a new {@link NativeHistoricTaskLogEntryQuery} for {@link HistoricTaskLogEntry}s.
+     */
+    NativeHistoricTaskLogEntryQuery createNativeHistoricTaskLogEntryQuery();
+
 }

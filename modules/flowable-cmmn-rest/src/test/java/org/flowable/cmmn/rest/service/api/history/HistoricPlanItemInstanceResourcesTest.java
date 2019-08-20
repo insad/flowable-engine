@@ -145,7 +145,12 @@ public class HistoricPlanItemInstanceResourcesTest extends BaseSpringRestTestCas
                 JsonNode responseNode = objectMapper.readTree(response.getEntity().getContent());
                 closeResponse(response);
                 assertHistoricPlanItemValues(p, responseNode);
-                assertEquals(PlanItemInstanceState.COMPLETED, responseNode.get("state").asText());
+
+                if ("usereventlistener".equals(responseNode.get("planItemDefinitionType").asText())) {
+                    assertEquals(PlanItemInstanceState.TERMINATED, responseNode.get("state").asText());
+                } else {
+                    assertEquals(PlanItemInstanceState.COMPLETED, responseNode.get("state").asText());
+                }
             } catch (IOException e) {
                 fail(e.getMessage());
             }
@@ -256,7 +261,7 @@ public class HistoricPlanItemInstanceResourcesTest extends BaseSpringRestTestCas
         responseNode = objectMapper.readTree(response.getEntity().getContent());
         closeResponse(response);
         assertNotNull(responseNode);
-        assertEquals(4, responseNode.get("data").size());
+        assertEquals(3, responseNode.get("data").size());
 
         List<HistoricPlanItemInstance> listOfCompleted = historyService.createHistoricPlanItemInstanceQuery().planItemInstanceState(PlanItemInstanceState.COMPLETED).list();
         assertHistoricPlanItemValues(listOfCompleted, responseNode.get("data"));
@@ -278,8 +283,6 @@ public class HistoricPlanItemInstanceResourcesTest extends BaseSpringRestTestCas
         calendar.set(Calendar.HOUR_OF_DAY, 2);
         cmmnEngineConfiguration.getClock().setCurrentTime(calendar.getTime());
         CaseInstance caseInstance2 = runtimeService.createCaseInstanceBuilder().caseDefinitionKey("caseWithStage").start();
-
-        final String baseUrl = CmmnRestUrls.createRelativeResourceUrl(CmmnRestUrls.URL_HISTORIC_PLANITEM_INSTANCES);
 
         //There should be 6 planItems
         HttpPost httpPost = new HttpPost(SERVER_URL_PREFIX + CmmnRestUrls.createRelativeResourceUrl(CmmnRestUrls.URL_HISTORIC_PLANITEM_INSTANCE_QUERY));
@@ -380,7 +383,7 @@ public class HistoricPlanItemInstanceResourcesTest extends BaseSpringRestTestCas
         responseNode = objectMapper.readTree(response.getEntity().getContent());
         closeResponse(response);
         assertNotNull(responseNode);
-        assertEquals(4, responseNode.get("data").size());
+        assertEquals(3, responseNode.get("data").size());
 
         List<HistoricPlanItemInstance> listOfCompleted = historyService.createHistoricPlanItemInstanceQuery().planItemInstanceState(PlanItemInstanceState.COMPLETED).list();
         assertHistoricPlanItemValues(listOfCompleted, responseNode.get("data"));
@@ -415,7 +418,7 @@ public class HistoricPlanItemInstanceResourcesTest extends BaseSpringRestTestCas
         assertEquals(expected.getElementId(), actual.get("elementId").textValue());
         assertEquals(expected.getPlanItemDefinitionId(), actual.get("planItemDefinitionId").textValue());
         assertEquals(expected.getPlanItemDefinitionType(), actual.get("planItemDefinitionType").textValue());
-        assertEquals(getISODateStringWithTZ(expected.getCreatedTime()), actual.get("createdTime").textValue());
+        assertEquals(getISODateStringWithTZ(expected.getCreateTime()), actual.get("createTime").textValue());
         assertEquals(getISODateStringWithTZ(expected.getLastAvailableTime()), actual.get("lastAvailableTime").textValue());
         assertEquals(getISODateStringWithTZ(expected.getLastEnabledTime()), actual.get("lastEnabledTime").textValue());
         assertEquals(getISODateStringWithTZ(expected.getLastDisabledTime()), actual.get("lastDisabledTime").textValue());
@@ -436,7 +439,7 @@ public class HistoricPlanItemInstanceResourcesTest extends BaseSpringRestTestCas
             String url = URI.create(SERVER_URL_PREFIX + CmmnRestUrls.createRelativeResourceUrl(CmmnRestUrls.URL_HISTORIC_PLANITEM_INSTANCE, expected.getId())).toURL().toString();
             assertEquals(url, actual.get("url").textValue());
         } catch (MalformedURLException e) {
-            fail("Cannot create url");
+            throw new AssertionError("Cannot create url", e);
         }
 
         try {

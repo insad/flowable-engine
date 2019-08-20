@@ -33,8 +33,6 @@ import org.flowable.job.service.impl.asyncexecutor.AsyncExecutor;
 import org.flowable.job.service.impl.asyncexecutor.multitenant.ExecutorPerTenantAsyncExecutor;
 import org.flowable.job.service.impl.asyncexecutor.multitenant.SharedExecutorServiceAsyncExecutor;
 import org.flowable.job.service.impl.asyncexecutor.multitenant.TenantAwareAsyncExecutor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * A {@link ProcessEngineConfiguration} that builds a multi tenant {@link ProcessEngine} where each tenant has its own database schema.
@@ -61,8 +59,6 @@ import org.slf4j.LoggerFactory;
  */
 public class MultiSchemaMultiTenantProcessEngineConfiguration extends ProcessEngineConfigurationImpl {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MultiSchemaMultiTenantProcessEngineConfiguration.class);
-
     protected TenantInfoHolder tenantInfoHolder;
     protected boolean booted;
 
@@ -76,7 +72,6 @@ public class MultiSchemaMultiTenantProcessEngineConfiguration extends ProcessEng
         // Also: it avoids the need for having a process definition cache for each tenant
 
         this.idGenerator = new StrongUuidGenerator();
-        this.taskIdGenerator = this.idGenerator;
 
         this.dataSource = new TenantAwareDataSource(tenantInfoHolder);
     }
@@ -149,7 +144,7 @@ public class MultiSchemaMultiTenantProcessEngineConfiguration extends ProcessEng
     }
 
     protected void createTenantSchema(String tenantId) {
-        LOGGER.info("creating/validating database schema for tenant {}", tenantId);
+        logger.info("creating/validating database schema for tenant {}", tenantId);
         tenantInfoHolder.setCurrentTenantId(tenantId);
         getCommandExecutor().execute(getSchemaCommandConfig(), new ExecuteSchemaOperationCommand(databaseSchemaUpdate));
         tenantInfoHolder.clearCurrentTenantId();

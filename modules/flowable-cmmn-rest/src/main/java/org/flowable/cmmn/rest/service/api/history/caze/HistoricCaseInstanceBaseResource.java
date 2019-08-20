@@ -13,14 +13,19 @@
 
 package org.flowable.cmmn.rest.service.api.history.caze;
 
+import static org.flowable.common.rest.api.PaginateListUtil.paginateList;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.flowable.cmmn.api.CmmnHistoryService;
+import org.flowable.cmmn.api.CmmnRepositoryService;
 import org.flowable.cmmn.api.history.HistoricCaseInstance;
 import org.flowable.cmmn.api.history.HistoricCaseInstanceQuery;
+import org.flowable.cmmn.api.repository.CaseDefinition;
 import org.flowable.cmmn.engine.impl.history.HistoricCaseInstanceQueryProperty;
 import org.flowable.cmmn.rest.service.api.CmmnRestApiInterceptor;
 import org.flowable.cmmn.rest.service.api.CmmnRestResponseFactory;
@@ -52,6 +57,9 @@ public class HistoricCaseInstanceBaseResource {
 
     @Autowired
     protected CmmnHistoryService historyService;
+    
+    @Autowired
+    protected CmmnRepositoryService repositoryService;
     
     @Autowired(required=false)
     protected CmmnRestApiInterceptor restApiInterceptor;
@@ -97,6 +105,11 @@ public class HistoricCaseInstanceBaseResource {
                 query.unfinished();
             }
         }
+        if (queryRequest.getIncludeCaseVariables() != null) {
+            if (queryRequest.getIncludeCaseVariables()) {
+                query.includeCaseVariables();
+            }
+        }
         if (queryRequest.getVariables() != null) {
             addVariables(query, queryRequest.getVariables());
         }
@@ -109,10 +122,37 @@ public class HistoricCaseInstanceBaseResource {
         }
         
         if (restApiInterceptor != null) {
-            restApiInterceptor.accessHistoryCaseInfoWithQuery(query);
+            restApiInterceptor.accessHistoryCaseInfoWithQuery(query, queryRequest);
         }
 
-        return new HistoricCaseInstancePaginateList(restResponseFactory).paginateList(allRequestParams, queryRequest, query, "caseInstanceId", allowedSortProperties);
+        DataResponse<HistoricCaseInstanceResponse> responseList = paginateList(allRequestParams, queryRequest, query, "caseInstanceId", allowedSortProperties,
+            restResponseFactory::createHistoricCaseInstanceResponseList);
+        
+        Set<String> caseDefinitionIds = new HashSet<>();
+        List<HistoricCaseInstanceResponse> caseInstanceList = responseList.getData();
+        for (HistoricCaseInstanceResponse caseInstanceResponse : caseInstanceList) {
+            if (!caseDefinitionIds.contains(caseInstanceResponse.getCaseDefinitionId())) {
+                caseDefinitionIds.add(caseInstanceResponse.getCaseDefinitionId());
+            }
+        }
+        
+        if (caseDefinitionIds.size() > 0) {
+            List<CaseDefinition> caseDefinitionList = repositoryService.createCaseDefinitionQuery().caseDefinitionIds(caseDefinitionIds).list();
+            Map<String, CaseDefinition> caseDefinitionMap = new HashMap<>();
+            for (CaseDefinition caseDefinition : caseDefinitionList) {
+                caseDefinitionMap.put(caseDefinition.getId(), caseDefinition);
+            }
+            
+            for (HistoricCaseInstanceResponse caseInstanceResponse : caseInstanceList) {
+                if (caseDefinitionMap.containsKey(caseInstanceResponse.getCaseDefinitionId())) {
+                    CaseDefinition caseDefinition = caseDefinitionMap.get(caseInstanceResponse.getCaseDefinitionId());
+                    caseInstanceResponse.setCaseDefinitionName(caseDefinition.getName());
+                    caseInstanceResponse.setCaseDefinitionDescription(caseDefinition.getDescription());
+                }
+            }
+        }
+        
+        return responseList;
     }
     
     protected HistoricCaseInstance getHistoricCaseInstanceFromRequest(String caseInstanceId) {

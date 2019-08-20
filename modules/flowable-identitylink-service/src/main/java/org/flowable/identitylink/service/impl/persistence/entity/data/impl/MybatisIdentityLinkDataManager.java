@@ -176,14 +176,25 @@ public class MybatisIdentityLinkDataManager extends AbstractDataManager<Identity
     @Override
     public void deleteIdentityLinksByScopeIdAndScopeType(String scopeId, String scopeType) {
         DbSqlSession dbSqlSession = getDbSqlSession();
+
+        Map<String, String> parameters = new HashMap<>();
+        parameters.put("scopeId", scopeId);
+
         if (ScopeTypes.CMMN.equals(scopeType) && isEntityInserted(dbSqlSession, "caseInstance", scopeId)) {
-            deleteCachedEntities(dbSqlSession, identityLinksByScopeIdAndTypeMatcher, scopeId);
+            deleteCachedEntities(dbSqlSession, identityLinksByScopeIdAndTypeMatcher, parameters);
         } else {
-            Map<String, String> parameters = new HashMap<>();
-            parameters.put("scopeId", scopeId);
+
             parameters.put("scopeType", scopeType);
             bulkDelete("deleteIdentityLinksByScopeIdAndScopeType", identityLinksByScopeIdAndTypeMatcher, parameters);
         }
+    }
+    
+    @Override
+    public void deleteIdentityLinksByScopeDefinitionIdAndScopeType(String scopeDefinitionId, String scopeType) {
+        Map<String, String> parameters = new HashMap<>();
+        parameters.put("scopeDefinitionId", scopeDefinitionId);
+        parameters.put("scopeType", scopeType);
+        getDbSqlSession().delete("deleteIdentityLinksByScopeDefinitionIdAndScopeType", parameters, IdentityLinkEntityImpl.class);
     }
 
 }

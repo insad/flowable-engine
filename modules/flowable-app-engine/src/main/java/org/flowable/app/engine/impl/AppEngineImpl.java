@@ -17,7 +17,6 @@ import org.flowable.app.api.AppRepositoryService;
 import org.flowable.app.engine.AppEngine;
 import org.flowable.app.engine.AppEngineConfiguration;
 import org.flowable.app.engine.AppEngines;
-import org.flowable.app.engine.impl.cmd.SchemaOperationsAppEngineBuild;
 import org.flowable.common.engine.impl.interceptor.CommandExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,11 +39,11 @@ public class AppEngineImpl implements AppEngine {
         this.appManagementService = appEngineConfiguration.getAppManagementService();
         this.appRepositoryService = appEngineConfiguration.getAppRepositoryService();
         
-        if (appEngineConfiguration.isUsingRelationalDatabase() && appEngineConfiguration.getDatabaseSchemaUpdate() != null) {
+        if (appEngineConfiguration.getSchemaManagementCmd() != null) {
             CommandExecutor commandExecutor = appEngineConfiguration.getCommandExecutor();
-            commandExecutor.execute(appEngineConfiguration.getSchemaCommandConfig(), new SchemaOperationsAppEngineBuild());
+            commandExecutor.execute(appEngineConfiguration.getSchemaCommandConfig(), appEngineConfiguration.getSchemaManagementCmd());
         }
-
+        
         LOGGER.info("AppEngine {} created", name);
         
         AppEngines.registerAppEngine(this);
@@ -62,6 +61,8 @@ public class AppEngineImpl implements AppEngine {
     @Override
     public void close() {
         AppEngines.unregister(this);
+        appEngineConfiguration.close();
+
     }
     
     @Override

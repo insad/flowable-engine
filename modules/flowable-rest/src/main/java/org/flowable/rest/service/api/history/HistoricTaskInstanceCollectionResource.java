@@ -13,6 +13,16 @@
 
 package org.flowable.rest.service.api.history;
 
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.flowable.common.rest.api.DataResponse;
+import org.flowable.common.rest.api.RequestUtil;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
@@ -21,15 +31,6 @@ import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import io.swagger.annotations.Authorization;
-
-import org.flowable.common.rest.api.DataResponse;
-import org.flowable.common.rest.api.RequestUtil;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
-import javax.servlet.http.HttpServletRequest;
-import java.util.Map;
 
 /**
  * @author Tijs Rademakers
@@ -42,6 +43,7 @@ public class HistoricTaskInstanceCollectionResource extends HistoricTaskInstance
     @ApiImplicitParams({
             @ApiImplicitParam(name = "taskId", dataType = "string", value = "An id of the historic task instance.", paramType = "query"),
             @ApiImplicitParam(name = "processInstanceId", dataType = "string", value = "The process instance id of the historic task instance.", paramType = "query"),
+            @ApiImplicitParam(name = "processInstanceIdWithChildren", dataType = "string", value = "Selects the historic task instances for the process instance and its children.", paramType = "query"),
             @ApiImplicitParam(name = "processDefinitionKey", dataType = "string", value = "The process definition key of the historic task instance.", paramType = "query"),
             @ApiImplicitParam(name = "processDefinitionKeyLike", dataType = "string", value = "The process definition key of the historic task instance, which matches the given value.", paramType = "query"),
             @ApiImplicitParam(name = "processDefinitionId", dataType = "string", value = "The process definition id of the historic task instance.", paramType = "query"),
@@ -79,6 +81,9 @@ public class HistoricTaskInstanceCollectionResource extends HistoricTaskInstance
             @ApiImplicitParam(name = "taskCreatedAfter", dataType = "string", format="date-time", value = "Return only historic task instances that were created after this date.", paramType = "query"),
             @ApiImplicitParam(name = "includeTaskLocalVariables", dataType = "boolean", value = "An indication if the historic task instance local variables should be returned as well.", paramType = "query"),
             @ApiImplicitParam(name = "includeProcessVariables", dataType = "boolean", value = "An indication if the historic task instance global variables should be returned as well.", paramType = "query"),
+            @ApiImplicitParam(name = "scopeDefinitionId", dataType = "string", value = "Only return historic task instances with the given scopeDefinitionId.", paramType = "query"),
+            @ApiImplicitParam(name = "scopeId", dataType = "string", value = "Only return historic task instances with the given scopeId.", paramType = "query"),
+            @ApiImplicitParam(name = "scopeType", dataType = "string", value = "Only return historic task instances with the given scopeType.", paramType = "query"),
             @ApiImplicitParam(name = "tenantId", dataType = "string", value = "Only return historic task instances with the given tenantId.", paramType = "query"),
             @ApiImplicitParam(name = "tenantIdLike", dataType = "string", value = "Only return historic task instances with a tenantId like the given value.", paramType = "query"),
             @ApiImplicitParam(name = "withoutTenantId", dataType = "boolean", value = "If true, only returns historic task instances without a tenantId set. If false, the withoutTenantId parameter is ignored.", paramType = "query"),
@@ -98,6 +103,10 @@ public class HistoricTaskInstanceCollectionResource extends HistoricTaskInstance
 
         if (allRequestParams.get("processInstanceId") != null) {
             queryRequest.setProcessInstanceId(allRequestParams.get("processInstanceId"));
+        }
+        
+        if (allRequestParams.get("processInstanceIdWithChildren") != null) {
+            queryRequest.setProcessInstanceIdWithChildren(allRequestParams.get("processInstanceIdWithChildren"));
         }
 
         if (allRequestParams.get("processBusinessKey") != null) {

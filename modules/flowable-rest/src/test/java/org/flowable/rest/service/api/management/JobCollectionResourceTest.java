@@ -1,3 +1,15 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.rest.service.api.management;
 
 import static org.junit.Assert.assertEquals;
@@ -56,6 +68,18 @@ public class JobCollectionResourceTest extends BaseSpringRestTestCase {
 
         url = RestUrls.createRelativeResourceUrl(RestUrls.URL_TIMER_JOB_COLLECTION) + "?dueAfter=" + getISODateString(inAnHour.getTime());
         assertResultsPresentInDataResponse(url);
+        
+        url = RestUrls.createRelativeResourceUrl(RestUrls.URL_TIMER_JOB_COLLECTION) + "?elementId=escalationTimer";
+        assertResultsPresentInDataResponse(url, timerJob.getId());
+        
+        url = RestUrls.createRelativeResourceUrl(RestUrls.URL_TIMER_JOB_COLLECTION) + "?elementId=unknown";
+        assertEmptyResultsPresentInDataResponse(url);
+        
+        url = RestUrls.createRelativeResourceUrl(RestUrls.URL_TIMER_JOB_COLLECTION) + "?elementName=Escalation";
+        assertResultsPresentInDataResponse(url, timerJob.getId());
+        
+        url = RestUrls.createRelativeResourceUrl(RestUrls.URL_TIMER_JOB_COLLECTION) + "?elementName=unknown";
+        assertEmptyResultsPresentInDataResponse(url);
 
         url = RestUrls.createRelativeResourceUrl(RestUrls.URL_TIMER_JOB_COLLECTION) + "?withoutTenantId=true";
         assertResultsPresentInDataResponse(url, timerJob.getId());
@@ -112,6 +136,19 @@ public class JobCollectionResourceTest extends BaseSpringRestTestCase {
         assertResultsPresentInDataResponse(url);
 
         url = RestUrls.createRelativeResourceUrl(RestUrls.URL_DEADLETTER_JOB_COLLECTION) + "?processDefinitionId=unexisting";
+        assertResultsPresentInDataResponse(url);
+        
+        // Fetch using element id and name
+        url = RestUrls.createRelativeResourceUrl(RestUrls.URL_DEADLETTER_JOB_COLLECTION) + "?elementId=escalationTimer";
+        assertResultsPresentInDataResponse(url, timerJob.getId());
+
+        url = RestUrls.createRelativeResourceUrl(RestUrls.URL_DEADLETTER_JOB_COLLECTION) + "?elementId=unexisting";
+        assertResultsPresentInDataResponse(url);
+        
+        url = RestUrls.createRelativeResourceUrl(RestUrls.URL_DEADLETTER_JOB_COLLECTION) + "?elementName=Escalation";
+        assertResultsPresentInDataResponse(url, timerJob.getId());
+
+        url = RestUrls.createRelativeResourceUrl(RestUrls.URL_DEADLETTER_JOB_COLLECTION) + "?elementName=unexisting";
         assertResultsPresentInDataResponse(url);
 
         // Fetch using withRetriesLeft

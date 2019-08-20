@@ -185,24 +185,37 @@
         P.ITEM_DEFINITION_TYPE_ as PI_ITEM_DEFINITION_TYPE_,
         P.NAME_ as PI_NAME_,
         P.STATE_ as PI_STATE_,
-        P.START_TIME_ as PI_START_TIME_,
+        P.CREATE_TIME_ as PI_CREATE_TIME_,
+        P.LAST_AVAILABLE_TIME_ as PI_LAST_AVAILABLE_TIME_,
+        P.LAST_ENABLED_TIME_ as PI_LAST_ENABLED_TIME_,
+        P.LAST_DISABLED_TIME_ as PI_LAST_DISABLED_TIME_,
+        P.LAST_STARTED_TIME_ as PI_LAST_STARTED_TIME_,
+        P.LAST_SUSPENDED_TIME_ as PI_LAST_SUSPENDED_TIME_,
+        P.COMPLETED_TIME_ as PI_COMPLETED_TIME_,
+        P.OCCURRED_TIME_ as PI_OCCURRED_TIME_ ,
+        P.TERMINATED_TIME_ as PI_TERMINATED_TIME_,
+        P.EXIT_TIME_ as PI_EXIT_TIME_,
+        P.ENDED_TIME_ as PI_ENDED_TIME_,
         P.START_USER_ID_ as PI_USER_ID_,
         P.REFERENCE_ID_ as PI_REFERENCE_ID_,
         P.REFERENCE_TYPE_ as PI_REFERENCE_TYPE_,
         P.IS_COMPLETEABLE_ as PI_IS_COMPLETEABLE_,
+        P.ENTRY_CRITERION_ID_ as PI_ENTRY_CRITERION_ID_,
+        P.EXIT_CRITERION_ID_ as PI_EXIT_CRITERION_ID_,
         P.IS_COUNT_ENABLED_ as PI_IS_COUNT_ENABLED_,
         P.VAR_COUNT_ as PI_VAR_COUNT_,
         P.SENTRY_PART_INST_COUNT_ as PI_SENTRY_PART_INST_COUNT_,
         P.TENANT_ID_ as PI_TENANT_ID_
         from ${prefix}ACT_CMMN_RU_CASE_INST C
-        inner join ${prefix}ACT_CMMN_RU_PLAN_ITEM_INST P on C.ID_ = CASE_INST_ID_
-        where
-        <if test="caseInstanceId != null">
-            C.ID_ = #{caseInstanceId, jdbcType=VARCHAR}
-        </if>
-         <if test="planItemInstanceId != null">
-            C.ID_ = (select CASE_INST_ID_ from ${prefix}ACT_CMMN_RU_PLAN_ITEM_INST where ID_ = #{planItemInstanceId, jdbcType=VARCHAR})
-        </if>
+        left join ${prefix}ACT_CMMN_RU_PLAN_ITEM_INST P on C.ID_ = CASE_INST_ID_ and P.ENDED_TIME_ is null
+        <where>
+            <if test="caseInstanceId != null">
+                C.ID_ = #{caseInstanceId, jdbcType=VARCHAR}
+            </if>
+             <if test="planItemInstanceId != null">
+                and C.ID_ = (select CASE_INST_ID_ from ${prefix}ACT_CMMN_RU_PLAN_ITEM_INST where ID_ = #{planItemInstanceId, jdbcType=VARCHAR})
+            </if>
+        </where>
     </select>
 
     <select id="selectCaseInstancesByQueryCriteria" parameterType="org.flowable.cmmn.engine.impl.runtime.CaseInstanceQueryImpl" resultMap="caseInstanceResultMap">
@@ -311,7 +324,7 @@
         from ${prefix}ACT_CMMN_RU_CASE_INST RES
         inner join ${prefix}ACT_CMMN_CASEDEF CASE_DEF on RES.CASE_DEF_ID_ = CASE_DEF.ID_
         <if test="includeCaseVariables">
-            left outer join ${prefix}ACT_RU_VARIABLE VAR ON RES.ID_ = VAR.SCOPE_ID_ and VAR.TASK_ID_ is null and
+            left outer join ${prefix}ACT_RU_VARIABLE VAR ON RES.ID_ = VAR.SCOPE_ID_ and
             VAR.SCOPE_TYPE_= 'cmmn' and VAR.SUB_SCOPE_ID_ is null
         </if>
         <include refid="commonSelectCaseInstancesByQueryCriteriaSql"/>
@@ -404,7 +417,7 @@
                 and RES.TENANT_ID_ like #{tenantIdLike}
             </if>
             <if test="withoutTenantId">
-                and RES.TENANT_ID_ is null or RES.TENANT_ID_ = ''
+                and (RES.TENANT_ID_ is null or RES.TENANT_ID_ = '')
             </if>
             <if test="involvedUser != null">
                 and EXISTS(select ID_ from ${prefix}ACT_RU_IDENTITYLINK I where I.SCOPE_ID_ = RES.ID_ and I.SCOPE_TYPE_ = 'cmmn' and I.USER_ID_ = #{involvedUser})
@@ -560,7 +573,7 @@
                         or RES.TENANT_ID_ like #{orQueryObject.tenantIdLike}
                     </if>
                     <if test="orQueryObject.withoutTenantId">
-                        or RES.TENANT_ID_ is null or RES.TENANT_ID_ = ''
+                        or (RES.TENANT_ID_ is null or RES.TENANT_ID_ = '')
                     </if>
                     <if test="orQueryObject.involvedUser != null">
                         or EXISTS(select ID_ from ${prefix}ACT_RU_IDENTITYLINK I where I.SCOPE_ID_ = RES.ID_ and I.SCOPE_TYPE_ = 'cmmn' and I.USER_ID_ =

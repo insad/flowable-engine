@@ -19,17 +19,18 @@ import org.flowable.common.engine.impl.history.HistoryLevel;
 import org.flowable.common.engine.impl.interceptor.Command;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.history.HistoricActivityInstance;
-import org.flowable.engine.impl.EventSubscriptionQueryImpl;
 import org.flowable.engine.impl.test.HistoryTestHelper;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.repository.ProcessDefinition;
-import org.flowable.engine.runtime.EventSubscription;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
+import org.flowable.eventsubscription.api.EventSubscription;
+import org.flowable.eventsubscription.service.impl.EventSubscriptionQueryImpl;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.TaskQuery;
 import org.junit.Assert;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Joram Barrez
@@ -40,30 +41,35 @@ public class ParallelGatewayTest extends PluggableFlowableTestCase {
      * Case where there is a parallel gateway that splits into 3 paths of execution, that are immediately joined, without any wait states in between. In the end, no executions should be in the
      * database.
      */
+    @Test
     @Deployment
     public void testSplitMergeNoWaitstates() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("forkJoinNoWaitStates");
         assertTrue(processInstance.isEnded());
     }
 
+    @Test
     @Deployment
     public void testUnstructuredConcurrencyTwoForks() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("unstructuredConcurrencyTwoForks");
         assertTrue(processInstance.isEnded());
     }
 
+    @Test
     @Deployment
     public void testUnstructuredConcurrencyTwoJoins() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("unstructuredConcurrencyTwoJoins");
         assertTrue(processInstance.isEnded());
     }
 
+    @Test
     @Deployment
     public void testForkFollowedByOnlyEndEvents() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("forkFollowedByEndEvents");
         assertTrue(processInstance.isEnded());
     }
 
+    @Test
     @Deployment
     public void testNestedForksFollowedByEndEvents() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("nestedForksFollowedByEndEvents");
@@ -71,6 +77,7 @@ public class ParallelGatewayTest extends PluggableFlowableTestCase {
     }
 
     // ACT-482
+    @Test
     @Deployment
     public void testNestedForkJoin() {
         runtimeService.startProcessInstanceByKey("nestedForkJoin");
@@ -113,6 +120,7 @@ public class ParallelGatewayTest extends PluggableFlowableTestCase {
     /**
      * https://activiti.atlassian.net/browse/ACT-1222
      */
+    @Test
     @Deployment
     public void testRecyclingExecutionWithCallActivity() {
         runtimeService.startProcessInstanceByKey("parent-process");
@@ -143,12 +151,14 @@ public class ParallelGatewayTest extends PluggableFlowableTestCase {
     }
 
     // Test to verify ACT-1755
+    @Test
     @Deployment
     public void testHistoryTables() {
         if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
             ProcessInstance pi = runtimeService.startProcessInstanceByKey("testHistoryRecords");
             List<HistoricActivityInstance> history = historyService.createHistoricActivityInstanceQuery().processInstanceId(pi.getId()).list();
             for (HistoricActivityInstance h : history) {
+                assertActivityInstancesAreSame(h, runtimeService.createActivityInstanceQuery().activityInstanceId(h.getId()).singleResult());
                 if (h.getActivityId().equals("parallelgateway2")) {
                     assertNotNull(h.getEndTime());
                 }
@@ -156,33 +166,40 @@ public class ParallelGatewayTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     @Deployment
     public void testAsyncBehavior() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("async");
-        waitForJobExecutorToProcessAllJobs(5000L, 250L);
+        waitForJobExecutorToProcessAllJobs(20000L, 250L);
         assertEquals(0, runtimeService.createProcessInstanceQuery().processInstanceId(processInstance.getId()).count());
     }
 
     /*
+     * @Test
      * @Deployment public void testAsyncBehavior() { for (int i = 0; i < 100; i++) { ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("async"); } assertEquals(200,
      * managementService.createJobQuery().count()); waitForJobExecutorToProcessAllJobs(120000, 5000); assertEquals(0, managementService.createJobQuery().count()); assertEquals(0,
      * runtimeService.createProcessInstanceQuery().count()); }
      */
 
+    @Test
     @Deployment
     public void testHistoricActivityInstanceEndTimes() {
         runtimeService.startProcessInstanceByKey("nestedForkJoin");
         
         if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.AUDIT, processEngineConfiguration)) {
             List<HistoricActivityInstance> historicActivityInstances = historyService.createHistoricActivityInstanceQuery().list();
-            assertEquals(21, historicActivityInstances.size());
+            assertEquals(41, historicActivityInstances.size());
             for (HistoricActivityInstance historicActivityInstance : historicActivityInstances) {
                 Assert.assertNotNull(historicActivityInstance.getStartTime());
                 Assert.assertNotNull(historicActivityInstance.getEndTime());
+                if (historicActivityInstance.getActivityId().startsWith("flow")) {
+                    assertEquals(historicActivityInstance.getStartTime(), historicActivityInstance.getEndTime());
+                }
             }
         }
     }
 
+    @Test
     @Deployment
     public void testNonTerminatingEndEventShouldNotRemoveSubscriptions() {
         ProcessDefinition processDefinition = repositoryService
@@ -200,14 +217,14 @@ public class ParallelGatewayTest extends PluggableFlowableTestCase {
 
         assertEquals(1, tasks.size());
 
-        String executionId = processEngine.getManagementService().executeCommand(new Command<String>() {
+        processEngine.getManagementService().executeCommand(new Command<String>() {
             @Override
             public String execute(CommandContext commandContext) {
                 EventSubscriptionQueryImpl q = new EventSubscriptionQueryImpl(commandContext);
                 q.processInstanceId(processInstance.getProcessInstanceId());
 
                 List<EventSubscription> subs = CommandContextUtil
-                        .getEventSubscriptionEntityManager()
+                        .getEventSubscriptionService()
                         .findEventSubscriptionsByQueryCriteria(q);
 
                 assertEquals(1, subs.size());
@@ -230,14 +247,14 @@ public class ParallelGatewayTest extends PluggableFlowableTestCase {
         tasks = taskService.createTaskQuery().processInstanceId(processInstance.getProcessInstanceId()).list();
         assertEquals(1, tasks.size());
 
-        executionId = processEngine.getManagementService().executeCommand(new Command<String>() {
+        processEngine.getManagementService().executeCommand(new Command<String>() {
             @Override
             public String execute(CommandContext commandContext) {
                 EventSubscriptionQueryImpl q = new EventSubscriptionQueryImpl(commandContext);
                 q.processInstanceId(processInstance.getProcessInstanceId());
 
                 List<EventSubscription> subs = CommandContextUtil
-                        .getEventSubscriptionEntityManager()
+                        .getEventSubscriptionService()
                         .findEventSubscriptionsByQueryCriteria(q);
 
                 assertEquals(1, subs.size());

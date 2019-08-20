@@ -127,8 +127,11 @@ public class DefaultProcessDiagramCanvas {
     protected static BufferedImage TIMER_IMAGE;
     protected static BufferedImage COMPENSATE_THROW_IMAGE;
     protected static BufferedImage COMPENSATE_CATCH_IMAGE;
+    protected static BufferedImage CONDITIONAL_CATCH_IMAGE;
     protected static BufferedImage ERROR_THROW_IMAGE;
     protected static BufferedImage ERROR_CATCH_IMAGE;
+    protected static BufferedImage ESCALATION_THROW_IMAGE;
+    protected static BufferedImage ESCALATION_CATCH_IMAGE;
     protected static BufferedImage MESSAGE_THROW_IMAGE;
     protected static BufferedImage MESSAGE_CATCH_IMAGE;
     protected static BufferedImage SIGNAL_CATCH_IMAGE;
@@ -235,12 +238,16 @@ public class DefaultProcessDiagramCanvas {
             TIMER_IMAGE = ImageIO.read(ReflectUtil.getResource("org/flowable/icons/timer.png", customClassLoader));
             COMPENSATE_THROW_IMAGE = ImageIO.read(ReflectUtil.getResource("org/flowable/icons/compensate-throw.png", customClassLoader));
             COMPENSATE_CATCH_IMAGE = ImageIO.read(ReflectUtil.getResource("org/flowable/icons/compensate.png", customClassLoader));
+            CONDITIONAL_CATCH_IMAGE = ImageIO.read(ReflectUtil.getResource("org/flowable/icons/conditional.png", customClassLoader));
             ERROR_THROW_IMAGE = ImageIO.read(ReflectUtil.getResource("org/flowable/icons/error-throw.png", customClassLoader));
             ERROR_CATCH_IMAGE = ImageIO.read(ReflectUtil.getResource("org/flowable/icons/error.png", customClassLoader));
+            ESCALATION_THROW_IMAGE = ImageIO.read(ReflectUtil.getResource("org/flowable/icons/escalation-throw.png", customClassLoader));
+            ESCALATION_CATCH_IMAGE = ImageIO.read(ReflectUtil.getResource("org/flowable/icons/escalation.png", customClassLoader));
             MESSAGE_THROW_IMAGE = ImageIO.read(ReflectUtil.getResource("org/flowable/icons/message-throw.png", customClassLoader));
             MESSAGE_CATCH_IMAGE = ImageIO.read(ReflectUtil.getResource("org/flowable/icons/message.png", customClassLoader));
             SIGNAL_THROW_IMAGE = ImageIO.read(ReflectUtil.getResource("org/flowable/icons/signal-throw.png", customClassLoader));
             SIGNAL_CATCH_IMAGE = ImageIO.read(ReflectUtil.getResource("org/flowable/icons/signal.png", customClassLoader));
+            
         } catch (IOException e) {
             LOGGER.warn("Could not load image for process diagram creation: {}", e.getMessage());
         }
@@ -288,9 +295,7 @@ public class DefaultProcessDiagramCanvas {
         minX = (minX <= 5) ? 5 : minX;
         minY = (minY <= 5) ? 5 : minY;
         BufferedImage imageToSerialize = processDiagram;
-        if (minX >= 0 && minY >= 0) {
-            imageToSerialize = processDiagram.getSubimage(minX - 5, minY - 5, canvasWidth - minX + 5, canvasHeight - minY + 5);
-        }
+        imageToSerialize = processDiagram.getSubimage(minX - 5, minY - 5, canvasWidth - minX + 5, canvasHeight - minY + 5);
         return imageToSerialize;
     }
 
@@ -361,6 +366,13 @@ public class DefaultProcessDiagramCanvas {
             drawLabel(name, graphicInfo);
         }
     }
+    
+    public void drawEscalationEndEvent(String name, GraphicInfo graphicInfo, double scaleFactor) {
+        drawEscalationEndEvent(graphicInfo, scaleFactor);
+        if (scaleFactor == 1.0) {
+            drawLabel(name, graphicInfo);
+        }
+    }
 
     public void drawErrorEndEvent(GraphicInfo graphicInfo, double scaleFactor) {
         drawNoneEndEvent(graphicInfo, scaleFactor);
@@ -369,6 +381,14 @@ public class DefaultProcessDiagramCanvas {
                 (int) (ERROR_THROW_IMAGE.getWidth() / scaleFactor),
                 (int) (ERROR_THROW_IMAGE.getHeight() / scaleFactor), null);
     }
+    
+    public void drawEscalationEndEvent(GraphicInfo graphicInfo, double scaleFactor) {
+        drawNoneEndEvent(graphicInfo, scaleFactor);
+        g.drawImage(ESCALATION_THROW_IMAGE, (int) (graphicInfo.getX() + (graphicInfo.getWidth() / 4)),
+                (int) (graphicInfo.getY() + (graphicInfo.getHeight() / 4)),
+                (int) (ESCALATION_THROW_IMAGE.getWidth() / scaleFactor),
+                (int) (ESCALATION_THROW_IMAGE.getHeight() / scaleFactor), null);
+    }
 
     public void drawErrorStartEvent(GraphicInfo graphicInfo, double scaleFactor) {
         drawNoneStartEvent(graphicInfo);
@@ -376,6 +396,22 @@ public class DefaultProcessDiagramCanvas {
                 (int) (graphicInfo.getY() + (graphicInfo.getHeight() / 4)),
                 (int) (ERROR_CATCH_IMAGE.getWidth() / scaleFactor),
                 (int) (ERROR_CATCH_IMAGE.getHeight() / scaleFactor), null);
+    }
+    
+    public void drawEscalationStartEvent(GraphicInfo graphicInfo, double scaleFactor) {
+        drawNoneStartEvent(graphicInfo);
+        g.drawImage(ESCALATION_CATCH_IMAGE, (int) (graphicInfo.getX() + (graphicInfo.getWidth() / 4)),
+                (int) (graphicInfo.getY() + (graphicInfo.getHeight() / 4)),
+                (int) (ESCALATION_CATCH_IMAGE.getWidth() / scaleFactor),
+                (int) (ESCALATION_CATCH_IMAGE.getHeight() / scaleFactor), null);
+    }
+    
+    public void drawConditionalStartEvent(GraphicInfo graphicInfo, double scaleFactor) {
+        drawNoneStartEvent(graphicInfo);
+        g.drawImage(CONDITIONAL_CATCH_IMAGE, (int) (graphicInfo.getX() + (graphicInfo.getWidth() / 4)),
+                (int) (graphicInfo.getY() + (graphicInfo.getHeight() / 4)),
+                (int) (CONDITIONAL_CATCH_IMAGE.getWidth() / scaleFactor),
+                (int) (CONDITIONAL_CATCH_IMAGE.getHeight() / scaleFactor), null);
     }
 
     public void drawCatchingEvent(GraphicInfo graphicInfo, boolean isInterrupting,
@@ -388,6 +424,7 @@ public class DefaultProcessDiagramCanvas {
         if (innerCircleSize == 0) {
             innerCircleSize = 1;
         }
+        
         int innerCircleX = (int) graphicInfo.getX() + innerCircleSize;
         int innerCircleY = (int) graphicInfo.getY() + innerCircleSize;
         int innerCircleWidth = (int) graphicInfo.getWidth() - (2 * innerCircleSize);
@@ -400,8 +437,10 @@ public class DefaultProcessDiagramCanvas {
         g.fill(outerCircle);
 
         g.setPaint(EVENT_BORDER_COLOR);
-        if (!isInterrupting)
+        if (!isInterrupting) {
             g.setStroke(NON_INTERRUPTING_EVENT_STROKE);
+        }
+        
         g.draw(outerCircle);
         g.setStroke(originalStroke);
         g.setPaint(originalPaint);
@@ -416,6 +455,7 @@ public class DefaultProcessDiagramCanvas {
                 imageX++;
                 imageY++;
             }
+            
             g.drawImage(image, imageX, imageY, (int) (image.getWidth() / scaleFactor),
                     (int) (image.getHeight() / scaleFactor), null);
         }
@@ -428,6 +468,15 @@ public class DefaultProcessDiagramCanvas {
 
     public void drawCatchingCompensateEvent(GraphicInfo graphicInfo, boolean isInterrupting, double scaleFactor) {
         drawCatchingEvent(graphicInfo, isInterrupting, COMPENSATE_CATCH_IMAGE, "compensate", scaleFactor);
+    }
+    
+    public void drawCatchingConditionalEvent(String name, GraphicInfo graphicInfo, boolean isInterrupting, double scaleFactor) {
+        drawCatchingConditionalEvent(graphicInfo, isInterrupting, scaleFactor);
+        drawLabel(name, graphicInfo);
+    }
+    
+    public void drawCatchingConditionalEvent(GraphicInfo graphicInfo, boolean isInterrupting, double scaleFactor) {
+        drawCatchingEvent(graphicInfo, isInterrupting, CONDITIONAL_CATCH_IMAGE, "conditional", scaleFactor);
     }
 
     public void drawCatchingTimerEvent(String name, GraphicInfo graphicInfo, boolean isInterrupting, double scaleFactor) {
@@ -446,6 +495,10 @@ public class DefaultProcessDiagramCanvas {
 
     public void drawCatchingErrorEvent(GraphicInfo graphicInfo, boolean isInterrupting, double scaleFactor) {
         drawCatchingEvent(graphicInfo, isInterrupting, ERROR_CATCH_IMAGE, "error", scaleFactor);
+    }
+    
+    public void drawCatchingEscalationEvent(GraphicInfo graphicInfo, boolean isInterrupting, double scaleFactor) {
+        drawCatchingEvent(graphicInfo, isInterrupting, ESCALATION_CATCH_IMAGE, "escalation", scaleFactor);
     }
 
     public void drawCatchingSignalEvent(String name, GraphicInfo graphicInfo, boolean isInterrupting, double scaleFactor) {
@@ -472,6 +525,10 @@ public class DefaultProcessDiagramCanvas {
 
     public void drawThrowingSignalEvent(GraphicInfo graphicInfo, double scaleFactor) {
         drawCatchingEvent(graphicInfo, true, SIGNAL_THROW_IMAGE, "signal", scaleFactor);
+    }
+    
+    public void drawThrowingEscalationEvent(GraphicInfo graphicInfo, double scaleFactor) {
+        drawCatchingEvent(graphicInfo, true, ESCALATION_THROW_IMAGE, "escalation", scaleFactor);
     }
 
     public void drawThrowingNoneEvent(GraphicInfo graphicInfo, double scaleFactor) {
@@ -782,8 +839,13 @@ public class DefaultProcessDiagramCanvas {
                         lastLine = lastLine.substring(0, lastLine.length() - 4) + "...";
                     }
                     layouts.add(new TextLayout(lastLine, g.getFont(), g.getFontRenderContext()));
+                } else {
+                    // at least, draw one line even if text does not fit in order to avoid empty box
+                    layouts.add(layout);
+                    currentHeight += height;
                 }
                 break;
+                
             } else {
                 layouts.add(layout);
                 lastLine = text.substring(previousPosition, measurer.getPosition());
@@ -791,14 +853,14 @@ public class DefaultProcessDiagramCanvas {
             }
         }
 
-        int currentY = y + (centered ? ((boxHeight - currentHeight) / 2) : 0);
-        int currentX = 0;
+        float currentY = y + (centered ? ((boxHeight - currentHeight) / 2) : 0);
+        float currentX = 0;
 
         // Actually draw the lines
         for (TextLayout textLayout : layouts) {
 
             currentY += textLayout.getAscent();
-            currentX = x + (centered ? ((boxWidth - ((Double) textLayout.getBounds().getWidth()).intValue()) / 2) : 0);
+            currentX = x + (centered ? ((boxWidth - ((Double) textLayout.getBounds().getWidth()).floatValue()) / 2) : 0);
 
             textLayout.draw(g, currentX, currentY);
             currentY += textLayout.getDescent() + textLayout.getLeading();
@@ -881,7 +943,7 @@ public class DefaultProcessDiagramCanvas {
             g.setStroke(EVENT_SUBPROCESS_STROKE);
             g.draw(rect);
             g.setStroke(originalStroke);
-        } else {
+        }else{
             Paint originalPaint = g.getPaint();
             g.setPaint(SUBPROCESS_BOX_COLOR);
             g.fill(rect);
@@ -889,6 +951,30 @@ public class DefaultProcessDiagramCanvas {
             g.draw(rect);
             g.setPaint(originalPaint);
         }
+        if (scaleFactor == 1.0 && name != null && !name.isEmpty()) {
+            String text = fitTextToWidth(name, (int) graphicInfo.getWidth());
+            g.drawString(text, (int) graphicInfo.getX() + 10, (int) graphicInfo.getY() + 15);
+        }
+    }
+    public void drawExpandedTransaction(String name, GraphicInfo graphicInfo, double scaleFactor) {
+        RoundRectangle2D rect = new RoundRectangle2D.Double(graphicInfo.getX(), graphicInfo.getY(),
+                graphicInfo.getWidth(), graphicInfo.getHeight(), 8, 8);
+        RoundRectangle2D outerRect = new RoundRectangle2D.Double(graphicInfo.getX()-3,
+                graphicInfo.getY()-3,
+                graphicInfo.getWidth()+6,
+                graphicInfo.getHeight()+6,
+                8,
+                8);
+        Paint originalPaint = g.getPaint();
+        g.setPaint(SUBPROCESS_BOX_COLOR);
+        g.fill(outerRect);
+        g.setPaint(SUBPROCESS_BORDER_COLOR);
+        g.draw(outerRect);
+        g.setPaint(SUBPROCESS_BOX_COLOR);
+        g.fill(rect);
+        g.setPaint(SUBPROCESS_BORDER_COLOR);
+        g.draw(rect);
+        g.setPaint(originalPaint);
 
         if (scaleFactor == 1.0 && name != null && !name.isEmpty()) {
             String text = fitTextToWidth(name, (int) graphicInfo.getWidth());
@@ -1106,7 +1192,6 @@ public class DefaultProcessDiagramCanvas {
         g.setFont(ANNOTATION_FONT);
 
         Path2D path = new Path2D.Double();
-        x += .5;
         int lineLength = 18;
         path.moveTo(x + lineLength, y);
         path.lineTo(x, y);
@@ -1151,7 +1236,7 @@ public class DefaultProcessDiagramCanvas {
             g.setFont(LABEL_FONT);
 
             int wrapWidth = 100;
-            int textY = (int) graphicInfo.getY();
+            double textY = graphicInfo.getY();
 
             // TODO: use drawMultilineText()
             AttributedString as = new AttributedString(text);
@@ -1169,7 +1254,7 @@ public class DefaultProcessDiagramCanvas {
                 if (centered) {
                     tX += (int) (graphicInfo.getWidth() / 2 - bb.getWidth() / 2);
                 }
-                tl.draw(g, (float) tX, textY);
+                tl.draw(g, (float) tX, (float) textY);
                 textY += tl.getDescent() + tl.getLeading() + (interline - 1.0f) * tl.getAscent();
             }
 

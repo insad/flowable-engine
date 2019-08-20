@@ -15,6 +15,7 @@ package org.flowable.cmmn.engine.impl.persistence.entity;
 
 import java.util.List;
 
+import org.flowable.cmmn.api.runtime.PlanItemDefinitionType;
 import org.flowable.cmmn.api.runtime.PlanItemInstance;
 import org.flowable.cmmn.api.runtime.PlanItemInstanceQuery;
 import org.flowable.cmmn.engine.CmmnEngineConfiguration;
@@ -28,6 +29,8 @@ import org.flowable.common.engine.api.scope.ScopeTypes;
 import org.flowable.common.engine.impl.el.ExpressionManager;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.common.engine.impl.persistence.entity.data.DataManager;
+import org.flowable.job.service.impl.persistence.entity.TimerJobEntity;
+import org.flowable.job.service.impl.persistence.entity.TimerJobEntityManager;
 import org.flowable.variable.service.impl.persistence.entity.VariableInstanceEntity;
 import org.flowable.variable.service.impl.persistence.entity.VariableInstanceEntityManager;
 
@@ -63,14 +66,18 @@ public class PlanItemInstanceEntityManagerImpl extends AbstractCmmnEntityManager
             Expression nameExpression = expressionManager.createExpression(planItem.getName());
             planItemInstanceEntity.setName(nameExpression.getValue(caseInstanceEntity).toString());
         }
-        planItemInstanceEntity.setStartTime(CommandContextUtil.getCmmnEngineConfiguration(commandContext).getClock().getCurrentTime());
+        planItemInstanceEntity.setCreateTime(CommandContextUtil.getCmmnEngineConfiguration(commandContext).getClock().getCurrentTime());
         planItemInstanceEntity.setElementId(planItem.getId());
         PlanItemDefinition planItemDefinition = planItem.getPlanItemDefinition();
         if (planItemDefinition != null) {
             planItemInstanceEntity.setPlanItemDefinitionId(planItemDefinition.getId());
-            planItemInstanceEntity.setPlanItemDefinitionType(planItemDefinition.getClass().getSimpleName().toLowerCase());
+
+            String planItemDefinitionType = planItemDefinition.getClass().getSimpleName().toLowerCase();
+            planItemInstanceEntity.setPlanItemDefinitionType(planItemDefinitionType);
+            planItemInstanceEntity.setStage(PlanItemDefinitionType.STAGE.equals(planItemDefinitionType));
+        } else {
+            planItemInstanceEntity.setStage(false);
         }
-        planItemInstanceEntity.setStage(false);
         planItemInstanceEntity.setStageInstanceId(stagePlanItemInstanceId);
         planItemInstanceEntity.setTenantId(tenantId);
        
@@ -123,6 +130,16 @@ public class PlanItemInstanceEntityManagerImpl extends AbstractCmmnEntityManager
     public List<PlanItemInstance> findByCriteria(PlanItemInstanceQuery planItemInstanceQuery) {
         return planItemInstanceDataManager.findByCriteria((PlanItemInstanceQueryImpl) planItemInstanceQuery);
     }
+    
+    @Override
+    public List<PlanItemInstanceEntity> findByCaseInstanceId(String caseInstanceId) {
+        return planItemInstanceDataManager.findByCaseInstanceId(caseInstanceId);
+    }
+
+    @Override
+    public List<PlanItemInstanceEntity> findByCaseInstanceIdAndPlanItemId(String caseInstanceId, String planitemId) {
+        return planItemInstanceDataManager.findByCaseInstanceIdAndPlanItemId(caseInstanceId, planitemId);
+    }
 
     @Override
     public void delete(PlanItemInstanceEntity planItemInstanceEntity, boolean fireEvent) {
@@ -146,6 +163,15 @@ public class PlanItemInstanceEntityManagerImpl extends AbstractCmmnEntityManager
                 for (PlanItemInstanceEntity childPlanItem : planItemInstanceEntity.getChildPlanItemInstances()) {
                     delete(childPlanItem, fireEvent);
                 }
+            }
+        }
+
+        if (planItemInstanceEntity.getPlanItemDefinitionType().equals(PlanItemDefinitionType.TIMER_EVENT_LISTENER)) {
+            TimerJobEntityManager timerJobEntityManager = CommandContextUtil.getCmmnEngineConfiguration(commandContext).getJobServiceConfiguration().getTimerJobEntityManager();
+            List<TimerJobEntity> timerJobsEntities = timerJobEntityManager
+                .findJobsByScopeIdAndSubScopeId(planItemInstanceEntity.getCaseInstanceId(), planItemInstanceEntity.getId());
+            for (TimerJobEntity timerJobEntity : timerJobsEntities) {
+                timerJobEntityManager.delete(timerJobEntity);
             }
         }
         

@@ -13,6 +13,8 @@
 
 package org.flowable.rest.service.api.runtime.process;
 
+import static org.flowable.common.rest.api.PaginateListUtil.paginateList;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -109,10 +111,10 @@ public class ExecutionBaseResource {
         }
         
         if (restApiInterceptor != null) {
-            restApiInterceptor.accessExecutionInfoWithQuery(query);
+            restApiInterceptor.accessExecutionInfoWithQuery(query, queryRequest);
         }
 
-        return new ExecutionPaginateList(restResponseFactory).paginateList(requestParams, queryRequest, query, "processInstanceId", allowedSortProperties);
+        return paginateList(requestParams, queryRequest, query, "processInstanceId", allowedSortProperties, restResponseFactory::createExecutionResponseList);
     }
 
     protected void addVariables(ExecutionQuery processInstanceQuery, List<QueryVariable> variables, boolean process) {

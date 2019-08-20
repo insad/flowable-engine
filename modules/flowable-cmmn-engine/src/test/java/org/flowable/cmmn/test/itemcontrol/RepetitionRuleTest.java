@@ -20,9 +20,11 @@ import java.util.Date;
 import java.util.List;
 
 import org.flowable.cmmn.api.runtime.CaseInstance;
+import org.flowable.cmmn.api.runtime.GenericEventListenerInstance;
 import org.flowable.cmmn.api.runtime.PlanItemDefinitionType;
 import org.flowable.cmmn.api.runtime.PlanItemInstance;
 import org.flowable.cmmn.api.runtime.PlanItemInstanceState;
+import org.flowable.cmmn.api.runtime.UserEventListenerInstance;
 import org.flowable.cmmn.engine.test.CmmnDeployment;
 import org.flowable.cmmn.engine.test.FlowableCmmnTestCase;
 import org.flowable.cmmn.engine.test.impl.CmmnJobTestHelper;
@@ -283,13 +285,8 @@ public class RepetitionRuleTest extends FlowableCmmnTestCase {
         cmmnManagementService.executeJob(job.getId());
         assertEquals(1, cmmnTaskService.createTaskQuery().caseInstanceId(caseInstance.getId()).count());
         
-        // new timer should be scheduled
-        assertEquals(1L, cmmnManagementService.createTimerJobQuery().caseInstanceId(caseInstance.getId()).count());
-        
-        // Should only repeat two times
-        currentTime = new Date(currentTime.getTime() + (5 * 60 * 60 * 1000) + 10000);
-        setClockTo(currentTime);
-        CmmnJobTestHelper.waitForJobExecutorToProcessAllJobs(cmmnEngineConfiguration, 10000L, 100L, true);
+        // new timer should NOT be scheduled. The orphan detection algorithm will take in account the waiting for repetition state and the fact its missing here
+        assertEquals(0L, cmmnManagementService.createTimerJobQuery().caseInstanceId(caseInstance.getId()).count());
         
         assertEquals(0L, cmmnManagementService.createTimerJobQuery().caseInstanceId(caseInstance.getId()).count());
         assertEquals(0L, cmmnManagementService.createJobQuery().caseInstanceId(caseInstance.getId()).count());
@@ -319,4 +316,43 @@ public class RepetitionRuleTest extends FlowableCmmnTestCase {
         cmmnTaskService.complete(taskB.getId());
         assertCaseInstanceEnded(caseInstance);
     }
+
+    @Test
+    @CmmnDeployment
+    public void testRepeatingEventListener() {
+        CaseInstance caseInstance = cmmnRuntimeService.createCaseInstanceBuilder().caseDefinitionKey("testRepeatingUserEventListener").start();
+        assertEquals(0L, cmmnTaskService.createTaskQuery().count());
+
+        for (int i = 0; i < 17; i++) {
+            GenericEventListenerInstance genericEventListenerInstance = cmmnRuntimeService.createGenericEventListenerInstanceQuery()
+                .caseInstanceId(caseInstance.getId()).singleResult();
+            assertEquals(PlanItemInstanceState.AVAILABLE, genericEventListenerInstance.getState());
+            cmmnRuntimeService.completeGenericEventListenerInstance(genericEventListenerInstance.getId());
+        }
+        assertEquals(17L, cmmnTaskService.createTaskQuery().count());
+    }
+
+    @Test
+    @CmmnDeployment
+    public void testRepeatingRuleUserEventListener() {
+        CaseInstance caseInstance = cmmnRuntimeService.createCaseInstanceBuilder()
+            .caseDefinitionKey("testRepeatingUserEventListener")
+            .variable("keepGoing", true)
+            .start();
+        assertEquals(0L, cmmnTaskService.createTaskQuery().count());
+
+        for (int i = 0; i < 3; i++) {
+            UserEventListenerInstance userEventListenerInstance = cmmnRuntimeService.createUserEventListenerInstanceQuery()
+                .caseInstanceId(caseInstance.getId()).singleResult();
+            assertEquals(PlanItemInstanceState.AVAILABLE, userEventListenerInstance.getState());
+
+            if (i == 2) {
+                cmmnRuntimeService.setVariable(caseInstance.getId(), "keepGoing", false);
+            }
+            cmmnRuntimeService.completeGenericEventListenerInstance(userEventListenerInstance.getId());
+        }
+
+        assertEquals(3, cmmnTaskService.createTaskQuery().count());
+    }
+
 }

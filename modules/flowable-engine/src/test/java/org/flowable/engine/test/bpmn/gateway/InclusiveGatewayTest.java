@@ -26,17 +26,20 @@ import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.impl.interceptor.Command;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.common.engine.impl.util.CollectionUtil;
-import org.flowable.engine.impl.EventSubscriptionQueryImpl;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
 import org.flowable.engine.impl.test.AbstractFlowableTestCase;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.repository.ProcessDefinition;
-import org.flowable.engine.runtime.EventSubscription;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
+import org.flowable.eventsubscription.api.EventSubscription;
+import org.flowable.eventsubscription.service.impl.EventSubscriptionQueryImpl;
 import org.flowable.task.api.Task;
+import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * @author Joram Barrez
@@ -54,6 +57,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
     private static final String BEAN_TASK2_NAME = "Standard service";
     private static final String BEAN_TASK3_NAME = "Gold Member service";
 
+    @Test
     @Deployment
     public void testDivergingInclusiveGateway() {
         for (int i = 1; i <= 3; i++) {
@@ -76,6 +80,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     @Deployment
     public void testMergingInclusiveGateway() {
         ProcessInstance pi = runtimeService.startProcessInstanceByKey("inclusiveGwMerging", CollectionUtil.singletonMap("input", 2));
@@ -84,6 +89,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
         runtimeService.deleteProcessInstance(pi.getId(), "testing deletion");
     }
 
+    @Test
     @Deployment
     public void testPartialMergingInclusiveGateway() {
         ProcessInstance pi = runtimeService.startProcessInstanceByKey("partialInclusiveGwMerging", CollectionUtil.singletonMap("input", 2));
@@ -98,6 +104,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
         runtimeService.deleteProcessInstance(pi.getId(), "testing deletion");
     }
 
+    @Test
     @Deployment
     public void testNoSequenceFlowSelected() {
         try {
@@ -111,6 +118,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
     /**
      * Test for ACT-1216: When merging a concurrent execution the parent is not activated correctly
      */
+    @Test
     @Deployment
     public void testParentActivationOnNonJoiningEnd() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("parentActivationOnNonJoiningEnd");
@@ -159,6 +167,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
     /**
      * Test for bug ACT-10: whitespaces/newlines in expressions lead to exceptions
      */
+    @Test
     @Deployment
     public void testWhitespaceInExpression() {
         // Starting a process instance will lead to an exception if whitespace
@@ -167,6 +176,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
         runtimeService.startProcessInstanceByKey("inclusiveWhiteSpaceInExpression", CollectionUtil.singletonMap("input", 1));
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/bpmn/gateway/InclusiveGatewayTest.testDivergingInclusiveGateway.bpmn20.xml" })
     public void testUnknownVariableInExpression() {
         // Instead of 'input' we're starting a process instance with the name
@@ -179,6 +189,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     @Deployment
     public void testDecideBasedOnBeanProperty() {
         runtimeService.startProcessInstanceByKey("inclusiveDecisionBasedOnBeanProperty", CollectionUtil.singletonMap("order", new InclusiveGatewayTestOrder(150)));
@@ -193,6 +204,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
         assertEquals(0, expectedNames.size());
     }
 
+    @Test
     @Deployment
     public void testDecideBasedOnListOrArrayOfBeans() {
         List<InclusiveGatewayTestOrder> orders = new ArrayList<>();
@@ -243,6 +255,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
         assertEquals(0, expectedNames.size());
     }
 
+    @Test
     @Deployment
     public void testDecideBasedOnBeanMethod() {
         ProcessInstance pi = runtimeService.startProcessInstanceByKey("inclusiveDecisionBasedOnBeanMethod", CollectionUtil.singletonMap("order", new InclusiveGatewayTestOrder(200)));
@@ -270,6 +283,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     @Deployment
     public void testInvalidMethodExpression() {
         try {
@@ -280,6 +294,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     @Deployment
     public void testDefaultSequenceFlow() {
         // Input == 1 -> default is not selected, other 2 tasks are selected
@@ -306,6 +321,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
         assertEquals("Default input", task.getName());
     }
 
+    @Test
     @Deployment
     public void testNoIdOnSequenceFlow() {
         ProcessInstance pi = runtimeService.startProcessInstanceByKey("inclusiveNoIdOnSequenceFlow", CollectionUtil.singletonMap("input", 3));
@@ -330,6 +346,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
      *
      * In case of loops, special care needs to be taken in the algorithm, or else stackoverflows will happen very quickly.
      */
+    @Test
     @Deployment
     public void testLoop() {
         ProcessInstance pi = runtimeService.startProcessInstanceByKey("inclusiveTestLoop", CollectionUtil.singletonMap("counter", 1));
@@ -339,11 +356,12 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
 
         taskService.complete(task.getId());
         assertEquals(0, taskService.createTaskQuery().count());
-
+        
         assertEquals("Found executions: " + runtimeService.createExecutionQuery().list(), 0, runtimeService.createExecutionQuery().count());
-        assertProcessEnded(pi.getId());
+        assertEquals(0, runtimeService.createProcessInstanceQuery().processInstanceId(pi.getId()).count());
     }
 
+    @Test
     @Deployment
     public void testJoinAfterSubprocesses() {
         // Test case to test act-1204
@@ -399,6 +417,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     @Deployment
     public void testJoinAfterParallelGateway() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("InclusiveGateway");
@@ -424,6 +443,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
         assertNotNull(execution);
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/bpmn/gateway/InclusiveGatewayTest.testJoinAfterCall.bpmn20.xml",
             "org/flowable/engine/test/bpmn/gateway/InclusiveGatewayTest.testJoinAfterCallSubProcess.bpmn20.xml" })
     public void testJoinAfterCall() {
@@ -462,13 +482,15 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
         assertNull(processInstance);
     }
 
+    @Test
     @Deployment
     public void testAsyncBehavior() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("async");
-        waitForJobExecutorToProcessAllJobs(5000L, 250);
+        waitForJobExecutorToProcessAllJobs(10000L, 250);
         assertEquals(0, runtimeService.createProcessInstanceQuery().processInstanceId(processInstance.getId()).count());
     }
 
+    @Test
     @Deployment
     public void testDirectSequenceFlow() {
         Map<String, Object> varMap = new HashMap<>();
@@ -495,6 +517,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
         assertTrue(processInstance.isEnded());
     }
 
+    @Test
     @Deployment
     public void testSkipExpression() {
         Map<String, Object> varMap = new HashMap<>();
@@ -523,7 +546,52 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
         processInstance = runtimeService.startProcessInstanceByKey("inclusiveGwSkipExpression", varMap);
         assertTrue(processInstance.isEnded());
     }
+    
+    @Test
+    @Deployment
+    public void testSkipExpressionWithDefinitionInfo() {
+        ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery().processDefinitionKey("inclusiveGwSkipExpression").singleResult();
+        ObjectNode infoNode = dynamicBpmnService.enableSkipExpression();
+        dynamicBpmnService.saveProcessDefinitionInfo(processDefinition.getId(), infoNode);
+        Map<String, Object> varMap = new HashMap<>();
+        varMap.put("input", 10);
+        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("inclusiveGwSkipExpression", varMap);
+        org.flowable.task.api.Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
+        assertNotNull(task);
+        assertEquals("theTask1", task.getTaskDefinitionKey());
 
+        varMap = new HashMap<>();
+        varMap.put("input", 30);
+        processInstance = runtimeService.startProcessInstanceByKey("inclusiveGwSkipExpression", varMap);
+        List<org.flowable.task.api.Task> tasks = taskService.createTaskQuery().processInstanceId(processInstance.getId()).list();
+        assertEquals(2, tasks.size());
+
+        dynamicBpmnService.removeEnableSkipExpression(infoNode);
+        dynamicBpmnService.saveProcessDefinitionInfo(processDefinition.getId(), infoNode);
+        varMap = new HashMap<>();
+        varMap.put("input", 10);
+        processInstance = runtimeService.startProcessInstanceByKey("inclusiveGwSkipExpression", varMap);
+        task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
+        assertNotNull(task);
+        assertEquals("theTask2", task.getTaskDefinitionKey());
+        
+        dynamicBpmnService.enableSkipExpression(infoNode);
+        dynamicBpmnService.changeSkipExpression("flow2", "${input < 30}", infoNode);
+        dynamicBpmnService.changeSkipExpression("flow3", "${input >= 30}", infoNode);
+        dynamicBpmnService.saveProcessDefinitionInfo(processDefinition.getId(), infoNode);
+        varMap = new HashMap<>();
+        varMap.put("input", 30);
+        processInstance = runtimeService.startProcessInstanceByKey("inclusiveGwSkipExpression", varMap);
+        tasks = taskService.createTaskQuery().processInstanceId(processInstance.getId()).list();
+        for (Task taskObject : tasks) {
+            if (!"theTask2".equals(taskObject.getTaskDefinitionKey()) && !"theTask3".equals(taskObject.getTaskDefinitionKey())) {
+                fail("expected theTask2 and theTask3 only");
+            }
+        }
+        assertEquals(2, tasks.size());
+    }
+
+    @Test
     @Deployment
     public void testMultipleProcessInstancesMergedBug() {
 
@@ -566,6 +634,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
     }
 
     // See https://github.com/flowable/flowable-engine/issues/582
+    @Test
     @Deployment
     public void testInclusiveGatewayInEventSubProcess() {
 
@@ -595,7 +664,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
                 q.processInstanceId(instance.getProcessInstanceId());
 
                 List<EventSubscription> subs = CommandContextUtil
-                        .getEventSubscriptionEntityManager()
+                        .getEventSubscriptionService()
                         .findEventSubscriptionsByQueryCriteria(q);
 
                 assertEquals(1, subs.size());
@@ -632,6 +701,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
         return result;
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/bpmn/gateway/InclusiveGatewayTest.insideMultiInstanceParallelSubProcess.bpmn20.xml" })
     public void testInclusiveGatewayInclusiveGatewayInsideParallelMultiInstanceSubProcess() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("inclusiveGatewayInsideParallelMultiInstanceSubProcess");
@@ -716,10 +786,11 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
 
         //Finish the process
         taskService.complete(task.getId());
-
-        assertProcessEnded(processInstance.getId());
+        
+        assertEquals(0, runtimeService.createProcessInstanceQuery().processInstanceId(processInstance.getId()).count());
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/bpmn/gateway/InclusiveGatewayTest.insideMultiInstanceSequentialSubProcess.bpmn20.xml" })
     public void testInclusiveGatewayInclusiveGatewayInsideSequentialMultiInstanceSubProcess() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("inclusiveGatewayInsideSequentialMultiInstanceSubProcess");
@@ -773,8 +844,6 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
         assertFalse(classifiedTasks.containsKey("taskInclusive3"));
 
         //Finish the rest of the tasks
-        List<Task> collect = Stream.concat(classifiedTasks.get("taskInclusive1").stream(), classifiedTasks.get("taskInclusive1").stream()).collect(Collectors.toList());
-
         Stream.concat(classifiedTasks.get("taskInclusive1").stream(), classifiedTasks.get("taskInclusive2").stream())
             .forEach(this::completeTask);
 
@@ -841,11 +910,12 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
 
         //Finish the process
         taskService.complete(task.getId());
-
-        assertProcessEnded(processInstance.getId());
+        
+        assertEquals(0, runtimeService.createProcessInstanceQuery().processInstanceId(processInstance.getId()).count());
     }
 
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/bpmn/gateway/InclusiveGatewayTest.inSubProcessNestedInMultiInstanceParallelSubProcess.bpmn20.xml" })
     public void testInSubProcessNestedInMultiInstanceParallelSubProcess() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("inclusiveGatewayInsideSubProcessNestedInMultiInstanceParallelSubProcess");
@@ -993,10 +1063,11 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
 
         //Finish the process
         tasks.forEach(this::completeTask);
-
-        assertProcessEnded(processInstance.getId());
+        
+        assertEquals(0, runtimeService.createProcessInstanceQuery().processInstanceId(processInstance.getId()).count());
     }
 
+    @Test
     @Deployment(resources = {"org/flowable/engine/test/bpmn/gateway/InclusiveGatewayTest.inCalledActivityNestedInMultiInstanceParallelSubProcess.bpmn20.xml",
     "org/flowable/engine/test/bpmn/gateway/InclusiveGatewayTest.simpleParallelFlow.bpmn20.xml"})
     public void testInCalledActivityNestedInMultiInstanceSubProcess() {
@@ -1077,7 +1148,6 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
         Map<String, List<Execution>> taskExecutionsByParent = Stream.concat(tempStream, classifiedExecutions.get("taskInclusive3").stream())
             .collect(Collectors.groupingBy(Execution::getParentId));
         //Get the execution Ids of one with 3 task executions
-        boolean doneFlag = false;
         Optional<List<Execution>> completeSubProcessExecutions = taskExecutionsByParent.values().stream()
             .filter(l -> l.size() == 3)
             .findFirst();
@@ -1142,6 +1212,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
     }
 
     /*
+     * @Test
      * @Deployment public void testAsyncBehavior() { for (int i = 0; i < 100; i++) { ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("async"); } assertEquals(200,
      * managementService.createJobQuery().count()); waitForJobExecutorToProcessAllJobs(120000, 5000); assertEquals(0, managementService.createJobQuery().count()); assertEquals(0,
      * runtimeService.createProcessInstanceQuery().count()); }
@@ -1149,6 +1220,7 @@ public class InclusiveGatewayTest extends PluggableFlowableTestCase {
 
     // /* This test case is related to ACT-1877 */
     //
+    // @Test
     // @Deployment(resources={"org/flowable/engine/test/bpmn/gateway/InclusiveGatewayTest.testWithSignalBoundaryEvent.bpmn20.xml"})
     // public void testJoinAfterBoudarySignalEvent() {
     //

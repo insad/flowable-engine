@@ -22,21 +22,22 @@ import org.flowable.common.engine.impl.util.DefaultClockImpl;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.api.event.TestFlowableEntityEventListener;
 import org.flowable.job.api.Job;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class StartTimerEventRepeatCompatibilityTest extends TimerEventCompatibilityTest {
 
     private TestFlowableEntityEventListener listener;
 
-    @Override
+    @BeforeEach
     protected void setUp() throws Exception {
-        super.setUp();
         listener = new TestFlowableEntityEventListener(Job.class);
         processEngineConfiguration.getEventDispatcher().addEventListener(listener);
     }
 
-    @Override
+    @AfterEach
     protected void tearDown() throws Exception {
-        super.tearDown();
 
         if (listener != null) {
             processEngineConfiguration.getEventDispatcher().removeEventListener(listener);
@@ -46,6 +47,7 @@ public class StartTimerEventRepeatCompatibilityTest extends TimerEventCompatibil
     /**
      * Timer repetition
      */
+    @Test
     public void testCycleDateStartTimerEvent() throws Exception {
         Clock previousClock = processEngineConfiguration.getClock();
 
@@ -111,11 +113,7 @@ public class StartTimerEventRepeatCompatibilityTest extends TimerEventCompatibil
 
         // ADVANCE THE CLOCK SO that all 10 repeats to be executed (last execution)
         moveByMinutes(60 * 24);
-        try {
-            waitForJobExecutorToProcessAllJobsAndExecutableTimerJobs(2000, 200);
-        } catch (Exception e) {
-            fail("Because the maximum number of repeats is reached it will not be executed other jobs");
-        }
+        waitForJobExecutorToProcessAllJobsAndExecutableTimerJobs(5000, 200);
 
         // After the 10nth startEvent Execution should have 10 process instances started
         // (since the first one was not completed)

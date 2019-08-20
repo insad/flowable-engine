@@ -26,6 +26,7 @@ import org.flowable.engine.test.Deployment;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.history.HistoricTaskInstance;
 import org.flowable.variable.api.history.HistoricVariableInstance;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Tijs Rademakers
@@ -33,11 +34,12 @@ import org.flowable.variable.api.history.HistoricVariableInstance;
 public class HistoryLevelServiceTest extends PluggableFlowableTestCase {
 
   @Deployment(resources = { "org/flowable/engine/test/api/history/oneTaskHistoryLevelNoneProcess.bpmn20.xml" })
+  @Test
   public void testNoneHistoryLevel() {
     // With a clean ProcessEngine, no instances should be available
     ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
     
-    HistoryTestHelper.waitForJobExecutorToProcessAllHistoryJobs(processEngineConfiguration, managementService, 5000, 200);
+    HistoryTestHelper.waitForJobExecutorToProcessAllHistoryJobs(processEngineConfiguration, managementService, 7000, 200);
     
     assertTrue(historyService.createHistoricProcessInstanceQuery().processInstanceId(processInstance.getId()).count() == 0);
 
@@ -53,7 +55,7 @@ public class HistoryLevelServiceTest extends PluggableFlowableTestCase {
     taskService.setVariableLocal(task.getId(), "localVar1", "test2");
     taskService.complete(task.getId());
     
-    HistoryTestHelper.waitForJobExecutorToProcessAllHistoryJobs(processEngineConfiguration, managementService, 5000, 200);
+    HistoryTestHelper.waitForJobExecutorToProcessAllHistoryJobs(processEngineConfiguration, managementService, 7000, 200);
     
     assertTrue(historyService.createHistoricProcessInstanceQuery().processInstanceId(processInstance.getId()).count() == 0);
     assertTrue(historyService.createHistoricTaskInstanceQuery().processInstanceId(processInstance.getId()).count() == 0);
@@ -62,11 +64,12 @@ public class HistoryLevelServiceTest extends PluggableFlowableTestCase {
   }
   
   @Deployment(resources = { "org/flowable/engine/test/api/history/oneTaskHistoryLevelActivityProcess.bpmn20.xml" })
+  @Test
   public void testActivityHistoryLevel() {
     // With a clean ProcessEngine, no instances should be available
     ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
     
-    HistoryTestHelper.waitForJobExecutorToProcessAllHistoryJobs(processEngineConfiguration, managementService, 5000, 200);
+    HistoryTestHelper.waitForJobExecutorToProcessAllHistoryJobs(processEngineConfiguration, managementService, 7000, 200);
     
     assertTrue(historyService.createHistoricProcessInstanceQuery().processInstanceId(processInstance.getId()).count() == 1);
 
@@ -74,7 +77,7 @@ public class HistoryLevelServiceTest extends PluggableFlowableTestCase {
     Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
     assertNotNull(task);
     
-    assertEquals(2, historyService.createHistoricActivityInstanceQuery().processInstanceId(processInstance.getId()).count());
+    assertEquals(3, historyService.createHistoricActivityInstanceQuery().processInstanceId(processInstance.getId()).count());
     
     taskService.claim(task.getId(), "test");
     taskService.setOwner(task.getId(), "test");
@@ -86,11 +89,11 @@ public class HistoryLevelServiceTest extends PluggableFlowableTestCase {
     taskService.setVariableLocal(task.getId(), "localVar1", "test2");
     taskService.complete(task.getId());
     
-    HistoryTestHelper.waitForJobExecutorToProcessAllHistoryJobs(processEngineConfiguration, managementService, 5000, 200);
+    HistoryTestHelper.waitForJobExecutorToProcessAllHistoryJobs(processEngineConfiguration, managementService, 7000, 200);
     
     assertTrue(historyService.createHistoricProcessInstanceQuery().processInstanceId(processInstance.getId()).count() == 1);
     assertTrue(historyService.createHistoricTaskInstanceQuery().processInstanceId(processInstance.getId()).count() == 0);
-    assertEquals(3, historyService.createHistoricActivityInstanceQuery().processInstanceId(processInstance.getId()).count());
+    assertEquals(5, historyService.createHistoricActivityInstanceQuery().processInstanceId(processInstance.getId()).count());
     
     assertEquals(2, historyService.createHistoricVariableInstanceQuery().processInstanceId(processInstance.getId()).count());
     
@@ -119,11 +122,12 @@ public class HistoryLevelServiceTest extends PluggableFlowableTestCase {
   }
   
   @Deployment(resources = { "org/flowable/engine/test/api/history/oneTaskHistoryLevelAuditProcess.bpmn20.xml" })
+  @Test
   public void testAuditHistoryLevel() {
     // With a clean ProcessEngine, no instances should be available
     ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
     
-    HistoryTestHelper.waitForJobExecutorToProcessAllHistoryJobs(processEngineConfiguration, managementService, 5000, 200);
+    HistoryTestHelper.waitForJobExecutorToProcessAllHistoryJobs(processEngineConfiguration, managementService, 7000, 200);
     
     assertTrue(historyService.createHistoricProcessInstanceQuery().processInstanceId(processInstance.getId()).count() == 1);
 
@@ -131,7 +135,7 @@ public class HistoryLevelServiceTest extends PluggableFlowableTestCase {
     Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
     assertNotNull(task);
     
-    assertEquals(2, historyService.createHistoricActivityInstanceQuery().processInstanceId(processInstance.getId()).count());
+    assertEquals(3, historyService.createHistoricActivityInstanceQuery().processInstanceId(processInstance.getId()).count());
     
     taskService.claim(task.getId(), "test");
     taskService.setOwner(task.getId(), "test");
@@ -143,11 +147,11 @@ public class HistoryLevelServiceTest extends PluggableFlowableTestCase {
     taskService.setVariableLocal(task.getId(), "localVar1", "test2");
     taskService.complete(task.getId());
     
-    HistoryTestHelper.waitForJobExecutorToProcessAllHistoryJobs(processEngineConfiguration, managementService, 5000, 200);
+    HistoryTestHelper.waitForJobExecutorToProcessAllHistoryJobs(processEngineConfiguration, managementService, 7000, 200);
     
     assertTrue(historyService.createHistoricProcessInstanceQuery().processInstanceId(processInstance.getId()).count() == 1);
     assertTrue(historyService.createHistoricTaskInstanceQuery().processInstanceId(processInstance.getId()).count() == 1);
-    assertEquals(3, historyService.createHistoricActivityInstanceQuery().processInstanceId(processInstance.getId()).count());
+    assertEquals(5, historyService.createHistoricActivityInstanceQuery().processInstanceId(processInstance.getId()).count());
     
     HistoricTaskInstance historicTask = historyService.createHistoricTaskInstanceQuery().processInstanceId(processInstance.getId()).singleResult();
     assertEquals("test", historicTask.getOwner());
@@ -184,11 +188,12 @@ public class HistoryLevelServiceTest extends PluggableFlowableTestCase {
   }
   
   @Deployment(resources = { "org/flowable/engine/test/api/history/oneTaskHistoryLevelFullProcess.bpmn20.xml" })
+  @Test
   public void testFullHistoryLevel() {
     // With a clean ProcessEngine, no instances should be available
     ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
     
-    HistoryTestHelper.waitForJobExecutorToProcessAllHistoryJobs(processEngineConfiguration, managementService, 5000, 200);
+    HistoryTestHelper.waitForJobExecutorToProcessAllHistoryJobs(processEngineConfiguration, managementService, 7000, 200);
     
     assertTrue(historyService.createHistoricProcessInstanceQuery().processInstanceId(processInstance.getId()).count() == 1);
 
@@ -196,7 +201,7 @@ public class HistoryLevelServiceTest extends PluggableFlowableTestCase {
     Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
     assertNotNull(task);
     
-    assertEquals(2, historyService.createHistoricActivityInstanceQuery().processInstanceId(processInstance.getId()).count());
+    assertEquals(3, historyService.createHistoricActivityInstanceQuery().processInstanceId(processInstance.getId()).count());
     
     taskService.claim(task.getId(), "test");
     taskService.setOwner(task.getId(), "test");
@@ -208,11 +213,11 @@ public class HistoryLevelServiceTest extends PluggableFlowableTestCase {
     taskService.setVariableLocal(task.getId(), "localVar1", "test2");
     taskService.complete(task.getId());
     
-    HistoryTestHelper.waitForJobExecutorToProcessAllHistoryJobs(processEngineConfiguration, managementService, 5000, 200);
+    HistoryTestHelper.waitForJobExecutorToProcessAllHistoryJobs(processEngineConfiguration, managementService, 7000, 200);
     
     assertTrue(historyService.createHistoricProcessInstanceQuery().processInstanceId(processInstance.getId()).count() == 1);
     assertTrue(historyService.createHistoricTaskInstanceQuery().processInstanceId(processInstance.getId()).count() == 1);
-    assertEquals(3, historyService.createHistoricActivityInstanceQuery().processInstanceId(processInstance.getId()).count());
+    assertEquals(5, historyService.createHistoricActivityInstanceQuery().processInstanceId(processInstance.getId()).count());
     
     HistoricTaskInstance historicTask = historyService.createHistoricTaskInstanceQuery().processInstanceId(processInstance.getId()).singleResult();
     assertEquals("test", historicTask.getOwner());

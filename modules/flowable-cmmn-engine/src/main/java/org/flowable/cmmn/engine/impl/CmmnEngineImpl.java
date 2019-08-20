@@ -20,7 +20,6 @@ import org.flowable.cmmn.api.CmmnTaskService;
 import org.flowable.cmmn.engine.CmmnEngine;
 import org.flowable.cmmn.engine.CmmnEngineConfiguration;
 import org.flowable.cmmn.engine.CmmnEngines;
-import org.flowable.cmmn.engine.impl.cmd.SchemaOperationsCmmnEngineBuild;
 import org.flowable.common.engine.impl.interceptor.CommandExecutor;
 import org.flowable.job.service.impl.asyncexecutor.AsyncExecutor;
 import org.slf4j.Logger;
@@ -42,6 +41,7 @@ public class CmmnEngineImpl implements CmmnEngine {
     protected CmmnHistoryService cmmnHistoryService;
     
     protected AsyncExecutor asyncExecutor;
+    protected AsyncExecutor asyncHistoryExecutor;
     
     public CmmnEngineImpl(CmmnEngineConfiguration cmmnEngineConfiguration) {
         this.cmmnEngineConfiguration = cmmnEngineConfiguration;
@@ -53,15 +53,34 @@ public class CmmnEngineImpl implements CmmnEngine {
         this.cmmnHistoryService = cmmnEngineConfiguration.getCmmnHistoryService();
         
         this.asyncExecutor = cmmnEngineConfiguration.getAsyncExecutor();
+        this.asyncHistoryExecutor = cmmnEngineConfiguration.getAsyncHistoryExecutor();
         
-        if (cmmnEngineConfiguration.isUsingRelationalDatabase() && cmmnEngineConfiguration.getDatabaseSchemaUpdate() != null) {
+        if (cmmnEngineConfiguration.getSchemaManagementCmd() != null) {
             CommandExecutor commandExecutor = cmmnEngineConfiguration.getCommandExecutor();
-            commandExecutor.execute(cmmnEngineConfiguration.getSchemaCommandConfig(), new SchemaOperationsCmmnEngineBuild());
+            commandExecutor.execute(cmmnEngineConfiguration.getSchemaCommandConfig(), cmmnEngineConfiguration.getSchemaManagementCmd());
         }
 
         LOGGER.info("CmmnEngine {} created", name);
         
         CmmnEngines.registerCmmnEngine(this);
+    }
+    
+    @Override
+    public void handleExecutors() {
+        if (asyncExecutor != null && asyncExecutor.isAutoActivate()) {
+            asyncExecutor.start();
+        }
+
+        // When running together with the bpmn engine, the asyncHistoryExecutor is shared by default.
+        // However, calling multiple times .start() won't do anything (the method returns if already running),
+        // so no need to check this case specically here.
+        if (asyncHistoryExecutor != null && asyncHistoryExecutor.isAutoActivate()) {
+            asyncHistoryExecutor.start();
+        }
+        
+        if (cmmnEngineConfiguration.isEnableHistoryCleaning()) {
+            cmmnManagementService.handleHistoryCleanupTimerJob();
+        }
     }
     
     @Override
@@ -80,6 +99,11 @@ public class CmmnEngineImpl implements CmmnEngine {
         if (asyncExecutor != null && asyncExecutor.isActive()) {
             asyncExecutor.shutdown();
         }
+        if (asyncHistoryExecutor != null && asyncHistoryExecutor.isActive()) {
+            asyncHistoryExecutor.shutdown();
+        }
+        cmmnEngineConfiguration.close();
+
     }
     
     @Override

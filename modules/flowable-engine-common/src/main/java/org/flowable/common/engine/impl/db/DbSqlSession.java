@@ -70,7 +70,6 @@ public class DbSqlSession implements Session {
         this.sqlSession = dbSqlSessionFactory.getSqlSessionFactory().openSession(connection); // Note the use of connection param here, different from other constructor
         this.connectionMetadataDefaultCatalog = catalog;
         this.connectionMetadataDefaultSchema = schema;
-        this.entityCache = entityCache;
     }
 
     // insert ///////////////////////////////////////////////////////////////////
@@ -78,6 +77,9 @@ public class DbSqlSession implements Session {
     public void insert(Entity entity) {
         if (entity.getId() == null) {
             String id = Context.getCommandContext().getCurrentEngineConfiguration().getIdGenerator().getNextId();
+            if (dbSqlSessionFactory.isUsePrefixId()) {
+                id = entity.getIdPrefix() + id;
+            }
             entity.setId(id);
         }
         
@@ -182,7 +184,8 @@ public class DbSqlSession implements Session {
         if (parameterToUse == null) {
             parameterToUse = new ListQueryParameterObject();
         }
-        return selectListWithRawParameter(statement, parameter, false);
+        parameterToUse.setDatabaseType(dbSqlSessionFactory.getDatabaseType());
+        return selectListWithRawParameter(statement, parameterToUse, false);
     }
 
     @SuppressWarnings("rawtypes")
@@ -304,10 +307,10 @@ public class DbSqlSession implements Session {
             Iterator<Entity> entitiesToDeleteIterator = deletedObjects.get(entityClass).values().iterator();
             while (entitiesToDeleteIterator.hasNext()) {
                 Entity entityToDelete = entitiesToDeleteIterator.next();
-                if (!ids.contains(entityToDelete.getId())) {
+                if (entityToDelete.getId() != null && !ids.contains(entityToDelete.getId())) {
                     ids.add(entityToDelete.getId());
                 } else {
-                    entitiesToDeleteIterator.remove(); // Removing duplicate deletes
+                    entitiesToDeleteIterator.remove(); // Removing duplicate deletes or entities without id
                 }
             }
 

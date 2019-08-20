@@ -13,6 +13,9 @@
 
 package org.flowable.rest.service.api.runtime;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import java.util.Calendar;
 import java.util.List;
 
@@ -22,8 +25,8 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.flowable.engine.repository.ProcessDefinition;
-import org.flowable.engine.runtime.EventSubscription;
 import org.flowable.engine.test.Deployment;
+import org.flowable.eventsubscription.api.EventSubscription;
 import org.flowable.job.api.Job;
 import org.flowable.rest.service.BaseSpringRestTestCase;
 import org.flowable.rest.service.api.RestUrls;
@@ -32,8 +35,6 @@ import org.junit.Test;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-
-import static org.junit.Assert.*;
 
 /**
  * @author Frederik Heremans

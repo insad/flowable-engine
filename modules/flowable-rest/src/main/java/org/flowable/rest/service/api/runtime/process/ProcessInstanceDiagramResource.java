@@ -55,7 +55,7 @@ public class ProcessInstanceDiagramResource extends BaseProcessInstanceResource 
     @ApiOperation(value = "Get diagram for a process instance", tags = { "Process Instances" })
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "Indicates the process instance was found and the diagram was returned."),
-            @ApiResponse(code = 400, message = "Indicates the requested process instance was not found but the process doesn’t contain any graphical information (BPMN:DI) and no diagram can be created."),
+            @ApiResponse(code = 400, message = "Indicates the requested process instance was not found but the process does not contain any graphical information (BPMN:DI) and no diagram can be created."),
             @ApiResponse(code = 404, message = "Indicates the requested process instance was not found.")
     })
     @GetMapping(value = "/runtime/process-instances/{processInstanceId}/diagram")
@@ -69,7 +69,7 @@ public class ProcessInstanceDiagramResource extends BaseProcessInstanceResource 
             ProcessDiagramGenerator diagramGenerator = processEngineConfiguration.getProcessDiagramGenerator();
             InputStream resource = diagramGenerator.generateDiagram(bpmnModel, "png", runtimeService.getActiveActivityIds(processInstance.getId()), Collections.<String>emptyList(),
                     processEngineConfiguration.getActivityFontName(), processEngineConfiguration.getLabelFontName(),
-                    processEngineConfiguration.getAnnotationFontName(), processEngineConfiguration.getClassLoader(), 1.0);
+                    processEngineConfiguration.getAnnotationFontName(), processEngineConfiguration.getClassLoader(), 1.0,processEngineConfiguration.isDrawSequenceFlowNameWithNoLabelDI());
 
             HttpHeaders responseHeaders = new HttpHeaders();
             responseHeaders.set("Content-Type", "image/png");

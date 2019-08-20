@@ -12,13 +12,14 @@
  */
 package org.flowable.cmmn.converter.export;
 
+import javax.xml.stream.XMLStreamWriter;
+
 import org.apache.commons.lang3.StringUtils;
+import org.flowable.cmmn.model.CmmnModel;
 import org.flowable.cmmn.model.PlanItem;
 import org.flowable.cmmn.model.PlanItemDefinition;
 import org.flowable.cmmn.model.Sentry;
 import org.flowable.cmmn.model.Stage;
-
-import javax.xml.stream.XMLStreamWriter;
 
 public class StageExport extends AbstractPlanItemDefinitionExport<Stage> {
 
@@ -53,19 +54,29 @@ public class StageExport extends AbstractPlanItemDefinitionExport<Stage> {
             xtw.writeAttribute(FLOWABLE_EXTENSIONS_PREFIX, FLOWABLE_EXTENSIONS_NAMESPACE, ATTRIBUTE_FORM_KEY, stage.getFormKey());
         }
 
+        if (StringUtils.isNotEmpty(stage.getValidateFormFields())) {
+            xtw.writeAttribute(FLOWABLE_EXTENSIONS_PREFIX, FLOWABLE_EXTENSIONS_NAMESPACE, ATTRIBUTE_FORM_FIELD_VALIDATION, stage.getValidateFormFields());
+        }
+
         if (stage.isAutoComplete()) {
             xtw.writeAttribute(ATTRIBUTE_IS_AUTO_COMPLETE, Boolean.toString(stage.isAutoComplete()));
         }
         if (StringUtils.isNotEmpty(stage.getAutoCompleteCondition())) {
             xtw.writeAttribute(FLOWABLE_EXTENSIONS_PREFIX, FLOWABLE_EXTENSIONS_NAMESPACE, ATTRIBUTE_AUTO_COMPLETE_CONDITION, stage.getAutoCompleteCondition());
         }
+        if (stage.getDisplayOrder() != null) {
+            xtw.writeAttribute(FLOWABLE_EXTENSIONS_PREFIX, FLOWABLE_EXTENSIONS_NAMESPACE, ATTRIBUTE_DISPLAY_ORDER, String.valueOf(stage.getDisplayOrder()));
+        }
+        if (!stage.isIncludeInStageOverview()) { // if it's missing, it's true by default
+            xtw.writeAttribute(FLOWABLE_EXTENSIONS_PREFIX, FLOWABLE_EXTENSIONS_NAMESPACE, ATTRIBUTE_INCLUDE_IN_STAGE_OVERVIEW, "false");
+        }
     }
 
     @Override
-    protected void writePlanItemDefinitionBody(Stage stage, XMLStreamWriter xtw) throws Exception {
-        super.writePlanItemDefinitionBody(stage, xtw);
+    protected void writePlanItemDefinitionBody(CmmnModel model, Stage stage, XMLStreamWriter xtw) throws Exception {
+        super.writePlanItemDefinitionBody(model, stage, xtw);
         for (PlanItem planItem : stage.getPlanItems()) {
-            PlanItemExport.writePlanItem(planItem, xtw);
+            PlanItemExport.writePlanItem(model, planItem, xtw);
         }
 
         for (Sentry sentry : stage.getSentries()) {
@@ -73,7 +84,7 @@ public class StageExport extends AbstractPlanItemDefinitionExport<Stage> {
         }
 
         for (PlanItemDefinition planItemDefinition : stage.getPlanItemDefinitions()) {
-            PlanItemDefinitionExport.writePlanItemDefinition(planItemDefinition, xtw);
+            PlanItemDefinitionExport.writePlanItemDefinition(model, planItemDefinition, xtw);
         }
 
         if (stage.isPlanModel() && stage.getExitCriteria() != null && !stage.getExitCriteria().isEmpty()) {

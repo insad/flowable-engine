@@ -12,11 +12,12 @@
  */
 package org.flowable.job.service.impl.history.async;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.common.engine.impl.context.Context;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.common.engine.impl.interceptor.CommandContextCloseListener;
 import org.flowable.common.engine.impl.interceptor.EngineConfigurationConstants;
@@ -25,8 +26,6 @@ import org.flowable.job.service.impl.history.async.AsyncHistorySession.AsyncHist
 import org.flowable.job.service.impl.history.async.transformer.HistoryJsonTransformer;
 import org.flowable.job.service.impl.persistence.entity.HistoryJobEntity;
 import org.flowable.job.service.impl.util.CommandContextUtil;
-
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * A listener for command context lifecycle close events that generates JSON
@@ -66,7 +65,7 @@ public class AsyncHistorySessionCommandContextCloseListener implements CommandCo
         Map<JobServiceConfiguration, AsyncHistorySessionData> sessionData = asyncHistorySession.getSessionData();
         for (JobServiceConfiguration jobServiceConfiguration : sessionData.keySet()) {
             
-            Map<String, List<Map<String, String>>> jobData = sessionData.get(jobServiceConfiguration).getJobData();
+            Map<String, List<ObjectNode>> jobData = sessionData.get(jobServiceConfiguration).getJobData();
             if (!jobData.isEmpty()) {
                 List<ObjectNode> objectNodes = new ArrayList<>();
                 
@@ -98,22 +97,19 @@ public class AsyncHistorySessionCommandContextCloseListener implements CommandCo
         }
     }
 
-    protected void generateJson(JobServiceConfiguration jobServiceConfiguration, Map<String, List<Map<String, String>>> jobData, List<ObjectNode> objectNodes, String type) {
-        List<Map<String, String>> historicDataList = jobData.get(type);
-        for (Map<String, String> historicData: historicDataList) {
+    protected void generateJson(JobServiceConfiguration jobServiceConfiguration, Map<String, List<ObjectNode>> jobData, List<ObjectNode> objectNodes, String type) {
+        List<ObjectNode> historicDataList = jobData.get(type);
+        for (ObjectNode historicData: historicDataList) {
             ObjectNode historyJson = generateJson(jobServiceConfiguration, type, historicData);
             objectNodes.add(historyJson);
         }
     }
     
-    protected ObjectNode generateJson(JobServiceConfiguration jobServiceConfiguration, String type, Map<String, String> historicData) {
+    protected ObjectNode generateJson(JobServiceConfiguration jobServiceConfiguration, String type, ObjectNode historicData) {
         ObjectNode elementObjectNode = jobServiceConfiguration.getObjectMapper().createObjectNode();
         elementObjectNode.put(typeFieldName, type);
 
-        ObjectNode dataNode = elementObjectNode.putObject(dataFieldName);
-        for (String key : historicData.keySet()) {
-            dataNode.put(key, historicData.get(key));
-        }
+        elementObjectNode.set(dataFieldName, historicData);
         return elementObjectNode;
     }
 

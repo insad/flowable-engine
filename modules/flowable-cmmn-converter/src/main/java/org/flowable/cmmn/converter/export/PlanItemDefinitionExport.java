@@ -12,13 +12,15 @@
  */
 package org.flowable.cmmn.converter.export;
 
-import org.flowable.cmmn.converter.CmmnXmlConstants;
-import org.flowable.cmmn.model.PlanItemDefinition;
-import org.flowable.common.engine.api.FlowableException;
-
-import javax.xml.stream.XMLStreamWriter;
 import java.util.HashMap;
 import java.util.Map;
+
+import javax.xml.stream.XMLStreamWriter;
+
+import org.flowable.cmmn.converter.CmmnXmlConstants;
+import org.flowable.cmmn.model.CmmnModel;
+import org.flowable.cmmn.model.PlanItemDefinition;
+import org.flowable.common.engine.api.FlowableException;
 
 public class PlanItemDefinitionExport implements CmmnXmlConstants {
     protected static Map<String, AbstractPlanItemDefinitionExport> planItemDefinitionExporters = new HashMap<>();
@@ -34,6 +36,8 @@ public class PlanItemDefinitionExport implements CmmnXmlConstants {
         addPlanItemDefinitionExport(new AbstractServiceTaskExport.HttpServiceTaskExport());
         addPlanItemDefinitionExport(new AbstractServiceTaskExport.ScriptServiceTaskExport());
         addPlanItemDefinitionExport(new MilestoneExport());
+        addPlanItemDefinitionExport(new GenericEventListenerExport());
+        addPlanItemDefinitionExport(new SignalEventListenerExport());
         addPlanItemDefinitionExport(new TimerEventListenerExport());
         addPlanItemDefinitionExport(new UserEventListenerExport());
     }
@@ -42,13 +46,13 @@ public class PlanItemDefinitionExport implements CmmnXmlConstants {
         planItemDefinitionExporters.put(exporter.getExportablePlanItemDefinitionClass().getCanonicalName(), exporter);
     }
 
-    public static void writePlanItemDefinition(PlanItemDefinition planItemDefinition, XMLStreamWriter xtw) throws Exception {
+    public static void writePlanItemDefinition(CmmnModel model, PlanItemDefinition planItemDefinition, XMLStreamWriter xtw) throws Exception {
 
         String exporterType = planItemDefinition.getClass().getCanonicalName();
         AbstractPlanItemDefinitionExport exporter = planItemDefinitionExporters.get(exporterType);
         if (exporter == null) {
             throw new FlowableException("Cannot find a PlanItemDefinitionExporter for '" + exporterType + "'");
         }
-        exporter.writePlanItemDefinition(planItemDefinition, xtw);
+        exporter.writePlanItemDefinition(model, planItemDefinition, xtw);
     }
 }

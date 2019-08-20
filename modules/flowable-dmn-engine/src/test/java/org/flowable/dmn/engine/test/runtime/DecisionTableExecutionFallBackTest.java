@@ -1,4 +1,19 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.dmn.engine.test.runtime;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.dmn.api.DmnDeployment;
@@ -10,9 +25,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * This class tests fallbacks in {@link org.flowable.dmn.engine.impl.cmd.AbstractExecuteDecisionCmd}
@@ -44,47 +56,36 @@ public class DecisionTableExecutionFallBackTest extends AbstractFlowableDmnTest 
 
     @Test
     public void decisionKeyDeploymentIdTenantId() {
-        // Arrange
-        // Act
         Map<String, Object> result = executeDecision(TEST_TENANT_ID, TEST_PARENT_DEPLOYMENT_ID);
-
-        // Assert
         Assert.assertEquals("result2", result.get("outputVariable1"));
     }
 
 
     @Test
-    public void fallBackDecisionKeyDeploymentIdTenantId_wrongDeploymentId() {
-        // Act
+    public void fallBackDecisionKeyDeploymentIdTenantIdWrongDeploymentId() {
         Map<String, Object> result = executeDecision(TEST_TENANT_ID, "WRONG_PARENT_DEPLOYMENT_ID");
 
-        // Assert
         Assert.assertEquals("result2", result.get("outputVariable1"));
     }
 
     @Test
-    public void decisionKeyDeploymentIdTenantId_wrongTenantId_throwsException() {
-        // Arrange
+    public void decisionKeyDeploymentIdTenantIdWrongTenantIdThrowsException() {
         expectedException.expect(FlowableObjectNotFoundException.class);
         expectedException.expectMessage("No decision found for key: decision1, parent deployment id testParentDeploymentId and tenant id: WRONG_TENANT_ID.");
 
-        // Act
         executeDecision("WRONG_TENANT_ID", TEST_PARENT_DEPLOYMENT_ID);
     }
 
     @Test
-    public void decisionKeyTenantId_wrongTenantId_throwsException() {
-        // Arrange
+    public void decisionKeyTenantIdWrongTenantIdThrowsException() {
         expectedException.expect(FlowableObjectNotFoundException.class);
-        expectedException.expectMessage("no decisions deployed with key 'decision1' for tenant identifier 'WRONG_TENANT_ID'");
+        expectedException.expectMessage("Decision table for key [decision1] and tenantId [WRONG_TENANT_ID] was not found");
 
-        // Act
         executeDecision("WRONG_TENANT_ID", null);
     }
 
     @Test
     public void decisionKeyDeploymentId() {
-        // Arrange
         DmnEngine dmnEngine = flowableDmnRule.getDmnEngine();
         DmnDeployment localDeployment = dmnEngine.getDmnRepositoryService().createDeployment().
                 addClasspathResource("org/flowable/dmn/engine/test/runtime/StandaloneRuntimeTest.ruleUsageExample.dmn").
@@ -92,10 +93,8 @@ public class DecisionTableExecutionFallBackTest extends AbstractFlowableDmnTest 
                 parentDeploymentId(TEST_PARENT_DEPLOYMENT_ID).
                 deploy();
         try {
-            // Act
             Map<String, Object> result = executeDecision(null, TEST_PARENT_DEPLOYMENT_ID);
 
-            // Assert
             Assert.assertEquals("result2", result.get("outputVariable1"));
         } finally {
             dmnEngine.getDmnRepositoryService().deleteDeployment(localDeployment.getId());
@@ -104,11 +103,7 @@ public class DecisionTableExecutionFallBackTest extends AbstractFlowableDmnTest 
 
     @Test
     public void decisionKeyTenantId() {
-        // Arrange
-        // Act
         Map<String, Object> result = executeDecision(TEST_TENANT_ID, null);
-
-        // Assert
         Assert.assertEquals("result2", result.get("outputVariable1"));
     }
 
@@ -122,10 +117,35 @@ public class DecisionTableExecutionFallBackTest extends AbstractFlowableDmnTest 
                 parentDeploymentId(TEST_PARENT_DEPLOYMENT_ID).
                 deploy();
         try {
-            // Act
             Map<String, Object> result = executeDecision(null, "WRONG_PARENT_DEPLOYMENT_ID");
 
-            // Assert
+            Assert.assertEquals("result2", result.get("outputVariable1"));
+        } finally {
+            dmnEngine.getDmnRepositoryService().deleteDeployment(localDeployment.getId());
+        }
+    }
+
+    @Test
+    public void fallBackDecisionKeyDeploymentId_fallbackToDefaultTenant() {
+        DmnEngine dmnEngine = flowableDmnRule.getDmnEngine();
+        DmnDeployment localDeployment = dmnEngine.getDmnRepositoryService().createDeployment().
+                addClasspathResource("org/flowable/dmn/engine/test/runtime/StandaloneRuntimeTest.ruleUsageExample.dmn").
+                tenantId(null).
+                parentDeploymentId(TEST_PARENT_DEPLOYMENT_ID).
+                deploy();
+        try {
+            Map<String, Object> inputVariables = new HashMap<>();
+            inputVariables.put("inputVariable1", 2);
+            inputVariables.put("inputVariable2", "test2");
+
+            Map<String, Object> result = flowableDmnRule.getDmnEngine().getDmnRuleService().createExecuteDecisionBuilder()
+                .decisionKey("decision1")
+                .tenantId("flowable")
+                .parentDeploymentId(localDeployment.getId())
+                .variables(inputVariables)
+                .fallbackToDefaultTenant()
+                .executeWithSingleResult();
+
             Assert.assertEquals("result2", result.get("outputVariable1"));
         } finally {
             dmnEngine.getDmnRepositoryService().deleteDeployment(localDeployment.getId());

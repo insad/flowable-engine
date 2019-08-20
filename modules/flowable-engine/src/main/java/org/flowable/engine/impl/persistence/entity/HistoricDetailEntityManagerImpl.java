@@ -13,9 +13,11 @@
 
 package org.flowable.engine.impl.persistence.entity;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.impl.history.HistoryLevel;
 import org.flowable.common.engine.impl.persistence.entity.data.DataManager;
 import org.flowable.engine.history.HistoricDetail;
@@ -44,7 +46,7 @@ public class HistoricDetailEntityManagerImpl extends AbstractEntityManager<Histo
 
     @Override
     public HistoricFormPropertyEntity insertHistoricFormPropertyEntity(ExecutionEntity execution,
-            String propertyId, String propertyValue, String taskId) {
+        String propertyId, String propertyValue, String taskId, Date createTime) {
 
         HistoricFormPropertyEntity historicFormPropertyEntity = historicDetailDataManager.createHistoricFormProperty();
         historicFormPropertyEntity.setProcessInstanceId(execution.getProcessInstanceId());
@@ -52,24 +54,29 @@ public class HistoricDetailEntityManagerImpl extends AbstractEntityManager<Histo
         historicFormPropertyEntity.setTaskId(taskId);
         historicFormPropertyEntity.setPropertyId(propertyId);
         historicFormPropertyEntity.setPropertyValue(propertyValue);
-        historicFormPropertyEntity.setTime(getClock().getCurrentTime());
+        historicFormPropertyEntity.setTime(createTime);
 
-        HistoricActivityInstanceEntity historicActivityInstance = getHistoryManager().findActivityInstance(execution, true, false);
-        if (historicActivityInstance != null) {
-            historicFormPropertyEntity.setActivityInstanceId(historicActivityInstance.getId());
+        ActivityInstanceEntity activityInstance = getActivityInstanceEntityManager().findUnfinishedActivityInstance(execution);
+        String activityInstanceId;
+        if (activityInstance != null) {
+            activityInstanceId = activityInstance.getId();
+        } else {
+            throw new FlowableException("ActivityInstance not found for execution "+execution.getId());
         }
+        historicFormPropertyEntity.setActivityInstanceId(activityInstanceId);
 
         insert(historicFormPropertyEntity);
         return historicFormPropertyEntity;
     }
 
     @Override
-    public HistoricDetailVariableInstanceUpdateEntity copyAndInsertHistoricDetailVariableInstanceUpdateEntity(VariableInstanceEntity variableInstance) {
+    public HistoricDetailVariableInstanceUpdateEntity copyAndInsertHistoricDetailVariableInstanceUpdateEntity(VariableInstanceEntity variableInstance,
+        Date createTime) {
         HistoricDetailVariableInstanceUpdateEntity historicVariableUpdate = historicDetailDataManager.createHistoricDetailVariableInstanceUpdate();
         historicVariableUpdate.setProcessInstanceId(variableInstance.getProcessInstanceId());
         historicVariableUpdate.setExecutionId(variableInstance.getExecutionId());
         historicVariableUpdate.setTaskId(variableInstance.getTaskId());
-        historicVariableUpdate.setTime(getClock().getCurrentTime());
+        historicVariableUpdate.setTime(createTime);
         historicVariableUpdate.setRevision(variableInstance.getRevision());
         historicVariableUpdate.setName(variableInstance.getName());
         historicVariableUpdate.setVariableType(variableInstance.getType());
@@ -127,6 +134,11 @@ public class HistoricDetailEntityManagerImpl extends AbstractEntityManager<Histo
                 delete((HistoricDetailEntity) detail);
             }
         }
+    }
+    
+    @Override
+    public void deleteHistoricDetailForNonExistingProcessInstances() {
+        historicDetailDataManager.deleteHistoricDetailForNonExistingProcessInstances();
     }
 
     @Override

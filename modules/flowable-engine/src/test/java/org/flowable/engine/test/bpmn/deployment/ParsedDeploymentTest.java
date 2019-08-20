@@ -19,10 +19,10 @@ import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 
-import org.flowable.common.engine.impl.AbstractEngineConfiguration;
 import org.flowable.common.engine.impl.context.Context;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.common.engine.impl.interceptor.EngineConfigurationConstants;
@@ -36,6 +36,9 @@ import org.flowable.engine.impl.persistence.entity.ProcessDefinitionEntity;
 import org.flowable.engine.impl.persistence.entity.ResourceEntity;
 import org.flowable.engine.impl.persistence.entity.ResourceEntityImpl;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class ParsedDeploymentTest extends PluggableFlowableTestCase {
 
@@ -56,7 +59,7 @@ public class ParsedDeploymentTest extends PluggableFlowableTestCase {
             "<process id='" + EN2_ID + "' name='Expense Note 2' />");
     private static final String EN_XML_NAME = "en." + ResourceNameUtil.BPMN_RESOURCE_SUFFIXES[1];
 
-    @Override
+    @BeforeEach
     public void setUp() {
         CommandContext commandContext = processEngineConfiguration.getCommandContextFactory().createCommandContext(null);
         if (commandContext.getEngineConfigurations() == null) {
@@ -66,11 +69,12 @@ public class ParsedDeploymentTest extends PluggableFlowableTestCase {
         Context.setCommandContext(commandContext);
     }
 
-    @Override
+    @AfterEach
     public void tearDown() {
         Context.removeCommandContext();
     }
 
+    @Test
     public void testCreateAndQuery() throws UnsupportedEncodingException {
         DeploymentEntity entity = assembleUnpersistedDeploymentEntity();
 
@@ -120,7 +124,7 @@ public class ParsedDeploymentTest extends PluggableFlowableTestCase {
     private ResourceEntity buildResource(String name, String text) throws UnsupportedEncodingException {
         ResourceEntityImpl result = new ResourceEntityImpl();
         result.setName(name);
-        result.setBytes(text.getBytes("UTF8"));
+        result.setBytes(text.getBytes(StandardCharsets.UTF_8));
 
         return result;
     }

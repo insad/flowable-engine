@@ -47,7 +47,6 @@ public class BoundaryEventActivityBehavior extends FlowNodeActivityBehavior {
 
     @Override
     public void trigger(DelegateExecution execution, String triggerName, Object triggerData) {
-
         ExecutionEntity executionEntity = (ExecutionEntity) execution;
 
         CommandContext commandContext = Context.getCommandContext();
@@ -60,7 +59,6 @@ public class BoundaryEventActivityBehavior extends FlowNodeActivityBehavior {
     }
 
     protected void executeInterruptingBehavior(ExecutionEntity executionEntity, CommandContext commandContext) {
-
         // The destroy scope operation will look for the parent execution and
         // destroy the whole scope, and leave the boundary event using this parent execution.
         //
@@ -94,14 +92,13 @@ public class BoundaryEventActivityBehavior extends FlowNodeActivityBehavior {
         // (This is a theoretical case ... shouldn't use a boundary event without outgoing sequence flow ...)
         if (executionEntity.getCurrentFlowElement() instanceof FlowNode
                 && ((FlowNode) executionEntity.getCurrentFlowElement()).getOutgoingFlows().isEmpty()) {
-            CommandContextUtil.getHistoryManager(commandContext).recordActivityEnd(executionEntity, null);
+            CommandContextUtil.getActivityInstanceEntityManager(commandContext).recordActivityEnd(executionEntity, null);
         }
 
         CommandContextUtil.getAgenda(commandContext).planTakeOutgoingSequenceFlowsOperation(executionEntity, true);
     }
 
     protected void executeNonInterruptingBehavior(ExecutionEntity executionEntity, CommandContext commandContext) {
-
         // Non-interrupting: the current execution is given the first parent
         // scope (which isn't its direct parent)
         //
@@ -129,7 +126,7 @@ public class BoundaryEventActivityBehavior extends FlowNodeActivityBehavior {
             throw new FlowableException("Programmatic error: no parent scope execution found for boundary event");
         }
 
-        CommandContextUtil.getHistoryManager(commandContext).recordActivityEnd(executionEntity, null);
+        CommandContextUtil.getActivityInstanceEntityManager(commandContext).recordActivityEnd(executionEntity, null);
 
         ExecutionEntity nonInterruptingExecution = executionEntityManager.createChildExecution(scopeExecution);
         nonInterruptingExecution.setActive(false);
@@ -139,13 +136,12 @@ public class BoundaryEventActivityBehavior extends FlowNodeActivityBehavior {
     }
 
     protected void deleteChildExecutions(ExecutionEntity parentExecution, ExecutionEntity outgoingExecutionEntity, CommandContext commandContext) {
-
         ExecutionEntityManager executionEntityManager = CommandContextUtil.getExecutionEntityManager(commandContext);
         String deleteReason = DeleteReason.BOUNDARY_EVENT_INTERRUPTING + " (" + outgoingExecutionEntity.getCurrentActivityId() + ")";
         executionEntityManager.deleteChildExecutions(parentExecution, Collections.singletonList(outgoingExecutionEntity.getId()), null,
                 deleteReason, true, outgoingExecutionEntity.getCurrentFlowElement());
 
-        executionEntityManager.deleteExecutionAndRelatedData(parentExecution, deleteReason, true, outgoingExecutionEntity.getCurrentFlowElement());
+        executionEntityManager.deleteExecutionAndRelatedData(parentExecution, deleteReason, false, true, outgoingExecutionEntity.getCurrentFlowElement());
     }
 
     public boolean isInterrupting() {

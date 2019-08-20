@@ -22,6 +22,8 @@
     <property name="defaultFailedJobWaitTime" value="1" />
     <property name="asyncFailedJobWaitTime" value="1" />
     
+    <property name="enableEntityLinks" value="true" />
+    
     <!-- mail server configurations -->
     <property name="mailServerPort" value="5025" />    
     
@@ -43,6 +45,7 @@
     
     <property name="enableProcessDefinitionHistoryLevel" value="true" />
     <property name="enableProcessDefinitionInfoCache" value="true" />
+    <property name="enableHistoricTaskLogging" value="true"/>
   </bean>
   
   <bean id="asyncExecutor" class="org.flowable.job.service.impl.asyncexecutor.DefaultAsyncJobExecutor">

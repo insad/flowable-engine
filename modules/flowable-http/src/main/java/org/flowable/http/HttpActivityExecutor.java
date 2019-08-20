@@ -15,7 +15,11 @@ package org.flowable.http;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.StringReader;
+import java.io.UnsupportedEncodingException;
+import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.URLDecoder;
 import java.util.List;
 import java.util.Set;
 import java.util.Timer;
@@ -28,11 +32,11 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
+import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -111,7 +115,7 @@ public class HttpActivityExecutor {
 
                 if (!response.isBodyResponseHandled()) {
                     String varName = StringUtils.isNotEmpty(responseVariableName) ? responseVariableName : request.getPrefix() + "ResponseBody";
-                    Object varValue = request.isSaveResponseAsJson() ? objectMapper.readTree(response.getBody()) : response.getBody();
+                    Object varValue = request.isSaveResponseAsJson() && response.getBody() != null ? objectMapper.readTree(response.getBody()) : response.getBody();
                     if (request.isSaveResponseTransient()) {
                         variableContainer.setTransientVariable(varName, varValue);
                     } else {
@@ -217,36 +221,26 @@ public class HttpActivityExecutor {
         }
 
         try {
-            URIBuilder uri = new URIBuilder(requestInfo.getUrl());
+            URI uri = ensureUrlIsEncodedAndConvertToUri(new URL(requestInfo.getUrl()));
             switch (requestInfo.getMethod()) {
                 case "GET": {
-                    request = new HttpGet(uri.toString());
+                    request = new HttpGet(uri);
                     break;
                 }
                 case "POST": {
-                    HttpPost post = new HttpPost(uri.toString());
-                    if (requestInfo.getBody() != null) {
-                        if (StringUtils.isNotEmpty(requestInfo.getBodyEncoding())) {
-                            post.setEntity(new StringEntity(requestInfo.getBody(), requestInfo.getBodyEncoding()));
-                        } else {
-                            post.setEntity(new StringEntity(requestInfo.getBody()));
-                        }
-                    }
+                    HttpPost post = new HttpPost(uri);
+                    setRequestEntity(requestInfo, post);
                     request = post;
                     break;
                 }
                 case "PUT": {
-                    HttpPut put = new HttpPut(uri.toString());
-                    if (StringUtils.isNotEmpty(requestInfo.getBodyEncoding())) {
-                        put.setEntity(new StringEntity(requestInfo.getBody(), requestInfo.getBodyEncoding()));
-                    } else {
-                        put.setEntity(new StringEntity(requestInfo.getBody()));
-                    }
+                    HttpPut put = new HttpPut(uri);
+                    setRequestEntity(requestInfo, put);
                     request = put;
                     break;
                 }
                 case "DELETE": {
-                    request = new HttpDelete(uri.toString());
+                    request = new HttpDelete(uri);
                     break;
                 }
                 default: {
@@ -317,6 +311,16 @@ public class HttpActivityExecutor {
         }
     }
 
+    protected void setRequestEntity(HttpRequest requestInfo, HttpEntityEnclosingRequestBase requestBase) throws UnsupportedEncodingException {
+        if (requestInfo.getBody() != null) {
+            if (StringUtils.isNotEmpty(requestInfo.getBodyEncoding())) {
+                requestBase.setEntity(new StringEntity(requestInfo.getBody(), requestInfo.getBodyEncoding()));
+            } else {
+                requestBase.setEntity(new StringEntity(requestInfo.getBody()));
+            }
+        }
+    }
+
     protected void setConfig(final HttpRequestBase base, final HttpRequest requestInfo, int socketTimeout, int connectTimeout, int connectionRequestTimeout) {
         base.setConfig(RequestConfig.custom()
                 .setRedirectsEnabled(!requestInfo.isNoRedirects())
@@ -338,7 +342,7 @@ public class HttpActivityExecutor {
         try (BufferedReader reader = new BufferedReader(new StringReader(headers))) {
             String line = reader.readLine();
             while (line != null) {
-                int colonIndex = line.indexOf(":");
+                int colonIndex = line.indexOf(':');
                 if (colonIndex > 0) {
                     String headerName = line.substring(0, colonIndex);
                     if (line.length() > colonIndex + 2) {
@@ -352,6 +356,25 @@ public class HttpActivityExecutor {
                     throw new FlowableException(HTTP_TASK_REQUEST_HEADERS_INVALID);
                 }
             }
+        }
+    }
+
+    protected URI ensureUrlIsEncodedAndConvertToUri(URL url) throws URISyntaxException {
+        String decodedPath = decode(url.getPath());
+        String decodedQuery = decode(url.getQuery());
+        String decodedRef = decode(url.getRef());
+
+        return new URI(url.getProtocol(), url.getUserInfo(), url.getHost(), url.getPort(), decodedPath, decodedQuery, decodedRef);
+    }
+
+    protected String decode(String string) {
+        if (string == null) {
+            return null;
+        }
+        try {
+            return URLDecoder.decode(string, "UTF-8");
+        } catch (UnsupportedEncodingException unsupportedEncodingException) {
+            throw new IllegalStateException("JVM does not support UTF-8 encoding.", unsupportedEncodingException);
         }
     }
 

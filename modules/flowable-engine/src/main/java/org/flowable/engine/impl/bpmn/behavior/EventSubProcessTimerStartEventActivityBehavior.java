@@ -73,7 +73,7 @@ public class EventSubProcessTimerStartEventActivityBehavior extends AbstractBpmn
                 ExecutionEntity childExecutionEntity = childExecutions.get(i);
                 if (!childExecutionEntity.isEnded() && !childExecutionEntity.getId().equals(executionEntity.getId())) {
                     executionEntityManager.deleteExecutionAndRelatedData(childExecutionEntity,
-                            DeleteReason.EVENT_SUBPROCESS_INTERRUPTING + "(" + startEvent.getId() + ")");
+                            DeleteReason.EVENT_SUBPROCESS_INTERRUPTING + "(" + startEvent.getId() + ")", false);
                 }
             }
         }
@@ -85,8 +85,8 @@ public class EventSubProcessTimerStartEventActivityBehavior extends AbstractBpmn
 
         ExecutionEntity outgoingFlowExecution = executionEntityManager.createChildExecution(newSubProcessExecution);
         outgoingFlowExecution.setCurrentFlowElement(startEvent);
-        
-        CommandContextUtil.getHistoryManager(commandContext).recordActivityStart(outgoingFlowExecution);
+
+        CommandContextUtil.getActivityInstanceEntityManager(commandContext).recordActivityStart(outgoingFlowExecution);
 
         leave(outgoingFlowExecution);
     }

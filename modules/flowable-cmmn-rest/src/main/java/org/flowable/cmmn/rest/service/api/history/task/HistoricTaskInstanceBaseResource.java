@@ -13,6 +13,8 @@
 
 package org.flowable.cmmn.rest.service.api.history.task;
 
+import static org.flowable.common.rest.api.PaginateListUtil.paginateList;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,6 +80,9 @@ public class HistoricTaskInstanceBaseResource {
         }
         if (queryRequest.getCaseInstanceId() != null) {
             query.caseInstanceId(queryRequest.getCaseInstanceId());
+        }
+        if (queryRequest.getCaseInstanceIdWithChildren() != null) {
+            query.caseInstanceIdWithChildren(queryRequest.getCaseInstanceIdWithChildren());
         }
         if (queryRequest.getCaseDefinitionId() != null) {
             query.caseDefinitionId(queryRequest.getCaseDefinitionId());
@@ -219,10 +224,11 @@ public class HistoricTaskInstanceBaseResource {
         }
         
         if (restApiInterceptor != null) {
-            restApiInterceptor.accessHistoryTaskInfoWithQuery(query);
+            restApiInterceptor.accessHistoryTaskInfoWithQuery(query, queryRequest);
         }
 
-        return new HistoricTaskInstancePaginateList(restResponseFactory, serverRootUrl).paginateList(allRequestParams, queryRequest, query, "taskInstanceId", allowedSortProperties);
+        return paginateList(allRequestParams, queryRequest, query, "taskInstanceId", allowedSortProperties,
+            restResponseFactory::createHistoricTaskInstanceResponseList);
     }
     
     protected HistoricTaskInstance getHistoricTaskInstanceFromRequest(String taskId) {

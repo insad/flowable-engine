@@ -23,14 +23,14 @@ import org.flowable.cmmn.engine.CmmnEngineConfiguration;
 import org.flowable.cmmn.engine.impl.persistence.entity.CaseInstanceEntity;
 import org.flowable.cmmn.engine.impl.persistence.entity.CaseInstanceEntityImpl;
 import org.flowable.cmmn.engine.impl.persistence.entity.PlanItemInstanceEntity;
-import org.flowable.cmmn.engine.impl.persistence.entity.SentryPartInstanceEntity;
+import org.flowable.cmmn.engine.impl.persistence.entity.PlanItemInstanceEntityImpl;
 import org.flowable.cmmn.engine.impl.persistence.entity.data.AbstractCmmnDataManager;
 import org.flowable.cmmn.engine.impl.persistence.entity.data.CaseInstanceDataManager;
 import org.flowable.cmmn.engine.impl.persistence.entity.data.impl.matcher.CaseInstanceByCaseDefinitionIdMatcher;
 import org.flowable.cmmn.engine.impl.runtime.CaseInstanceQueryImpl;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
 import org.flowable.common.engine.api.FlowableOptimisticLockingException;
 import org.flowable.common.engine.impl.persistence.cache.EntityCache;
-import org.flowable.variable.service.impl.persistence.entity.VariableInstanceEntity;
 
 /**
  * @author Joram Barrez
@@ -80,6 +80,10 @@ public class MybatisCaseInstanceDataManagerImpl extends AbstractCmmnDataManager<
             params.put("planItemInstanceId", planItemInstanceId);
         }
 
+        if (params.isEmpty()) {
+            throw new FlowableIllegalArgumentException("selectCaseInstanceEagerFetchPlanItemInstances needs either caseInstanceId or planItemInstanceId");
+        }
+
         // The case instance will be fetched and will have all plan item instances in the childPlanItemInstances property.
         // Those children need to be properly moved to the correct parent
         CaseInstanceEntityImpl caseInstanceEntity = (CaseInstanceEntityImpl) getDbSqlSession().selectOne("selectCaseInstanceEagerFetchPlanItemInstances", params);
@@ -92,20 +96,33 @@ public class MybatisCaseInstanceDataManagerImpl extends AbstractCmmnDataManager<
             // Map all plan item instances to its id
             for (PlanItemInstanceEntity planItemInstanceEntity : allPlanItemInstances) {
 
-                // Mapping
-                planItemInstanceMap.put(planItemInstanceEntity.getId(), planItemInstanceEntity);
+                PlanItemInstanceEntity currentPlanItemInstanceEntity = planItemInstanceEntity;
 
-                // Cache
-                entityCache.put(planItemInstanceEntity, true);
+                // If it's already in the cache, it has precedence on the fetched one
+                PlanItemInstanceEntity planItemInstanceFromCache = entityCache.findInCache(PlanItemInstanceEntityImpl.class, planItemInstanceEntity.getId());
+                if (planItemInstanceFromCache != null) {
+                    // Mapping
+                    planItemInstanceMap.put(planItemInstanceFromCache.getId(), planItemInstanceFromCache);
+
+                    currentPlanItemInstanceEntity = planItemInstanceFromCache;
+
+                } else {
+                    // Mapping
+                    planItemInstanceMap.put(planItemInstanceEntity.getId(), planItemInstanceEntity);
+
+                    // Cache
+                    entityCache.put(planItemInstanceEntity, true);
+
+                }
 
                 // plan items of case plan model
-                if (planItemInstanceEntity.getStageInstanceId() == null) {
-                    directPlanItemInstances.add(planItemInstanceEntity);
+                if (currentPlanItemInstanceEntity.getStageInstanceId() == null) {
+                    directPlanItemInstances.add(currentPlanItemInstanceEntity);
                 }
 
                 // Always add empty list, so no check is needed later and plan items
                 // without children have a non-null value, not triggering the fetch
-                planItemInstanceEntity.setChildPlanItemInstances(new ArrayList<>());
+                currentPlanItemInstanceEntity.setChildPlanItemInstances(new ArrayList<>());
             }
 
             // Add to correct parent
@@ -113,7 +130,14 @@ public class MybatisCaseInstanceDataManagerImpl extends AbstractCmmnDataManager<
                 for (PlanItemInstanceEntity planItemInstanceEntity : allPlanItemInstances) {
                     if (planItemInstanceEntity.getStageInstanceId() != null) {
                         PlanItemInstanceEntity parentPlanItemInstanceEntity = planItemInstanceMap.get(planItemInstanceEntity.getStageInstanceId());
-                        parentPlanItemInstanceEntity.getChildPlanItemInstances().add(planItemInstanceEntity);
+
+                        // It can happen the parent plan item instance does not exist:
+                        // For example when a nested B is nested in a stage A and both are repeating.
+                        // The wait_for_repetition of B has the old stage A plan item instance as parent,
+                        // and it won't be returned by the eager fetch query
+                        if (parentPlanItemInstanceEntity != null) {
+                            parentPlanItemInstanceEntity.getChildPlanItemInstances().add(planItemInstanceMap.get(planItemInstanceEntity.getId()));
+                        }
                     }
                 }
             }

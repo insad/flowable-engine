@@ -20,28 +20,31 @@ import org.flowable.common.engine.api.FlowableOptimisticLockingException;
 import org.flowable.common.engine.impl.history.HistoryLevel;
 import org.flowable.engine.impl.test.HistoryTestHelper;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.task.service.impl.persistence.entity.TaskEntity;
 import org.flowable.variable.api.history.HistoricVariableInstance;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Joram Barrez
  */
 public class StandaloneTaskTest extends PluggableFlowableTestCase {
 
-    @Override
+    @BeforeEach
     public void setUp() throws Exception {
-        super.setUp();
         identityService.saveUser(identityService.newUser("kermit"));
         identityService.saveUser(identityService.newUser("gonzo"));
     }
 
-    @Override
+    @AfterEach
     public void tearDown() throws Exception {
         identityService.deleteUser("kermit");
         identityService.deleteUser("gonzo");
-        super.tearDown();
     }
 
+    @Test
     public void testCreateToComplete() {
 
         // Create and save task
@@ -87,6 +90,7 @@ public class StandaloneTaskTest extends PluggableFlowableTestCase {
         assertNull(taskService.createTaskQuery().taskId(taskId).singleResult());
     }
 
+    @Test
     public void testOptimisticLockingThrownOnMultipleUpdates() {
         org.flowable.task.api.Task task = taskService.newTask();
         taskService.saveTask(task);
@@ -112,6 +116,7 @@ public class StandaloneTaskTest extends PluggableFlowableTestCase {
     }
 
     // See https://activiti.atlassian.net/browse/ACT-1290
+    @Test
     public void testRevisionUpdatedOnSave() {
         org.flowable.task.api.Task task = taskService.newTask();
         taskService.saveTask(task);
@@ -129,6 +134,7 @@ public class StandaloneTaskTest extends PluggableFlowableTestCase {
     }
 
     // See https://activiti.atlassian.net/browse/ACT-1290
+    @Test
     public void testRevisionUpdatedOnSaveWhenFetchedUsingQuery() {
         org.flowable.task.api.Task task = taskService.newTask();
         taskService.saveTask(task);
@@ -149,6 +155,7 @@ public class StandaloneTaskTest extends PluggableFlowableTestCase {
         taskService.deleteTask(task.getId(), true);
     }
 
+    @Test
     public void testHistoricVariableOkOnUpdate() {
         if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.AUDIT, processEngineConfiguration)) {
             // 1. create a task
@@ -168,7 +175,7 @@ public class StandaloneTaskTest extends PluggableFlowableTestCase {
             finishVariables.put("finishedAmount", 40);
             taskService.complete(task.getId(), finishVariables);
             
-            waitForHistoryJobExecutorToProcessAllJobs(5000, 100);
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
 
             // 4. get completed variable
             List<HistoricVariableInstance> hisVarList = historyService.createHistoricVariableInstanceQuery().taskId(task.getId()).list();
@@ -177,6 +184,10 @@ public class StandaloneTaskTest extends PluggableFlowableTestCase {
 
             // Cleanup
             historyService.deleteHistoricTaskInstance(task.getId());
+            managementService.executeCommand(commandContext -> {
+                CommandContextUtil.getHistoricTaskService(commandContext).deleteHistoricTaskLogEntriesForTaskId(task.getId());
+                return null;
+            });
         }
     }
 

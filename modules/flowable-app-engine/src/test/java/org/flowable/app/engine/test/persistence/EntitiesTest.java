@@ -14,7 +14,6 @@ package org.flowable.app.engine.test.persistence;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -68,9 +67,8 @@ public class EntitiesTest {
             assertNotNull(c);
             return c;
         } catch (Exception e) {
-            fail("Entity interface class for " + mappedResource + " not found");
+            throw new AssertionError("Entity interface class for " + mappedResource + " not found", e);
         }
-        return null;
     }
     
     protected Class getAndAssertEntityImplClass(String mappedResource) {
@@ -79,9 +77,8 @@ public class EntitiesTest {
             assertNotNull(c);
             return c;
         } catch (Exception e) {
-            fail("Entity interface class for " + mappedResource + " not found");
+            throw new AssertionError("Entity interface class for " + mappedResource + " not found", e);
         }
-        return null;
     }
     
     private Set<String> getMappedResources() {

@@ -13,6 +13,8 @@
 
 package org.flowable.rest.service.api.repository;
 
+import static org.flowable.common.rest.api.PaginateListUtil.paginateList;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -78,7 +80,7 @@ public class ProcessDefinitionCollectionResource {
             @ApiImplicitParam(name = "resourceNameLike", dataType = "string", value = "Only return process definitions with a name like the given resource name.", paramType = "query"),
             @ApiImplicitParam(name = "category", dataType = "string", value = "Only return process definitions with the given category.", paramType = "query"),
             @ApiImplicitParam(name = "categoryLike", dataType = "string", value = "Only return process definitions with a category like the given name.", paramType = "query"),
-            @ApiImplicitParam(name = "categoryNotEquals", dataType = "string", value = "Only return process definitions which don’t have the given category.", paramType = "query"),
+            @ApiImplicitParam(name = "categoryNotEquals", dataType = "string", value = "Only return process definitions which do not have the given category.", paramType = "query"),
             @ApiImplicitParam(name = "deploymentId", dataType = "string", value = "Only return process definitions with the given category.", paramType = "query"),
             @ApiImplicitParam(name = "startableByUser", dataType = "string", value = "Only return process definitions which are part of a deployment with the given id.", paramType = "query"),
             @ApiImplicitParam(name = "latest", dataType = "boolean", value = "Only return the latest process definition versions. Can only be used together with key and keyLike parameters, using any other parameter will result in a 400-response.", paramType = "query"),
@@ -157,6 +159,6 @@ public class ProcessDefinitionCollectionResource {
             restApiInterceptor.accessProcessDefinitionsWithQuery(processDefinitionQuery);
         }
 
-        return new ProcessDefinitionsPaginateList(restResponseFactory).paginateList(allRequestParams, processDefinitionQuery, "name", properties);
+        return paginateList(allRequestParams, processDefinitionQuery, "name", properties, restResponseFactory::createProcessDefinitionResponseList);
     }
 }

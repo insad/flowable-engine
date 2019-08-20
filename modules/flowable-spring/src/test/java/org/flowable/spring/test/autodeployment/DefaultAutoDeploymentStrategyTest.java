@@ -16,7 +16,6 @@ package org.flowable.spring.test.autodeployment;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.never;
@@ -28,7 +27,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.zip.ZipInputStream;
 
-import org.flowable.common.engine.api.FlowableException;
 import org.flowable.spring.configurator.DefaultAutoDeploymentStrategy;
 import org.junit.Before;
 import org.junit.Test;
@@ -85,16 +83,6 @@ public class DefaultAutoDeploymentStrategyTest extends AbstractAutoDeploymentStr
         verify(deploymentBuilderMock, never()).addInputStream(eq(resourceName2), isA(InputStream.class));
         verify(deploymentBuilderMock, never()).addZipInputStream(isA(ZipInputStream.class));
         verify(deploymentBuilderMock, times(1)).deploy();
-    }
-
-    @Test(expected = FlowableException.class)
-    public void testDeployResourcesIOExceptionYieldsActivitiException() throws Exception {
-        when(resourceMock3.getInputStream()).thenThrow(new IOException());
-
-        final Resource[] resources = new Resource[] { resourceMock3 };
-        classUnderTest.deployResources(deploymentNameHint, resources, repositoryServiceMock);
-
-        fail("Expected exception for IOException");
     }
 
     @Test

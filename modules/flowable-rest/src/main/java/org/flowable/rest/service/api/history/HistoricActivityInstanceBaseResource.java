@@ -13,6 +13,8 @@
 
 package org.flowable.rest.service.api.history;
 
+import static org.flowable.common.rest.api.PaginateListUtil.paginateList;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -113,9 +115,10 @@ public class HistoricActivityInstanceBaseResource {
         }
         
         if (restApiInterceptor != null) {
-            restApiInterceptor.accessHistoryActivityInfoWithQuery(query);
+            restApiInterceptor.accessHistoryActivityInfoWithQuery(query, queryRequest);
         }
 
-        return new HistoricActivityInstancePaginateList(restResponseFactory).paginateList(allRequestParams, queryRequest, query, "startTime", allowedSortProperties);
+        return paginateList(allRequestParams, queryRequest, query, "startTime", allowedSortProperties,
+            restResponseFactory::createHistoricActivityInstanceResponseList);
     }
 }

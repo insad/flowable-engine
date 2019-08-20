@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import org.flowable.cmmn.spring.autodeployment.ResourceParentFolderAutoDeploymentStrategy;
-import org.flowable.common.engine.api.FlowableException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -179,14 +178,6 @@ public class ResourceParentFolderAutoDeploymentStrategyTest extends AbstractAuto
         verify(repositoryServiceMock, times(1)).createDeployment();
         verify(deploymentBuilderMock, times(1)).name(deploymentNameHint + "." + resourceName3);
         verify(deploymentBuilderMock, times(1)).deploy();
-    }
-
-    @Test(expected = FlowableException.class)
-    public void testDeployResourcesIOExceptionYieldsActivitiException() throws Exception {
-        when(resourceMock3.getInputStream()).thenThrow(new IOException());
-
-        final Resource[] resources = new Resource[] { resourceMock3 };
-        classUnderTest.deployResources(deploymentNameHint, resources, repositoryServiceMock);
     }
 
 }

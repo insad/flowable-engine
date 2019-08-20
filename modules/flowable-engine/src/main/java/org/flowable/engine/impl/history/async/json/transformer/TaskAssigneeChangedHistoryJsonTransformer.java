@@ -15,6 +15,9 @@ package org.flowable.engine.impl.history.async.json.transformer;
 import static org.flowable.job.service.impl.history.async.util.AsyncHistoryJsonUtil.getDateFromJson;
 import static org.flowable.job.service.impl.history.async.util.AsyncHistoryJsonUtil.getStringFromJson;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.apache.commons.lang3.StringUtils;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.impl.history.async.HistoryJsonConstants;
@@ -30,8 +33,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 public class TaskAssigneeChangedHistoryJsonTransformer extends AbstractNeedsTaskHistoryJsonTransformer {
 
     @Override
-    public String getType() {
-        return HistoryJsonConstants.TYPE_TASK_ASSIGNEE_CHANGED;
+    public List<String> getTypes() {
+        return Collections.singletonList(HistoryJsonConstants.TYPE_TASK_ASSIGNEE_CHANGED);
     }
 
     @Override
@@ -58,12 +61,18 @@ public class TaskAssigneeChangedHistoryJsonTransformer extends AbstractNeedsTask
 
         String executionId = getStringFromJson(historicalData, HistoryJsonConstants.EXECUTION_ID);
         String activityId = getStringFromJson(historicalData, HistoryJsonConstants.ACTIVITY_ID);
+        String runtimeActivityInstanceId = getStringFromJson(historicalData, HistoryJsonConstants.RUNTIME_ACTIVITY_INSTANCE_ID);
         if (StringUtils.isNotEmpty(executionId) && StringUtils.isNotEmpty(activityId)) {
             
             String activityAssigneeHandled = getStringFromJson(historicalData, HistoryJsonConstants.ACTIVITY_ASSIGNEE_HANDLED);
             
             if (activityAssigneeHandled == null || !Boolean.valueOf(activityAssigneeHandled)) {
-                HistoricActivityInstanceEntity historicActivityInstanceEntity = findHistoricActivityInstance(commandContext, executionId, activityId);
+                HistoricActivityInstanceEntity historicActivityInstanceEntity;
+                if (StringUtils.isEmpty(runtimeActivityInstanceId)) {
+                    historicActivityInstanceEntity = findHistoricActivityInstance(commandContext, executionId, activityId);
+                } else {
+                    historicActivityInstanceEntity = CommandContextUtil.getHistoricActivityInstanceEntityManager(commandContext).findById(runtimeActivityInstanceId);
+                }
                 
                 if (historicActivityInstanceEntity == null) {
                     // activity instance not found, ignoring event

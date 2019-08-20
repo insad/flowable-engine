@@ -28,7 +28,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 /**
  * @author Joram Barrez
  */
-public class TimerEventListenerJsonConverter extends BaseCmmnJsonConverter {
+public class TimerEventListenerJsonConverter extends AbstractEventListenerJsonConverter {
     
     @Override
     protected String getStencilId(BaseElement baseElement) {
@@ -62,6 +62,8 @@ public class TimerEventListenerJsonConverter extends BaseCmmnJsonConverter {
             startTriggerPlanItemNode.put("id", timerEventListener.getTimerStartTriggerSourceRef());
             propertiesNode.put(PROPERTY_TIMER_START_TRIGGER_STANDARD_EVENT, timerEventListener.getTimerStartTriggerStandardEvent());
         }
+
+        convertCommonElementToJson(elementNode, propertiesNode, baseElement);
     }
 
     @Override
@@ -84,7 +86,9 @@ public class TimerEventListenerJsonConverter extends BaseCmmnJsonConverter {
                 timerEventListener.setTimerStartTriggerStandardEvent(CmmnJsonConverterUtil.getPropertyValueAsString(CmmnStencilConstants.PROPERTY_TIMER_START_TRIGGER_STANDARD_EVENT, elementNode));
             }
         }
-        
+
+        convertCommonJsonToElement(elementNode, timerEventListener);
+
         return timerEventListener;
         
     }

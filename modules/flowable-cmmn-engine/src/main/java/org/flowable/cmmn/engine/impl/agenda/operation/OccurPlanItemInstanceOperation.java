@@ -15,13 +15,14 @@ package org.flowable.cmmn.engine.impl.agenda.operation;
 import org.flowable.cmmn.api.runtime.PlanItemInstanceState;
 import org.flowable.cmmn.engine.impl.persistence.entity.PlanItemInstanceEntity;
 import org.flowable.cmmn.engine.impl.util.CommandContextUtil;
+import org.flowable.cmmn.model.EventListener;
 import org.flowable.cmmn.model.PlanItemTransition;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
 
 /**
  * @author Joram Barrez
  */
-public class OccurPlanItemInstanceOperation extends AbstractDeletePlanItemInstanceOperation {
+public class OccurPlanItemInstanceOperation extends AbstractMovePlanItemInstanceToTerminalStateOperation {
 
     public OccurPlanItemInstanceOperation(CommandContext commandContext, PlanItemInstanceEntity planItemInstanceEntity) {
         super(commandContext, planItemInstanceEntity);
@@ -39,11 +40,18 @@ public class OccurPlanItemInstanceOperation extends AbstractDeletePlanItemInstan
     
     @Override
     protected boolean isEvaluateRepetitionRule() {
-        return false;
+        if (planItemInstanceEntity.getPlanItem() != null && planItemInstanceEntity.getPlanItem().getPlanItemDefinition() instanceof EventListener) {
+            // Only event listeners can be repeating on occur
+            return true;
+        } else {
+            return false;
+        }
     }
     
     @Override
     protected void internalExecute() {
+        planItemInstanceEntity.setEndedTime(getCurrentTime(commandContext));
+        planItemInstanceEntity.setOccurredTime(planItemInstanceEntity.getEndedTime());
         CommandContextUtil.getCmmnHistoryManager(commandContext).recordPlanItemInstanceOccurred(planItemInstanceEntity);
     }
     

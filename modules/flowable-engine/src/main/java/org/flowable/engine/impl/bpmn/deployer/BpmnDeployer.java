@@ -28,6 +28,7 @@ import org.flowable.bpmn.model.SubProcess;
 import org.flowable.bpmn.model.UserTask;
 import org.flowable.bpmn.model.ValuedDataObject;
 import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEventDispatcher;
 import org.flowable.common.engine.api.repository.EngineDeployment;
 import org.flowable.common.engine.api.repository.EngineResource;
 import org.flowable.common.engine.impl.EngineDeployer;
@@ -64,6 +65,7 @@ public class BpmnDeployer implements EngineDeployer {
     protected BpmnDeploymentHelper bpmnDeploymentHelper;
     protected CachingAndArtifactsManager cachingAndArtifactsManager;
     protected ProcessDefinitionDiagramHelper processDefinitionDiagramHelper;
+    protected boolean usePrefixId;
 
     @Override
     public void deploy(EngineDeployment deployment, Map<String, Object> deploymentSettings) {
@@ -218,8 +220,10 @@ public class BpmnDeployer implements EngineDeployer {
 
             cachingAndArtifactsManager.updateProcessDefinitionCache(parsedDeployment);
 
-            if (CommandContextUtil.getProcessEngineConfiguration(commandContext).getEventDispatcher().isEnabled()) {
-                CommandContextUtil.getProcessEngineConfiguration(commandContext).getEventDispatcher().dispatchEvent(FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.ENTITY_CREATED, processDefinition));
+            FlowableEventDispatcher eventDispatcher = CommandContextUtil.getProcessEngineConfiguration(commandContext).getEventDispatcher();
+            if (eventDispatcher != null && eventDispatcher.isEnabled()) {
+                eventDispatcher
+                    .dispatchEvent(FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.ENTITY_CREATED, processDefinition));
             }
         }
     }
@@ -239,7 +243,12 @@ public class BpmnDeployer implements EngineDeployer {
             
             processDefinition.setVersion(0);
             processDefinition.setDerivedVersion(derivedVersion);
-            processDefinition.setId(idGenerator.getNextId());
+            if (usePrefixId) {
+                processDefinition.setId(processDefinition.getIdPrefix() + idGenerator.getNextId());
+            } else {
+                processDefinition.setId(idGenerator.getNextId());
+            }
+            
             processDefinition.setDerivedFrom((String) deploymentSettings.get(DeploymentSettings.DERIVED_PROCESS_DEFINITION_ID));
             processDefinition.setDerivedFromRoot((String) deploymentSettings.get(DeploymentSettings.DERIVED_PROCESS_DEFINITION_ROOT_ID));
 
@@ -254,8 +263,10 @@ public class BpmnDeployer implements EngineDeployer {
             
             cachingAndArtifactsManager.updateProcessDefinitionCache(parsedDeployment);
 
-            if (CommandContextUtil.getProcessEngineConfiguration(commandContext).getEventDispatcher().isEnabled()) {
-                CommandContextUtil.getProcessEngineConfiguration(commandContext).getEventDispatcher().dispatchEvent(FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.ENTITY_CREATED, processDefinition));
+            FlowableEventDispatcher eventDispatcher = CommandContextUtil.getProcessEngineConfiguration(commandContext).getEventDispatcher();
+            if (eventDispatcher != null && eventDispatcher.isEnabled()) {
+                eventDispatcher
+                    .dispatchEvent(FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.ENTITY_CREATED, processDefinition));
             }
         }
     }
@@ -286,8 +297,9 @@ public class BpmnDeployer implements EngineDeployer {
     protected void dispatchProcessDefinitionEntityInitializedEvent(ParsedDeployment parsedDeployment) {
         CommandContext commandContext = Context.getCommandContext();
         for (ProcessDefinitionEntity processDefinitionEntity : parsedDeployment.getAllProcessDefinitions()) {
-            if (CommandContextUtil.getProcessEngineConfiguration(commandContext).getEventDispatcher().isEnabled()) {
-                CommandContextUtil.getProcessEngineConfiguration(commandContext).getEventDispatcher().dispatchEvent(
+            FlowableEventDispatcher eventDispatcher = CommandContextUtil.getProcessEngineConfiguration(commandContext).getEventDispatcher();
+            if (eventDispatcher != null && eventDispatcher.isEnabled()) {
+                eventDispatcher.dispatchEvent(
                         FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.ENTITY_INITIALIZED, processDefinitionEntity));
             }
         }
@@ -299,12 +311,18 @@ public class BpmnDeployer implements EngineDeployer {
      * Process definition ids NEED to be unique across the whole engine!
      */
     protected String getIdForNewProcessDefinition(ProcessDefinitionEntity processDefinition) {
+        String prefixId = "";
+        if (usePrefixId) {
+            prefixId = processDefinition.getIdPrefix();
+        } 
+        
         String nextId = idGenerator.getNextId();
 
-        String result = processDefinition.getKey() + ":" + processDefinition.getVersion() + ":" + nextId; // ACT-505
+        String result = prefixId + processDefinition.getKey() + ":" + processDefinition.getVersion() + ":" + nextId; // ACT-505
         // ACT-115: maximum id length is 64 characters
         if (result.length() > 64) {
-            result = nextId;
+            // The length is exceeded due to the long process definition key
+            result = prefixId + nextId;
         }
 
         return result;
@@ -524,5 +542,13 @@ public class BpmnDeployer implements EngineDeployer {
 
     public void setProcessDefinitionDiagramHelper(ProcessDefinitionDiagramHelper processDefinitionDiagramHelper) {
         this.processDefinitionDiagramHelper = processDefinitionDiagramHelper;
+    }
+
+    public boolean isUsePrefixId() {
+        return usePrefixId;
+    }
+
+    public void setUsePrefixId(boolean usePrefixId) {
+        this.usePrefixId = usePrefixId;
     }
 }

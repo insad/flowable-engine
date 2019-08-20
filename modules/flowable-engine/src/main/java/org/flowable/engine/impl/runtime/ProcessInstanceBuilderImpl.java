@@ -35,8 +35,13 @@ public class ProcessInstanceBuilderImpl implements ProcessInstanceBuilder {
     protected String callbackId;
     protected String callbackType;
     protected String tenantId;
+    protected String overrideDefinitionTenantId;
+    protected String predefinedProcessInstanceId;
     protected Map<String, Object> variables;
     protected Map<String, Object> transientVariables;
+    protected Map<String, Object> startFormVariables;
+    protected String outcome;
+    protected boolean fallbackToDefaultTenant;
 
     public ProcessInstanceBuilderImpl(RuntimeServiceImpl runtimeService) {
         this.runtimeService = runtimeService;
@@ -89,6 +94,18 @@ public class ProcessInstanceBuilderImpl implements ProcessInstanceBuilder {
         this.tenantId = tenantId;
         return this;
     }
+    
+    @Override
+    public ProcessInstanceBuilder overrideProcessDefinitionTenantId(String tenantId) {
+        this.overrideDefinitionTenantId = tenantId;
+        return this;
+    }
+
+    @Override
+    public ProcessInstanceBuilder predefineProcessInstanceId(String processInstanceId) {
+        this.predefinedProcessInstanceId = processInstanceId;
+        return this;
+    }
 
     @Override
     public ProcessInstanceBuilder variables(Map<String, Object> variables) {
@@ -96,9 +113,7 @@ public class ProcessInstanceBuilderImpl implements ProcessInstanceBuilder {
             this.variables = new HashMap<>();
         }
         if (variables != null) {
-            for (String variableName : variables.keySet()) {
-                this.variables.put(variableName, variables.get(variableName));
-            }
+            this.variables.putAll(variables);
         }
         return this;
     }
@@ -118,9 +133,7 @@ public class ProcessInstanceBuilderImpl implements ProcessInstanceBuilder {
             this.transientVariables = new HashMap<>();
         }
         if (transientVariables != null) {
-            for (String variableName : transientVariables.keySet()) {
-                this.transientVariables.put(variableName, transientVariables.get(variableName));
-            }
+            this.transientVariables.putAll(transientVariables);
         }
         return this;
     }
@@ -135,8 +148,45 @@ public class ProcessInstanceBuilderImpl implements ProcessInstanceBuilder {
     }
 
     @Override
+    public ProcessInstanceBuilder startFormVariables(Map<String, Object> startFormVariables) {
+        if (this.startFormVariables == null) {
+            this.startFormVariables = new HashMap<>();
+        }
+        if (startFormVariables != null) {
+            this.startFormVariables.putAll(startFormVariables);
+        }
+        return this;
+    }
+
+    @Override
+    public ProcessInstanceBuilder startFormVariable(String variableName, Object value) {
+        if (this.startFormVariables == null) {
+            this.startFormVariables = new HashMap<>();
+        }
+        this.startFormVariables.put(variableName, value);
+        return this;
+    }
+
+    @Override
+    public ProcessInstanceBuilder outcome(String outcome) {
+        this.outcome = outcome;
+        return this;
+    }
+
+    @Override
+    public ProcessInstanceBuilder fallbackToDefaultTenant() {
+        this.fallbackToDefaultTenant = true;
+        return this;
+    }
+
+    @Override
     public ProcessInstance start() {
         return runtimeService.startProcessInstance(this);
+    }
+
+    @Override
+    public ProcessInstance startAsync() {
+        return runtimeService.startProcessInstanceAsync(this);
     }
 
     public String getProcessDefinitionId() {
@@ -171,12 +221,31 @@ public class ProcessInstanceBuilderImpl implements ProcessInstanceBuilder {
         return tenantId;
     }
 
+    public String getOverrideDefinitionTenantId() {
+        return overrideDefinitionTenantId;
+    }
+
+    public String getPredefinedProcessInstanceId() {
+        return predefinedProcessInstanceId;
+    }
+
     public Map<String, Object> getVariables() {
         return variables;
     }
 
     public Map<String, Object> getTransientVariables() {
         return transientVariables;
+    }
+
+    public Map<String, Object> getStartFormVariables() {
+        return startFormVariables;
+    }
+    public String getOutcome() {
+        return outcome;
+    }
+
+    public boolean isFallbackToDefaultTenant() {
+        return fallbackToDefaultTenant;
     }
 
 }

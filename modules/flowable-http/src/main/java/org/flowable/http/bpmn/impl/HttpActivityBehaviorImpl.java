@@ -136,6 +136,11 @@ public class HttpActivityBehaviorImpl extends AbstractBpmnActivityBehavior {
         }
         httpClientBuilder.setRetryHandler(new DefaultHttpRequestRetryHandler(retryCount, false));
 
+        // client builder settings
+        if (config.isUseSystemProperties()) {
+            httpClientBuilder.useSystemProperties();
+        }
+
         this.httpActivityExecutor = new HttpActivityExecutor(httpClientBuilder, new ProcessErrorPropagator(), 
                 CommandContextUtil.getProcessEngineConfiguration().getObjectMapper());
     }
@@ -180,6 +185,7 @@ public class HttpActivityBehaviorImpl extends AbstractBpmnActivityBehavior {
                 execution.setVariable(request.getPrefix() + "RequestUrl", request.getUrl());
                 execution.setVariable(request.getPrefix() + "RequestHeaders", request.getHeaders());
                 execution.setVariable(request.getPrefix() + "RequestBody", request.getBody());
+                execution.setVariable(request.getPrefix() + "RequestBodyEncoding", request.getBodyEncoding());
                 execution.setVariable(request.getPrefix() + "RequestTimeout", request.getTimeout());
                 execution.setVariable(request.getPrefix() + "DisallowRedirects", request.isNoRedirects());
                 execution.setVariable(request.getPrefix() + "FailStatusCodes", failCodes);

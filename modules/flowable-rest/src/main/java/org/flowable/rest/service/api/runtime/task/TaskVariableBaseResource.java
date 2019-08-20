@@ -90,7 +90,7 @@ public class TaskVariableBaseResource extends TaskBaseResource {
         }
 
         if (!variableFound) {
-            throw new FlowableObjectNotFoundException("Task '" + taskId + "' doesn't have a variable with name: '" + variableName + "'.", VariableInstanceEntity.class);
+            throw new FlowableObjectNotFoundException("Task '" + taskId + "' does not have a variable with name: '" + variableName + "'.", VariableInstanceEntity.class);
         } else {
             return restResponseFactory.createRestVariable(variableName, value, variableScope, taskId, RestResponseFactory.VARIABLE_TASK, includeBinary);
         }
@@ -187,7 +187,7 @@ public class TaskVariableBaseResource extends TaskBaseResource {
         } catch (IOException ioe) {
             throw new FlowableIllegalArgumentException("Error getting binary variable", ioe);
         } catch (ClassNotFoundException ioe) {
-            throw new FlowableContentNotSupportedException("The provided body contains a serialized object for which the class is nog found: " + ioe.getMessage());
+            throw new FlowableContentNotSupportedException("The provided body contains a serialized object for which the class was not found: " + ioe.getMessage());
         }
 
     }
@@ -218,7 +218,7 @@ public class TaskVariableBaseResource extends TaskBaseResource {
         }
 
         if (!isNew && !hasVariable) {
-            throw new FlowableObjectNotFoundException("Task '" + task.getId() + "' doesn't have a variable with name: '" + name + "'.", null);
+            throw new FlowableObjectNotFoundException("Task '" + task.getId() + "' does not have a variable with name: '" + name + "'.", null);
         }
 
         if (scope == RestVariableScope.LOCAL) {

@@ -24,6 +24,10 @@ import org.flowable.common.engine.impl.persistence.entity.data.DataManager;
  */
 public interface PlanItemInstanceDataManager extends DataManager<PlanItemInstanceEntity> {
     
+    List<PlanItemInstanceEntity> findByCaseInstanceId(String caseInstanceId);
+
+    List<PlanItemInstanceEntity> findByCaseInstanceIdAndPlanItemId(String caseInstanceId, String planitemId);
+    
     List<PlanItemInstance> findByCriteria(PlanItemInstanceQueryImpl planItemInstanceQuery);
     
     long countByCriteria(PlanItemInstanceQueryImpl planItemInstanceQuery);

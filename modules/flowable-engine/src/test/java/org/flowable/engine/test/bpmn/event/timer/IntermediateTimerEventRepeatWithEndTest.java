@@ -26,12 +26,14 @@ import org.flowable.job.api.Job;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Vasile Dirla
  */
 public class IntermediateTimerEventRepeatWithEndTest extends PluggableFlowableTestCase {
 
+    @Test
     @Deployment
     public void testRepeatWithEnd() throws Throwable {
 
@@ -80,7 +82,7 @@ public class IntermediateTimerEventRepeatWithEndTest extends PluggableFlowableTe
         Job timerJob = managementService.createTimerJobQuery().processInstanceId(processInstance.getId()).singleResult();
         assertNotNull(timerJob);
 
-        waitForJobExecutorToProcessAllJobs(2000, 500);
+        waitForJobExecutorToProcessAllJobsAndExecutableTimerJobs(5000, 200);
 
         // Expected that job isn't executed because the timer is in t0");
         Job timerJobAfter = managementService.createTimerJobQuery().processInstanceId(processInstance.getId()).singleResult();
@@ -90,7 +92,7 @@ public class IntermediateTimerEventRepeatWithEndTest extends PluggableFlowableTe
         nextTimeCal.add(Calendar.MINUTE, 5);
         processEngineConfiguration.getClock().setCurrentTime(nextTimeCal.getTime());
 
-        waitForJobExecutorToProcessAllJobs(2000, 200);
+        waitForJobExecutorToProcessAllJobsAndExecutableTimerJobs(5000, 200);
         // expect to execute because the time is reached.
 
         List<Job> jobs = managementService.createTimerJobQuery().list();
@@ -107,7 +109,7 @@ public class IntermediateTimerEventRepeatWithEndTest extends PluggableFlowableTe
         nextTimeCal.add(Calendar.MINUTE, 5);
         processEngineConfiguration.getClock().setCurrentTime(nextTimeCal.getTime());
 
-        waitForJobExecutorToProcessAllJobs(2000, 500);
+        waitForJobExecutorToProcessAllJobsAndExecutableTimerJobs(5000, 200);
         // expect to execute because the end time is reached.
 
         if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {

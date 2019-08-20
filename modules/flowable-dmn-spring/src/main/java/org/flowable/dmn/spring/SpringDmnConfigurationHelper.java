@@ -35,8 +35,8 @@ public class SpringDmnConfigurationHelper {
 
         try (GenericXmlApplicationContext applicationContext = new GenericXmlApplicationContext(new UrlResource(resource))) {
             Map<String, DmnEngine> beansOfType = applicationContext.getBeansOfType(DmnEngine.class);
-            if ((beansOfType == null) || (beansOfType.isEmpty())) {
-                throw new FlowableException("no " + DmnEngine.class.getName() + " defined in the application context " + resource.toString());
+            if ((beansOfType == null) || beansOfType.isEmpty()) {
+                throw new FlowableException("no " + DmnEngine.class.getName() + " defined in the application context " + resource);
             }
 
             DmnEngine dmnEngine = beansOfType.values().iterator().next();

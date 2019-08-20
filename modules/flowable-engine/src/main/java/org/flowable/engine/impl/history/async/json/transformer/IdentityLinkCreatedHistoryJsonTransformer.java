@@ -14,6 +14,9 @@ package org.flowable.engine.impl.history.async.json.transformer;
 
 import static org.flowable.job.service.impl.history.async.util.AsyncHistoryJsonUtil.getStringFromJson;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.impl.history.async.HistoryJsonConstants;
 import org.flowable.engine.impl.util.CommandContextUtil;
@@ -26,8 +29,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 public class IdentityLinkCreatedHistoryJsonTransformer extends AbstractHistoryJsonTransformer {
 
     @Override
-    public String getType() {
-        return HistoryJsonConstants.TYPE_IDENTITY_LINK_CREATED;
+    public List<String> getTypes() {
+        return Collections.singletonList(HistoryJsonConstants.TYPE_IDENTITY_LINK_CREATED);
     }
 
     @Override
@@ -43,6 +46,9 @@ public class IdentityLinkCreatedHistoryJsonTransformer extends AbstractHistoryJs
         historicIdentityLinkEntity.setGroupId(getStringFromJson(historicalData, HistoryJsonConstants.GROUP_ID));
         historicIdentityLinkEntity.setProcessInstanceId(getStringFromJson(historicalData, HistoryJsonConstants.PROCESS_INSTANCE_ID));
         historicIdentityLinkEntity.setTaskId(getStringFromJson(historicalData, HistoryJsonConstants.TASK_ID));
+        historicIdentityLinkEntity.setScopeDefinitionId(getStringFromJson(historicalData, HistoryJsonConstants.SCOPE_DEFINITION_ID));
+        historicIdentityLinkEntity.setScopeId(getStringFromJson(historicalData, HistoryJsonConstants.SCOPE_ID));
+        historicIdentityLinkEntity.setScopeType(getStringFromJson(historicalData, HistoryJsonConstants.SCOPE_TYPE));
         historicIdentityLinkEntity.setType(getStringFromJson(historicalData, HistoryJsonConstants.IDENTITY_LINK_TYPE));
         historicIdentityLinkEntity.setUserId(getStringFromJson(historicalData, HistoryJsonConstants.USER_ID));
         historicIdentityLinkService.insertHistoricIdentityLink(historicIdentityLinkEntity, false);

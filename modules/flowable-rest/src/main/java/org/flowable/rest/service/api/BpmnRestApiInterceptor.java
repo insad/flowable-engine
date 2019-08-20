@@ -12,6 +12,9 @@
  */
 package org.flowable.rest.service.api;
 
+import org.flowable.batch.api.Batch;
+import org.flowable.batch.api.BatchPart;
+import org.flowable.batch.api.BatchQuery;
 import org.flowable.engine.form.FormData;
 import org.flowable.engine.history.HistoricActivityInstanceQuery;
 import org.flowable.engine.history.HistoricDetail;
@@ -19,18 +22,19 @@ import org.flowable.engine.history.HistoricDetailQuery;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.history.HistoricProcessInstanceQuery;
 import org.flowable.engine.repository.Deployment;
+import org.flowable.engine.repository.DeploymentBuilder;
 import org.flowable.engine.repository.DeploymentQuery;
 import org.flowable.engine.repository.Model;
 import org.flowable.engine.repository.ModelQuery;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.repository.ProcessDefinitionQuery;
-import org.flowable.engine.runtime.EventSubscription;
-import org.flowable.engine.runtime.EventSubscriptionQuery;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ExecutionQuery;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.runtime.ProcessInstanceBuilder;
 import org.flowable.engine.runtime.ProcessInstanceQuery;
+import org.flowable.eventsubscription.api.EventSubscription;
+import org.flowable.eventsubscription.api.EventSubscriptionQuery;
 import org.flowable.idm.api.Group;
 import org.flowable.idm.api.GroupQuery;
 import org.flowable.idm.api.User;
@@ -41,17 +45,30 @@ import org.flowable.job.api.JobQuery;
 import org.flowable.job.api.SuspendedJobQuery;
 import org.flowable.job.api.TimerJobQuery;
 import org.flowable.rest.service.api.form.SubmitFormRequest;
+import org.flowable.rest.service.api.history.HistoricActivityInstanceQueryRequest;
+import org.flowable.rest.service.api.history.HistoricDetailQueryRequest;
+import org.flowable.rest.service.api.history.HistoricProcessInstanceQueryRequest;
+import org.flowable.rest.service.api.history.HistoricTaskInstanceQueryRequest;
+import org.flowable.rest.service.api.history.HistoricTaskLogEntryQueryRequest;
+import org.flowable.rest.service.api.history.HistoricVariableInstanceQueryRequest;
 import org.flowable.rest.service.api.identity.GroupRequest;
 import org.flowable.rest.service.api.identity.UserRequest;
+import org.flowable.rest.service.api.repository.ModelRequest;
 import org.flowable.rest.service.api.runtime.process.ExecutionActionRequest;
 import org.flowable.rest.service.api.runtime.process.ExecutionChangeActivityStateRequest;
+import org.flowable.rest.service.api.runtime.process.ExecutionQueryRequest;
 import org.flowable.rest.service.api.runtime.process.InjectActivityRequest;
+import org.flowable.rest.service.api.runtime.process.ProcessInstanceCreateRequest;
+import org.flowable.rest.service.api.runtime.process.ProcessInstanceQueryRequest;
 import org.flowable.rest.service.api.runtime.process.SignalEventReceivedRequest;
 import org.flowable.rest.service.api.runtime.task.TaskActionRequest;
+import org.flowable.rest.service.api.runtime.task.TaskQueryRequest;
+import org.flowable.rest.service.api.runtime.task.TaskRequest;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.TaskQuery;
 import org.flowable.task.api.history.HistoricTaskInstance;
 import org.flowable.task.api.history.HistoricTaskInstanceQuery;
+import org.flowable.task.api.history.HistoricTaskLogEntryQuery;
 import org.flowable.variable.api.history.HistoricVariableInstance;
 import org.flowable.variable.api.history.HistoricVariableInstanceQuery;
 
@@ -59,31 +76,37 @@ public interface BpmnRestApiInterceptor {
 
     void accessTaskInfoById(Task task);
     
-    void accessTaskInfoWithQuery(TaskQuery taskQuery);
+    void accessTaskInfoWithQuery(TaskQuery taskQuery, TaskQueryRequest request);
     
-    void createTask(Task task);
+    void createTask(Task task, TaskRequest request);
     
+    void updateTask(Task task, TaskRequest request);
+
     void deleteTask(Task task);
     
     void executeTaskAction(Task task, TaskActionRequest actionRequest);
     
     void accessExecutionInfoById(Execution execution);
 
-    void accessExecutionInfoWithQuery(ExecutionQuery executionQuery);
+    void accessExecutionInfoWithQuery(ExecutionQuery executionQuery, ExecutionQueryRequest request);
     
     void doExecutionActionRequest(ExecutionActionRequest executionActionRequest);
     
     void accessProcessInstanceInfoById(ProcessInstance processInstance);
 
-    void accessProcessInstanceInfoWithQuery(ProcessInstanceQuery processInstanceQuery);
+    void accessProcessInstanceInfoWithQuery(ProcessInstanceQuery processInstanceQuery, ProcessInstanceQueryRequest request);
     
-    void createProcessInstance(ProcessInstanceBuilder processInstanceBuilder);
+    void createProcessInstance(ProcessInstanceBuilder processInstanceBuilder, ProcessInstanceCreateRequest request);
     
     void deleteProcessInstance(ProcessInstance processInstance);
     
     void sendSignal(SignalEventReceivedRequest signalEventReceivedRequest);
     
     void changeActivityState(ExecutionChangeActivityStateRequest changeActivityStateRequest);
+    
+    void migrateProcessInstance(String processInstanceId, String migrationDocument);
+    
+    void migrateInstancesOfProcessDefinition(ProcessDefinition processDefinition, String migrationDocument);
     
     void injectActivity(InjectActivityRequest injectActivityRequest);
     
@@ -100,6 +123,8 @@ public interface BpmnRestApiInterceptor {
     void accessDeploymentsWithQuery(DeploymentQuery deploymentQuery);
     
     void executeNewDeploymentForTenantId(String tenantId);
+
+    void enhanceDeployment(DeploymentBuilder deploymentBuilder);
     
     void deleteDeployment(Deployment deployment);
     
@@ -107,7 +132,7 @@ public interface BpmnRestApiInterceptor {
     
     void accessModelInfoWithQuery(ModelQuery modelQuery);
     
-    void createModel(Model model);
+    void createModel(Model model, ModelRequest request);
     
     void accessJobInfoById(Job job);
     
@@ -121,32 +146,44 @@ public interface BpmnRestApiInterceptor {
     
     void deleteJob(Job job);
     
+    void accessBatchInfoById(Batch batch);
+    
+    void accessBatchInfoWithQuery(BatchQuery batchQuery);
+    
+    void deleteBatch(Batch batch);
+    
+    void accessBatchPartInfoOfBatch(Batch batch);
+    
+    void accessBatchPartInfoById(BatchPart batchPart);
+    
     void accessManagementInfo();
     
     void accessTableInfo();
     
     void accessHistoryTaskInfoById(HistoricTaskInstance historicTaskInstance);
     
-    void accessHistoryTaskInfoWithQuery(HistoricTaskInstanceQuery historicTaskInstanceQuery);
+    void accessHistoryTaskInfoWithQuery(HistoricTaskInstanceQuery historicTaskInstanceQuery, HistoricTaskInstanceQueryRequest request);
     
     void deleteHistoricTask(HistoricTaskInstance historicTaskInstance);
     
     void accessHistoryProcessInfoById(HistoricProcessInstance historicProcessInstance);
     
-    void accessHistoryProcessInfoWithQuery(HistoricProcessInstanceQuery historicProcessInstanceQuery);
+    void accessHistoryProcessInfoWithQuery(HistoricProcessInstanceQuery historicProcessInstanceQuery, HistoricProcessInstanceQueryRequest request);
     
     void deleteHistoricProcess(HistoricProcessInstance historicProcessInstance);
     
-    void accessHistoryActivityInfoWithQuery(HistoricActivityInstanceQuery historicActivityInstanceQuery);
+    void accessHistoryActivityInfoWithQuery(HistoricActivityInstanceQuery historicActivityInstanceQuery, HistoricActivityInstanceQueryRequest request);
     
     void accessHistoryDetailById(HistoricDetail historicDetail);
     
-    void accessHistoryDetailInfoWithQuery(HistoricDetailQuery historicDetailQuery);
+    void accessHistoryDetailInfoWithQuery(HistoricDetailQuery historicDetailQuery, HistoricDetailQueryRequest request);
     
     void accessHistoryVariableInfoById(HistoricVariableInstance historicVariableInstance);
     
-    void accessHistoryVariableInfoWithQuery(HistoricVariableInstanceQuery historicVariableInstanceQuery);
-    
+    void accessHistoryVariableInfoWithQuery(HistoricVariableInstanceQuery historicVariableInstanceQuery, HistoricVariableInstanceQueryRequest request);
+
+    void accessHistoricTaskLogWithQuery(HistoricTaskLogEntryQuery historicTaskLogEntryQuery, HistoricTaskLogEntryQueryRequest request);
+
     void accessGroupInfoById(Group group);
     
     void accessGroupInfoWithQuery(GroupQuery groupQuery);

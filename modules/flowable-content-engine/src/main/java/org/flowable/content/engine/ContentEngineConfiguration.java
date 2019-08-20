@@ -39,6 +39,7 @@ import org.flowable.content.engine.impl.ContentManagementServiceImpl;
 import org.flowable.content.engine.impl.ContentServiceImpl;
 import org.flowable.content.engine.impl.cfg.StandaloneContentEngineConfiguration;
 import org.flowable.content.engine.impl.cfg.StandaloneInMemContentEngineConfiguration;
+import org.flowable.content.engine.impl.cmd.SchemaOperationsContentEngineBuild;
 import org.flowable.content.engine.impl.db.ContentDbSchemaManager;
 import org.flowable.content.engine.impl.db.EntityDependencyOrder;
 import org.flowable.content.engine.impl.fs.SimpleFileSystemContentStorage;
@@ -48,12 +49,8 @@ import org.flowable.content.engine.impl.persistence.entity.TableDataManager;
 import org.flowable.content.engine.impl.persistence.entity.TableDataManagerImpl;
 import org.flowable.content.engine.impl.persistence.entity.data.ContentItemDataManager;
 import org.flowable.content.engine.impl.persistence.entity.data.impl.MybatisContentItemDataManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ContentEngineConfiguration extends AbstractEngineConfiguration implements ContentEngineConfigurationApi {
-
-    protected static final Logger LOGGER = LoggerFactory.getLogger(ContentEngineConfiguration.class);
 
     public static final String DEFAULT_MYBATIS_MAPPING_FILE = "org/flowable/content/db/mapping/mappings.xml";
 
@@ -129,8 +126,11 @@ public class ContentEngineConfiguration extends AbstractEngineConfiguration impl
 
         if (usingRelationalDatabase) {
             initDataSource();
-            initDbSchemaManager();
-            initDbSchema();
+        }
+        
+        if (usingRelationalDatabase || usingSchemaMgmt) {
+            initSchemaManager();
+            initSchemaManagementCommand();
         }
 
         initBeans();
@@ -186,7 +186,7 @@ public class ContentEngineConfiguration extends AbstractEngineConfiguration impl
             }
 
             if (contentRootFile != null && contentRootFile.exists()) {
-                LOGGER.info("Content file system root : {}", contentRootFile.getAbsolutePath());
+                logger.info("Content file system root : {}", contentRootFile.getAbsolutePath());
             }
 
             contentStorage = new SimpleFileSystemContentStorage(contentRootFile);
@@ -196,15 +196,17 @@ public class ContentEngineConfiguration extends AbstractEngineConfiguration impl
     // data model ///////////////////////////////////////////////////////////////
 
     @Override
-    public void initDbSchemaManager() {
-        if (this.dbSchemaManager == null) {
-            this.dbSchemaManager = new ContentDbSchemaManager();
+    public void initSchemaManager() {
+        if (this.schemaManager == null) {
+            this.schemaManager = new ContentDbSchemaManager();
         }
     }
-
-    public void initDbSchema() {
-        if (dbSchemaManager != null) {
-            ((ContentDbSchemaManager) dbSchemaManager).initSchema(this, databaseSchemaUpdate);
+    
+    public void initSchemaManagementCommand() {
+        if (schemaManagementCmd == null) {
+            if (usingRelationalDatabase && databaseSchemaUpdate != null) {
+                this.schemaManagementCmd = new SchemaOperationsContentEngineBuild();
+            }
         }
     }
 
@@ -227,7 +229,7 @@ public class ContentEngineConfiguration extends AbstractEngineConfiguration impl
 
     @Override
     public DbSqlSessionFactory createDbSqlSessionFactory() {
-        return new DbSqlSessionFactory();
+        return new DbSqlSessionFactory(usePrefixId);
     }
 
     @Override

@@ -20,11 +20,13 @@ import java.util.Set;
 import org.flowable.common.engine.impl.history.HistoryLevel;
 import org.flowable.engine.impl.test.HistoryTestHelper;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.history.HistoricTaskInstance;
 import org.flowable.task.service.impl.persistence.CountingTaskEntity;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Tom Baeyens
@@ -32,6 +34,7 @@ import org.flowable.task.service.impl.persistence.CountingTaskEntity;
  */
 public class SubTaskTest extends PluggableFlowableTestCase {
 
+    @Test
     public void testSubTask() {
         Task gonzoTask = taskService.newTask();
         gonzoTask.setName("gonzoTask");
@@ -78,6 +81,7 @@ public class SubTaskTest extends PluggableFlowableTestCase {
         taskService.deleteTask(gonzoTaskId, true);
     }
     
+    @Test
     public void testMakeSubTaskStandaloneTask() {
         Task parentTask = taskService.newTask();
         parentTask.setName("parent");
@@ -114,6 +118,7 @@ public class SubTaskTest extends PluggableFlowableTestCase {
         taskService.deleteTask(subTaskTwo.getId(), true);
     }
 
+    @Test
     public void testSubTaskDeleteOnProcessInstanceDelete() {
         Deployment deployment = repositoryService.createDeployment()
                 .addClasspathResource("org/flowable/engine/test/api/runtime/oneTaskProcess.bpmn20.xml")
@@ -149,13 +154,18 @@ public class SubTaskTest extends PluggableFlowableTestCase {
 
             historyService.deleteHistoricProcessInstance(processInstance.getId());
             
-            waitForHistoryJobExecutorToProcessAllJobs(5000, 100);
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
 
             historicTasks = historyService.createHistoricTaskInstanceQuery().taskAssignee("test").list();
             assertEquals(0, historicTasks.size());
         }
 
         repositoryService.deleteDeployment(deployment.getId(), true);
+        managementService.executeCommand(commandContext -> {
+            CommandContextUtil.getHistoricTaskService(commandContext).deleteHistoricTaskLogEntriesForTaskId(subTask1.getId());
+            CommandContextUtil.getHistoricTaskService(commandContext).deleteHistoricTaskLogEntriesForTaskId(subTask2.getId());
+            return null;
+        });
     }
 
 }

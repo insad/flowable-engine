@@ -69,6 +69,7 @@ public class TaskCollectionResource extends TaskBaseResource {
             @ApiImplicitParam(name = "taskDefinitionKey", dataType = "string", value = "Only return tasks with the given task definition id.", paramType = "query"),
             @ApiImplicitParam(name = "taskDefinitionKeyLike", dataType = "string", value = "Only return tasks with a given task definition id like the given value.", paramType = "query"),
             @ApiImplicitParam(name = "processInstanceId", dataType = "string", value = "Only return tasks which are part of the process instance with the given id.", paramType = "query"),
+            @ApiImplicitParam(name = "processInstanceIdWithChildren", dataType = "string", value = "Only return tasks which are part of the process instance and its children with the given id.", paramType = "query"),
             @ApiImplicitParam(name = "processInstanceBusinessKey", dataType = "string", value = "Only return tasks which are part of the process instance with the given business key.", paramType = "query"),
             @ApiImplicitParam(name = "processInstanceBusinessKeyLike", dataType = "string", value = "Only return tasks which are part of the process instance which has a business key like the given value.", paramType = "query"),
             @ApiImplicitParam(name = "processDefinitionId", dataType = "string", value = "Only return tasks which are part of a process instance which has a process definition with the given id.", paramType = "query"),
@@ -83,11 +84,14 @@ public class TaskCollectionResource extends TaskBaseResource {
             @ApiImplicitParam(name = "dueOn", dataType = "string",format = "date-time", value = "Only return tasks which are due on the given date.", paramType = "query"),
             @ApiImplicitParam(name = "dueBefore", dataType = "string", format = "date-time", value = "Only return tasks which are due before the given date.", paramType = "query"),
             @ApiImplicitParam(name = "dueAfter", dataType = "string", format = "date-time", value = "Only return tasks which are due after the given date.", paramType = "query"),
-            @ApiImplicitParam(name = "withoutDueDate", dataType = "boolean", value = "Only return tasks which don’t have a due date. The property is ignored if the value is false.", paramType = "query"),
+            @ApiImplicitParam(name = "withoutDueDate", dataType = "boolean", value = "Only return tasks which do not have a due date. The property is ignored if the value is false.", paramType = "query"),
             @ApiImplicitParam(name = "excludeSubTasks", dataType = "boolean", value = "Only return tasks that are not a subtask of another task.", paramType = "query"),
             @ApiImplicitParam(name = "active", dataType = "boolean", value = "If true, only return tasks that are not suspended (either part of a process that is not suspended or not part of a process at all). If false, only tasks that are part of suspended process instances are returned.", paramType = "query"),
             @ApiImplicitParam(name = "includeTaskLocalVariables", dataType = "boolean", value = "Indication to include task local variables in the result.", paramType = "query"),
             @ApiImplicitParam(name = "includeProcessVariables", dataType = "boolean", value = "Indication to include process variables in the result.", paramType = "query"),
+            @ApiImplicitParam(name = "scopeDefinitionId", dataType = "string", value = "Only return tasks with the given scopeDefinitionId.", paramType = "query"),
+            @ApiImplicitParam(name = "scopeId", dataType = "string", value = "Only return tasks with the given scopeId.", paramType = "query"),
+            @ApiImplicitParam(name = "scopeType", dataType = "string", value = "Only return tasks with the given scopeType.", paramType = "query"),
             @ApiImplicitParam(name = "tenantId", dataType = "string", value = "Only return tasks with the given tenantId.", paramType = "query"),
             @ApiImplicitParam(name = "tenantIdLike", dataType = "string", value = "Only return tasks with a tenantId like the given value.", paramType = "query"),
             @ApiImplicitParam(name = "withoutTenantId", dataType = "boolean", value = "If true, only returns tasks without a tenantId set. If false, the withoutTenantId parameter is ignored.", paramType = "query"),
@@ -198,6 +202,10 @@ public class TaskCollectionResource extends TaskBaseResource {
         if (requestParams.containsKey("processInstanceId")) {
             request.setProcessInstanceId(requestParams.get("processInstanceId"));
         }
+        
+        if (requestParams.containsKey("processInstanceIdWithChildren")) {
+            request.setProcessInstanceIdWithChildren(requestParams.get("processInstanceIdWithChildren"));
+        }
 
         if (requestParams.containsKey("processInstanceBusinessKey")) {
             request.setProcessInstanceBusinessKey(requestParams.get("processInstanceBusinessKey"));
@@ -258,6 +266,18 @@ public class TaskCollectionResource extends TaskBaseResource {
         if (requestParams.containsKey("includeProcessVariables")) {
             request.setIncludeProcessVariables(Boolean.valueOf(requestParams.get("includeProcessVariables")));
         }
+        
+        if (requestParams.containsKey("scopeDefinitionId")) {
+            request.setScopeDefinitionId(requestParams.get("scopeDefinitionId"));
+        }
+        
+        if (requestParams.containsKey("scopeId")) {
+            request.setScopeId(requestParams.get("scopeId"));
+        }
+        
+        if (requestParams.containsKey("scopeType")) {
+            request.setScopeType(requestParams.get("scopeType"));
+        }
 
         if (requestParams.containsKey("tenantId")) {
             request.setTenantId(requestParams.get("tenantId"));
@@ -299,7 +319,7 @@ public class TaskCollectionResource extends TaskBaseResource {
         }
         
         if (restApiInterceptor != null) {
-            restApiInterceptor.createTask(task);
+            restApiInterceptor.createTask(task, taskRequest);
         }
         
         taskService.saveTask(task);

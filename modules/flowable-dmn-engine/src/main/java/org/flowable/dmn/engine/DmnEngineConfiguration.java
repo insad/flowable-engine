@@ -50,6 +50,7 @@ import org.flowable.dmn.engine.impl.DmnRuleServiceImpl;
 import org.flowable.dmn.engine.impl.RuleEngineExecutorImpl;
 import org.flowable.dmn.engine.impl.cfg.StandaloneDmnEngineConfiguration;
 import org.flowable.dmn.engine.impl.cfg.StandaloneInMemDmnEngineConfiguration;
+import org.flowable.dmn.engine.impl.cmd.SchemaOperationsDmnEngineBuild;
 import org.flowable.dmn.engine.impl.db.DmnDbSchemaManager;
 import org.flowable.dmn.engine.impl.db.EntityDependencyOrder;
 import org.flowable.dmn.engine.impl.deployer.CachingAndArtifactsManager;
@@ -98,16 +99,12 @@ import org.flowable.dmn.engine.impl.persistence.entity.data.impl.MybatisDecision
 import org.flowable.dmn.engine.impl.persistence.entity.data.impl.MybatisDmnDeploymentDataManager;
 import org.flowable.dmn.engine.impl.persistence.entity.data.impl.MybatisDmnResourceDataManager;
 import org.flowable.dmn.engine.impl.persistence.entity.data.impl.MybatisHistoricDecisionExecutionDataManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
 public class DmnEngineConfiguration extends AbstractEngineConfiguration
         implements DmnEngineConfigurationApi, HasExpressionManagerEngineConfiguration {
-
-    protected static final Logger LOGGER = LoggerFactory.getLogger(DmnEngineConfiguration.class);
 
     public static final String DEFAULT_MYBATIS_MAPPING_FILE = "org/flowable/dmn/db/mapping/mappings.xml";
 
@@ -234,8 +231,11 @@ public class DmnEngineConfiguration extends AbstractEngineConfiguration
 
         if (usingRelationalDatabase) {
             initDataSource();
-            initDbSchemaManager();
-            initDbSchema();
+        }
+        
+        if (usingRelationalDatabase || usingSchemaMgmt) {
+            initSchemaManager();
+            initSchemaManagementCommand();
         }
 
         objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
@@ -307,14 +307,18 @@ public class DmnEngineConfiguration extends AbstractEngineConfiguration
     // ///////////////////////////////////////////////////////////////
 
     @Override
-    public void initDbSchemaManager() {
-        if (this.dbSchemaManager == null) {
-            this.dbSchemaManager = new DmnDbSchemaManager();
+    public void initSchemaManager() {
+        if (this.schemaManager == null) {
+            this.schemaManager = new DmnDbSchemaManager();
         }
     }
 
-    public void initDbSchema() {
-        ((DmnDbSchemaManager) this.dbSchemaManager).initSchema(this);
+    public void initSchemaManagementCommand() {
+        if (schemaManagementCmd == null) {
+            if (usingRelationalDatabase && databaseSchemaUpdate != null) {
+                this.schemaManagementCmd = new SchemaOperationsDmnEngineBuild();
+            }
+        }
     }
 
     // session factories ////////////////////////////////////////////////////////
@@ -336,7 +340,7 @@ public class DmnEngineConfiguration extends AbstractEngineConfiguration
 
     @Override
     public DbSqlSessionFactory createDbSqlSessionFactory() {
-        return new DbSqlSessionFactory();
+        return new DbSqlSessionFactory(usePrefixId);
     }
 
     @Override
@@ -446,6 +450,7 @@ public class DmnEngineConfiguration extends AbstractEngineConfiguration
         dmnDeployer.setParsedDeploymentBuilderFactory(parsedDeploymentBuilderFactory);
         dmnDeployer.setDmnDeploymentHelper(dmnDeploymentHelper);
         dmnDeployer.setCachingAndArtifactsManager(cachingAndArtifactsManager);
+        dmnDeployer.setUsePrefixId(usePrefixId);
 
         defaultDeployers.add(dmnDeployer);
         return defaultDeployers;

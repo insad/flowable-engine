@@ -17,7 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.common.engine.impl.db.DbSchemaManager;
+import org.flowable.common.engine.impl.db.SchemaManager;
 import org.flowable.common.engine.impl.interceptor.Command;
 import org.flowable.common.engine.impl.interceptor.CommandConfig;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
@@ -28,8 +28,6 @@ import org.flowable.content.engine.ContentEngine;
 import org.flowable.content.engine.ContentEngineConfiguration;
 import org.flowable.content.engine.impl.util.CommandContextUtil;
 import org.junit.Assert;
-
-import junit.framework.AssertionFailedError;
 
 /**
  * @author Tom Baeyens
@@ -75,7 +73,7 @@ public abstract class AbstractFlowableTestCase extends AbstractContentTestCase {
 
             super.runBare();
 
-        } catch (AssertionFailedError e) {
+        } catch (AssertionError e) {
             LOGGER.error(EMPTY_LINE);
             LOGGER.error("ASSERTION FAILED: {}", e, e);
             exception = e;
@@ -127,9 +125,9 @@ public abstract class AbstractFlowableTestCase extends AbstractContentTestCase {
             commandExecutor.execute(config, new Command<Object>() {
                 @Override
                 public Object execute(CommandContext commandContext) {
-                    DbSchemaManager dbSchemaManager = CommandContextUtil.getContentEngineConfiguration(commandContext).getDbSchemaManager();
-                    dbSchemaManager.dbSchemaDrop();
-                    dbSchemaManager.dbSchemaCreate();
+                    SchemaManager schemaManager = CommandContextUtil.getContentEngineConfiguration(commandContext).getSchemaManager();
+                    schemaManager.schemaDrop();
+                    schemaManager.schemaCreate();
                     return null;
                 }
             });

@@ -12,22 +12,20 @@
  */
 package org.flowable.cmmn.model;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
-public class Case extends CmmnElement {
+public class Case extends CmmnElement implements HasLifecycleListeners {
 
     protected String name;
     protected String initiatorVariableName;
     protected Stage planModel;
+    protected List<String> candidateStarterUsers = new ArrayList<>();
+    protected List<String> candidateStarterGroups = new ArrayList<>();
     protected Map<String, CaseElement> allCaseElements = new HashMap<>();
-
-    public Stage findStage(String stageId) {
-        if (planModel.getId().equals(stageId)) {
-            return planModel;
-        }
-        return (Stage) planModel.findPlanItemDefinition(stageId);
-    }
+    protected List<FlowableListener> lifecycleListeners = new ArrayList<>();
 
     public String getName() {
         return name;
@@ -53,6 +51,22 @@ public class Case extends CmmnElement {
         this.planModel = planModel;
     }
 
+    public List<String> getCandidateStarterUsers() {
+        return candidateStarterUsers;
+    }
+
+    public void setCandidateStarterUsers(List<String> candidateStarterUsers) {
+        this.candidateStarterUsers = candidateStarterUsers;
+    }
+
+    public List<String> getCandidateStarterGroups() {
+        return candidateStarterGroups;
+    }
+
+    public void setCandidateStarterGroups(List<String> candidateStarterGroups) {
+        this.candidateStarterGroups = candidateStarterGroups;
+    }
+    
     public Map<String, CaseElement> getAllCaseElements() {
         return allCaseElements;
     }
@@ -61,4 +75,13 @@ public class Case extends CmmnElement {
         this.allCaseElements = allCaseElements;
     }
 
+    @Override
+    public List<FlowableListener> getLifecycleListeners() {
+        return this.lifecycleListeners;
+    }
+
+    @Override
+    public void setLifecycleListeners(List<FlowableListener> lifecycleListeners) {
+        this.lifecycleListeners = lifecycleListeners;
+    }
 }

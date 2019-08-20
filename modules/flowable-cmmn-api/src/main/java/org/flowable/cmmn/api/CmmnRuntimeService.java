@@ -18,10 +18,16 @@ import java.util.Map;
 
 import org.flowable.cmmn.api.runtime.CaseInstanceBuilder;
 import org.flowable.cmmn.api.runtime.CaseInstanceQuery;
+import org.flowable.cmmn.api.runtime.ChangePlanItemStateBuilder;
+import org.flowable.cmmn.api.runtime.GenericEventListenerInstanceQuery;
 import org.flowable.cmmn.api.runtime.MilestoneInstanceQuery;
 import org.flowable.cmmn.api.runtime.PlanItemInstanceQuery;
+import org.flowable.cmmn.api.runtime.PlanItemInstanceTransitionBuilder;
+import org.flowable.cmmn.api.runtime.SignalEventListenerInstanceQuery;
 import org.flowable.cmmn.api.runtime.UserEventListenerInstanceQuery;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.entitylink.api.EntityLink;
+import org.flowable.eventsubscription.api.EventSubscriptionQuery;
 import org.flowable.form.api.FormInfo;
 import org.flowable.identitylink.api.IdentityLink;
 
@@ -31,6 +37,8 @@ import org.flowable.identitylink.api.IdentityLink;
 public interface CmmnRuntimeService {
 
     CaseInstanceBuilder createCaseInstanceBuilder();
+
+    PlanItemInstanceTransitionBuilder createPlanItemInstanceTransitionBuilder(String planItemInstanceId);
     
     void triggerPlanItemInstance(String planItemInstanceId);
     
@@ -41,12 +49,18 @@ public interface CmmnRuntimeService {
     void disablePlanItemInstance(String planItemInstanceId);
 
     void completeStagePlanItemInstance(String planItemInstanceId);
+
+    void completeStagePlanItemInstance(String planItemInstanceId, boolean force);
     
     void completeCaseInstance(String caseInstanceId);
     
     void terminateCaseInstance(String caseInstanceId);
-    
+
+    void terminatePlanItemInstance(String planItemInstanceId);
+
     void evaluateCriteria(String caseInstanceId);
+    
+    void completeGenericEventListenerInstance(String genericEventListenerInstanceId);
 
     void completeUserEventListenerInstance(String userEventListenerInstanceId);
     
@@ -77,15 +91,32 @@ public interface CmmnRuntimeService {
     
     void removeLocalVariable(String planItemInstanceId, String variableName);
     
-    void removeLocalVariables(String caseInstanceId, Collection<String> variableNames);
+    void removeLocalVariables(String planItemInstanceId, Collection<String> variableNames);
+
+    /**
+     * Set or change the name of the case instance.
+     *
+     * @param caseInstanceId the id of the case to set the name
+     * @param caseName the name to be set on the case
+     */
+    void setCaseInstanceName(String caseInstanceId, String caseName);
 
     CaseInstanceQuery createCaseInstanceQuery();
     
     PlanItemInstanceQuery createPlanItemInstanceQuery();
     
     MilestoneInstanceQuery createMilestoneInstanceQuery();
+    
+    GenericEventListenerInstanceQuery createGenericEventListenerInstanceQuery();
+    
+    SignalEventListenerInstanceQuery createSignalEventListenerInstanceQuery();
 
     UserEventListenerInstanceQuery createUserEventListenerInstanceQuery();
+    
+    /**
+     * Creates a new {@link EventSubscriptionQuery} instance, that can be used to query the event subscriptions.
+     */
+    EventSubscriptionQuery createEventSubscriptionQuery();
     
     /**
      * Involves a user with a case instance. The type of identity link is defined by the given identityLinkType.
@@ -147,15 +178,39 @@ public interface CmmnRuntimeService {
      * Retrieves the {@link IdentityLink}s associated with the given case instance. Such an identity link informs how a certain user is involved with a case instance.
      */
     List<IdentityLink> getIdentityLinksForCaseInstance(String instanceId);
+    
+    /**
+     * Retrieves the {@link EntityLink}s associated with the given case instance.
+     */
+    List<EntityLink> getEntityLinkChildrenForCaseInstance(String instanceId);
+
+    /**
+     * Retrieves the {@link EntityLink}s where the given case instance is referenced.
+     */
+    List<EntityLink> getEntityLinkParentsForCaseInstance(String instanceId);
 
     /**
      * Gets a Form model instance of the start form of a specific case definition or case instance
      *
      * @param caseDefinitionId
      *            id of case definition for which the start form should be retrieved.
-     * @param casesInstanceId
+     * @param caseInstanceId
      *            id of case instance for which the start form should be retrieved.
      */
     FormInfo getStartFormModel(String caseDefinitionId, String caseInstanceId);
     
+    /**
+     * Create a {@link ChangePlanItemStateBuilder}, that allows to set various options for changing the state of a process instance.
+     */
+    ChangePlanItemStateBuilder createChangePlanItemStateBuilder();
+
+    /**
+     * Updates the business key for the provided case instance
+     *
+     * @param caseInstanceId
+     *     id of the case instance to set the business key, cannot be null
+     * @param businessKey
+     *     new businessKey value
+     */
+    void updateBusinessKey(String caseInstanceId, String businessKey);
 }

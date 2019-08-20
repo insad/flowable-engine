@@ -19,6 +19,7 @@ import javax.sql.DataSource;
 import org.flowable.app.spring.SpringAppEngineConfiguration;
 import org.flowable.idm.engine.configurator.IdmEngineConfigurator;
 import org.flowable.idm.spring.SpringIdmEngineConfiguration;
+import org.flowable.idm.spring.authentication.SpringEncoder;
 import org.flowable.idm.spring.configurator.SpringIdmEngineConfigurator;
 import org.flowable.spring.SpringProcessEngineConfiguration;
 import org.flowable.spring.boot.AbstractEngineAutoConfiguration;
@@ -40,6 +41,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -84,6 +87,13 @@ public class IdmEngineAutoConfiguration extends AbstractEngineAutoConfiguration 
             String encoderType = idmProperties.getPasswordEncoder();
             if (Objects.equals("spring_bcrypt", encoderType)) {
                 encoder = new BCryptPasswordEncoder();
+            } else if (encoderType != null && encoderType.startsWith("spring_delegating")) {
+                encoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
+                if (encoderType.equals("spring_delegating_bcrypt")) {
+                    ((DelegatingPasswordEncoder) encoder).setDefaultPasswordEncoderForMatches(new BCryptPasswordEncoder());
+                } else if (encoderType.equals("spring_delegating_noop")) {
+                    ((DelegatingPasswordEncoder) encoder).setDefaultPasswordEncoderForMatches(NoOpPasswordEncoder.getInstance());
+                }
             } else {
                 encoder = NoOpPasswordEncoder.getInstance();
             }
@@ -95,7 +105,7 @@ public class IdmEngineAutoConfiguration extends AbstractEngineAutoConfiguration 
         @ConditionalOnBean(PasswordEncoder.class)
         @ConditionalOnMissingBean(name = "passwordEncoderIdmEngineConfigurationConfigurer")
         public EngineConfigurationConfigurer<SpringIdmEngineConfiguration> passwordEncoderIdmEngineConfigurationConfigurer(PasswordEncoder passwordEncoder) {
-            return idmEngineConfiguration -> idmEngineConfiguration.setPasswordEncoder(new SpringPasswordEncoder(passwordEncoder));
+            return idmEngineConfiguration -> idmEngineConfiguration.setPasswordEncoder(new SpringEncoder(passwordEncoder));
         }
 
     }

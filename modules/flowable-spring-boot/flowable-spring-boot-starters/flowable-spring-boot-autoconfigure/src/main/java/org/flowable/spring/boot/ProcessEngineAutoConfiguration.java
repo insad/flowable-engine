@@ -18,6 +18,7 @@ import java.util.List;
 import javax.sql.DataSource;
 
 import org.flowable.app.spring.SpringAppEngineConfiguration;
+import org.flowable.common.engine.impl.cfg.IdGenerator;
 import org.flowable.common.engine.impl.persistence.StrongUuidGenerator;
 import org.flowable.engine.configurator.ProcessEngineConfigurator;
 import org.flowable.engine.spring.configurator.SpringProcessEngineConfigurator;
@@ -63,13 +64,16 @@ import org.springframework.transaction.PlatformTransactionManager;
 @EnableConfigurationProperties({
     FlowableProperties.class,
     FlowableMailProperties.class,
+    FlowableHttpProperties.class,
     FlowableProcessProperties.class,
     FlowableAppProperties.class,
     FlowableIdmProperties.class
 })
-@AutoConfigureAfter({
+@AutoConfigureAfter(value = {
     FlowableJpaAutoConfiguration.class,
     AppEngineAutoConfiguration.class,
+}, name = {
+    "org.springframework.boot.autoconfigure.task.TaskExecutionAutoConfiguration"
 })
 @AutoConfigureBefore({
     AppEngineServicesAutoConfiguration.class,
@@ -83,15 +87,18 @@ public class ProcessEngineAutoConfiguration extends AbstractSpringEngineAutoConf
     protected final FlowableAppProperties appProperties;
     protected final FlowableIdmProperties idmProperties;
     protected final FlowableMailProperties mailProperties;
+    protected final FlowableHttpProperties httpProperties;
 
     public ProcessEngineAutoConfiguration(FlowableProperties flowableProperties, FlowableProcessProperties processProperties,
-                    FlowableAppProperties appProperties, FlowableIdmProperties idmProperties, FlowableMailProperties mailProperties) {
+        FlowableAppProperties appProperties, FlowableIdmProperties idmProperties, FlowableMailProperties mailProperties,
+        FlowableHttpProperties httpProperties) {
         
         super(flowableProperties);
         this.processProperties = processProperties;
         this.appProperties = appProperties;
         this.idmProperties = idmProperties;
         this.mailProperties = mailProperties;
+        this.httpProperties = httpProperties;
     }
 
     /**
@@ -134,7 +141,9 @@ public class ProcessEngineAutoConfiguration extends AbstractSpringEngineAutoConf
     @Bean
     @ConditionalOnMissingBean
     public SpringProcessEngineConfiguration springProcessEngineConfiguration(DataSource dataSource, PlatformTransactionManager platformTransactionManager,
-            @ProcessAsync ObjectProvider<AsyncExecutor> asyncExecutorProvider, 
+            @Process ObjectProvider<IdGenerator> processIdGenerator,
+            ObjectProvider<IdGenerator> globalIdGenerator,
+            @ProcessAsync ObjectProvider<AsyncExecutor> asyncExecutorProvider,
             @ProcessAsyncHistory ObjectProvider<AsyncExecutor> asyncHistoryExecutorProvider) throws IOException {
 
         SpringProcessEngineConfiguration conf = new SpringProcessEngineConfiguration();
@@ -180,13 +189,30 @@ public class ProcessEngineAutoConfiguration extends AbstractSpringEngineAutoConf
         conf.setMailServerUseSSL(mailProperties.isUseSsl());
         conf.setMailServerUseTLS(mailProperties.isUseTls());
 
+        conf.getHttpClientConfig().setUseSystemProperties(httpProperties.isUseSystemProperties());
+        conf.getHttpClientConfig().setConnectionRequestTimeout(httpProperties.getConnectionRequestTimeout());
+        conf.getHttpClientConfig().setConnectTimeout(httpProperties.getConnectTimeout());
+        conf.getHttpClientConfig().setDisableCertVerify(httpProperties.isDisableCertVerify());
+        conf.getHttpClientConfig().setRequestRetryLimit(httpProperties.getRequestRetryLimit());
+        conf.getHttpClientConfig().setSocketTimeout(httpProperties.getSocketTimeout());
+
         conf.setEnableProcessDefinitionHistoryLevel(processProperties.isEnableProcessDefinitionHistoryLevel());
         conf.setProcessDefinitionCacheLimit(processProperties.getDefinitionCacheLimit());
         conf.setEnableSafeBpmnXml(processProperties.isEnableSafeXml());
 
         conf.setHistoryLevel(flowableProperties.getHistoryLevel());
+        
+        conf.setActivityFontName(flowableProperties.getActivityFontName());
+        conf.setAnnotationFontName(flowableProperties.getAnnotationFontName());
+        conf.setLabelFontName(flowableProperties.getLabelFontName());
 
-        conf.setIdGenerator(new StrongUuidGenerator());
+        conf.setFormFieldValidationEnabled(flowableProperties.isFormFieldValidationEnabled());
+
+        IdGenerator idGenerator = getIfAvailable(processIdGenerator, globalIdGenerator);
+        if (idGenerator == null) {
+            idGenerator = new StrongUuidGenerator();
+        }
+        conf.setIdGenerator(idGenerator);
 
         return conf;
     }

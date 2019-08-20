@@ -12,10 +12,6 @@
  */
 package org.activiti.engine.impl.bpmn.deployer;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -77,6 +73,10 @@ import org.flowable.engine.impl.persistence.deploy.ProcessDefinitionCacheEntry;
 import org.flowable.job.api.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * @author Tom Baeyens
@@ -156,7 +156,7 @@ public class BpmnDeployer implements Deployer {
                             try {
                                 byte[] diagramBytes = IoUtil.readInputStream(processEngineConfiguration.getProcessDiagramGenerator().generateDiagram(bpmnParse.getBpmnModel(), "png", processEngineConfiguration.getActivityFontName(),
                                         processEngineConfiguration.getLabelFontName(), processEngineConfiguration.getAnnotationFontName(),
-                                        processEngineConfiguration.getClassLoader()), null);
+                                        processEngineConfiguration.getClassLoader(),processEngineConfiguration.isDrawSequenceFlowNameWithNoLabelDI()), null);
                                 diagramResourceName = getProcessImageResourceName(resourceName, processDefinition.getKey(), "png");
                                 createResource(diagramResourceName, diagramBytes, deployment);
 
@@ -304,7 +304,7 @@ public class BpmnDeployer implements Deployer {
                 try {
                     infoNode = (ObjectNode) objectMapper.readTree(infoBytes);
                 } catch (Exception e) {
-                    throw new ActivitiException("Error deserializing json info for process definition " + processDefinition.getId());
+                    throw new ActivitiException("Error deserializing json info for process definition " + processDefinition.getId(), e);
                 }
             }
         }

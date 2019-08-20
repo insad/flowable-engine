@@ -56,8 +56,6 @@ import org.flowable.job.service.impl.persistence.entity.data.impl.MybatisJobByte
 import org.flowable.job.service.impl.persistence.entity.data.impl.MybatisJobDataManager;
 import org.flowable.job.service.impl.persistence.entity.data.impl.MybatisSuspendedJobDataManager;
 import org.flowable.job.service.impl.persistence.entity.data.impl.MybatisTimerJobDataManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -69,8 +67,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public class JobServiceConfiguration extends AbstractServiceConfiguration {
 
-    protected static final Logger LOGGER = LoggerFactory.getLogger(JobServiceConfiguration.class);
-    
     public static String JOB_EXECUTION_SCOPE_ALL = "all";
     public static String JOB_EXECUTION_SCOPE_CMMN = "cmmn";
 
@@ -134,6 +130,10 @@ public class JobServiceConfiguration extends AbstractServiceConfiguration {
     protected boolean asyncHistoryJsonGroupingEnabled;
     protected boolean asyncHistoryExecutorMessageQueueMode;
     protected int asyncHistoryJsonGroupingThreshold = 10;
+    
+    public JobServiceConfiguration(String engineName) {
+        super(engineName);
+    }
 
     // init
     // /////////////////////////////////////////////////////////////////////
@@ -146,8 +146,8 @@ public class JobServiceConfiguration extends AbstractServiceConfiguration {
 
     @Override
     public boolean isHistoryLevelAtLeast(HistoryLevel level) {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Current history level: {}, level required: {}", historyLevel, level);
+        if (logger.isDebugEnabled()) {
+            logger.debug("Current history level: {}, level required: {}", historyLevel, level);
         }
         // Comparing enums actually compares the location of values declared in the enum
         return historyLevel.isAtLeast(level);
@@ -155,8 +155,8 @@ public class JobServiceConfiguration extends AbstractServiceConfiguration {
 
     @Override
     public boolean isHistoryEnabled() {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Current history level: {}", historyLevel);
+        if (logger.isDebugEnabled()) {
+            logger.debug("Current history level: {}", historyLevel);
         }
         return historyLevel != HistoryLevel.NONE;
     }
@@ -464,7 +464,7 @@ public class JobServiceConfiguration extends AbstractServiceConfiguration {
     
     public JobServiceConfiguration addJobHandler(String type, JobHandler jobHandler) {
         if (this.jobHandlers == null) {
-            this.jobHandlers = new HashMap<String, JobHandler>();
+            this.jobHandlers = new HashMap<>();
         }
         this.jobHandlers.put(type, jobHandler);
         return this;

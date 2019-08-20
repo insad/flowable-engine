@@ -37,6 +37,9 @@ import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * Test case for all {@link FlowableEvent}s related to process instances.
@@ -50,6 +53,7 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
     /**
      * Test create, update and delete events of process instances.
      */
+    @Test
     @Deployment
     public void testProcessInstanceEvents() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
@@ -57,57 +61,9 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
         assertNotNull(processInstance);
 
         // Check create-event
-        assertEquals(6, listener.getEventsReceived().size());
-        assertEquals(6, FilteredStaticTestFlowableEventListener.getEventsReceived().size());
-        assertTrue(listener.getEventsReceived().get(0) instanceof FlowableEngineEntityEvent);
+        assertProcessStartedEvents(processInstance);
 
-        // process instance create event
-        FlowableEngineEntityEvent event = (FlowableEngineEntityEvent) listener.getEventsReceived().get(0);
-        assertEquals(FlowableEngineEventType.ENTITY_CREATED, event.getType());
-        assertEquals(processInstance.getId(), ((ProcessInstance) event.getEntity()).getId());
-        assertEquals(processInstance.getId(), event.getProcessInstanceId());
-        assertEquals(processInstance.getId(), event.getExecutionId());
-        assertEquals(processInstance.getProcessDefinitionId(), event.getProcessDefinitionId());
-        assertEventsEqual(event, FilteredStaticTestFlowableEventListener.getEventsReceived().get(0));
-
-        event = (FlowableEngineEntityEvent) listener.getEventsReceived().get(1);
-        assertEquals(FlowableEngineEventType.PROCESS_CREATED, event.getType());
-        assertEquals(processInstance.getId(), event.getProcessInstanceId());
-        assertEquals(processInstance.getId(), event.getExecutionId());
-        assertEquals(processInstance.getProcessDefinitionId(), event.getProcessDefinitionId());
-        assertEventsEqual(event, FilteredStaticTestFlowableEventListener.getEventsReceived().get(1));
-
-        event = (FlowableEngineEntityEvent) listener.getEventsReceived().get(2);
-        assertEquals(FlowableEngineEventType.ENTITY_INITIALIZED, event.getType());
-        assertEquals(processInstance.getId(), event.getProcessInstanceId());
-        assertEquals(processInstance.getId(), event.getExecutionId());
-        assertEquals(processInstance.getProcessDefinitionId(), event.getProcessDefinitionId());
-        assertEventsEqual(event, FilteredStaticTestFlowableEventListener.getEventsReceived().get(2));
-
-        // start event create event
-        event = (FlowableEngineEntityEvent) listener.getEventsReceived().get(3);
-        assertEquals(FlowableEngineEventType.ENTITY_CREATED, event.getType());
-        assertEquals(processInstance.getId(), event.getProcessInstanceId());
-        assertNotEquals(processInstance.getId(), event.getExecutionId());
-        assertEquals(processInstance.getProcessDefinitionId(), event.getProcessDefinitionId());
-        assertEventsEqual(event, FilteredStaticTestFlowableEventListener.getEventsReceived().get(3));
-
-        // start event create initialized
-        event = (FlowableEngineEntityEvent) listener.getEventsReceived().get(4);
-        assertEquals(FlowableEngineEventType.ENTITY_INITIALIZED, event.getType());
-        assertEquals(processInstance.getId(), event.getProcessInstanceId());
-        assertNotEquals(processInstance.getId(), event.getExecutionId());
-        assertEquals(processInstance.getProcessDefinitionId(), event.getProcessDefinitionId());
-        assertEventsEqual(event, FilteredStaticTestFlowableEventListener.getEventsReceived().get(4));
-
-        event = (FlowableEngineEntityEvent) listener.getEventsReceived().get(5);
-        assertEquals(FlowableEngineEventType.PROCESS_STARTED, event.getType());
-        assertEquals(processInstance.getId(), event.getProcessInstanceId());
-        assertEquals(processInstance.getProcessDefinitionId(), event.getProcessDefinitionId());
-        assertTrue(event instanceof FlowableProcessStartedEvent);
-        assertNull(((FlowableProcessStartedEvent) event).getNestedProcessDefinitionId());
-        assertNull(((FlowableProcessStartedEvent) event).getNestedProcessInstanceId());
-        assertEventsEqual(event, FilteredStaticTestFlowableEventListener.getEventsReceived().get(5));
+        FlowableEngineEntityEvent event;
 
         listener.clearEventsReceived();
         FilteredStaticTestFlowableEventListener.clearEventsReceived();
@@ -221,9 +177,64 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
         FilteredStaticTestFlowableEventListener.clearEventsReceived();
     }
 
+    protected void assertProcessStartedEvents(ProcessInstance processInstance) {
+        assertEquals(6, listener.getEventsReceived().size());
+        assertEquals(6, FilteredStaticTestFlowableEventListener.getEventsReceived().size());
+        assertTrue(listener.getEventsReceived().get(0) instanceof FlowableEngineEntityEvent);
+
+        // process instance create event
+        FlowableEngineEntityEvent event = (FlowableEngineEntityEvent) listener.getEventsReceived().get(0);
+        assertEquals(FlowableEngineEventType.ENTITY_CREATED, event.getType());
+        assertEquals(processInstance.getId(), ((ProcessInstance) event.getEntity()).getId());
+        assertEquals(processInstance.getId(), event.getProcessInstanceId());
+        assertEquals(processInstance.getId(), event.getExecutionId());
+        assertEquals(processInstance.getProcessDefinitionId(), event.getProcessDefinitionId());
+        assertEventsEqual(event, FilteredStaticTestFlowableEventListener.getEventsReceived().get(0));
+
+        event = (FlowableEngineEntityEvent) listener.getEventsReceived().get(1);
+        assertEquals(FlowableEngineEventType.PROCESS_CREATED, event.getType());
+        assertEquals(processInstance.getId(), event.getProcessInstanceId());
+        assertEquals(processInstance.getId(), event.getExecutionId());
+        assertEquals(processInstance.getProcessDefinitionId(), event.getProcessDefinitionId());
+        assertEventsEqual(event, FilteredStaticTestFlowableEventListener.getEventsReceived().get(1));
+
+        event = (FlowableEngineEntityEvent) listener.getEventsReceived().get(2);
+        assertEquals(FlowableEngineEventType.ENTITY_INITIALIZED, event.getType());
+        assertEquals(processInstance.getId(), event.getProcessInstanceId());
+        assertEquals(processInstance.getId(), event.getExecutionId());
+        assertEquals(processInstance.getProcessDefinitionId(), event.getProcessDefinitionId());
+        assertEventsEqual(event, FilteredStaticTestFlowableEventListener.getEventsReceived().get(2));
+
+        // start event create event
+        event = (FlowableEngineEntityEvent) listener.getEventsReceived().get(3);
+        assertEquals(FlowableEngineEventType.ENTITY_CREATED, event.getType());
+        assertEquals(processInstance.getId(), event.getProcessInstanceId());
+        assertNotEquals(processInstance.getId(), event.getExecutionId());
+        assertEquals(processInstance.getProcessDefinitionId(), event.getProcessDefinitionId());
+        assertEventsEqual(event, FilteredStaticTestFlowableEventListener.getEventsReceived().get(3));
+
+        // start event create initialized
+        event = (FlowableEngineEntityEvent) listener.getEventsReceived().get(4);
+        assertEquals(FlowableEngineEventType.ENTITY_INITIALIZED, event.getType());
+        assertEquals(processInstance.getId(), event.getProcessInstanceId());
+        assertNotEquals(processInstance.getId(), event.getExecutionId());
+        assertEquals(processInstance.getProcessDefinitionId(), event.getProcessDefinitionId());
+        assertEventsEqual(event, FilteredStaticTestFlowableEventListener.getEventsReceived().get(4));
+
+        event = (FlowableEngineEntityEvent) listener.getEventsReceived().get(5);
+        assertEquals(FlowableEngineEventType.PROCESS_STARTED, event.getType());
+        assertEquals(processInstance.getId(), event.getProcessInstanceId());
+        assertEquals(processInstance.getProcessDefinitionId(), event.getProcessDefinitionId());
+        assertTrue(event instanceof FlowableProcessStartedEvent);
+        assertNull(((FlowableProcessStartedEvent) event).getNestedProcessDefinitionId());
+        assertNull(((FlowableProcessStartedEvent) event).getNestedProcessInstanceId());
+        assertEventsEqual(event, FilteredStaticTestFlowableEventListener.getEventsReceived().get(5));
+    }
+
     /**
      * Test create, update and delete events of process instances.
      */
+    @Test
     @Deployment(resources = {"org/flowable/engine/test/api/runtime/nestedSubProcess.bpmn20.xml", "org/flowable/engine/test/api/runtime/subProcess.bpmn20.xml"})
     public void testSubProcessInstanceEvents() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("nestedSimpleSubProcess");
@@ -330,6 +341,7 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
     /**
      * Test process with signals start.
      */
+    @Test
     @Deployment(resources = {"org/flowable/engine/test/bpmn/event/signal/SignalEventTest.testSignalWithGlobalScope.bpmn20.xml"})
     public void testSignalProcessInstanceStart() throws Exception {
         this.runtimeService.startProcessInstanceByKey("processWithSignalCatch");
@@ -342,6 +354,7 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
     /**
      * Test Start->End process on PROCESS_COMPLETED event
      */
+    @Test
     @Deployment(resources = {"org/flowable/engine/test/api/event/ProcessInstanceEventsTest.noneTaskProcess.bpmn20.xml"})
     public void testProcessCompleted_StartEnd() throws Exception {
         this.runtimeService.startProcessInstanceByKey("noneTaskProcess");
@@ -352,6 +365,7 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
     /**
      * Test Start->User org.flowable.task.service.Task process on PROCESS_COMPLETED event
      */
+    @Test
     @Deployment(resources = {"org/flowable/engine/test/api/event/ProcessInstanceEventsTest.noEndProcess.bpmn20.xml"})
     public void testProcessCompleted_NoEnd() throws Exception {
         ProcessInstance noEndProcess = this.runtimeService.startProcessInstanceByKey("noEndProcess");
@@ -366,6 +380,7 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
      * <p>
      * process on PROCESS_COMPLETED event
      */
+    @Test
     @Deployment(resources = {"org/flowable/engine/test/api/event/ProcessInstanceEventsTest.parallelGatewayNoEndProcess.bpmn20.xml"})
     public void testProcessCompleted_ParallelGatewayNoEnd() throws Exception {
         this.runtimeService.startProcessInstanceByKey("noEndProcess");
@@ -378,6 +393,7 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
      * <p/>
      * process on PROCESS_COMPLETED event
      */
+    @Test
     @Deployment(resources = {"org/flowable/engine/test/api/event/ProcessInstanceEventsTest.parallelGatewayTwoEndsProcess.bpmn20.xml"})
     public void testProcessCompleted_ParallelGatewayTwoEnds() throws Exception {
         this.runtimeService.startProcessInstanceByKey("noEndProcess");
@@ -386,6 +402,7 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
         assertEquals("ActivitiEventType.PROCESS_COMPLETED was expected 1 time.", 1, events.size());
     }
 
+    @Test
     @Deployment(resources = {
             "org/flowable/engine/test/bpmn/event/end/TerminateEndEventTest.testTerminateInCallActivityMulitInstance.bpmn",
             "org/flowable/engine/test/bpmn/event/end/TerminateEndEventTest.subProcessTerminateTerminateAll.bpmn20.xml"})
@@ -396,6 +413,7 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
         assertEquals("FlowableEventType.PROCESS_COMPLETED_WITH_TERMINATE_END_EVENT was expected 6 times.", 6, events.size());
     }
 
+    @Test
     @Deployment(resources = {"org/flowable/engine/test/api/runtime/oneTaskProcess.bpmn20.xml"})
     public void testProcessInstanceCancelledEvents_cancel() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
@@ -422,6 +440,7 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
         listener.clearEventsReceived();
     }
 
+    @Test
     @Deployment(resources = {"org/flowable/engine/test/api/runtime/nestedSubProcess.bpmn20.xml", "org/flowable/engine/test/api/runtime/subProcess.bpmn20.xml"})
     public void testProcessInstanceCancelledEvents_cancelProcessHierarchy() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("nestedSimpleSubProcess");
@@ -464,6 +483,7 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
         listener.clearEventsReceived();
     }
 
+    @Test
     @Deployment(resources = {"org/flowable/engine/test/api/runtime/oneTaskProcess.bpmn20.xml"})
     public void testProcessInstanceCancelledEvents_complete() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
@@ -479,6 +499,7 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     @Deployment(resources = {"org/flowable/engine/test/api/runtime/oneTaskProcess.bpmn20.xml"})
     public void testProcessInstanceTerminatedEvents_complete() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
@@ -491,6 +512,7 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
         assertEquals("There should be no FlowableEventType.PROCESS_TERMINATED event after process complete.", 0, processTerminatedEvents.size());
     }
 
+    @Test
     @Deployment(resources = "org/flowable/engine/test/bpmn/event/end/TerminateEndEventTest.testProcessTerminate.bpmn")
     public void testProcessInstanceTerminatedEvents() throws Exception {
         ProcessInstance pi = runtimeService.startProcessInstanceByKey("terminateEndEventExample");
@@ -522,6 +544,7 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     @Deployment(resources = {"org/flowable/engine/test/bpmn/event/end/TerminateEndEventTest.testTerminateInCallActivity.bpmn",
             "org/flowable/engine/test/bpmn/event/end/TerminateEndEventTest.subProcessTerminate.bpmn"})
     public void testProcessInstanceTerminatedEvents_callActivity() throws Exception {
@@ -540,6 +563,7 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     @Deployment(resources = {"org/flowable/engine/test/bpmn/event/end/TerminateEndEventTest.testTerminateInSubProcessWithBoundaryTerminateAll.bpmn20.xml"})
     public void testTerminateAllInSubProcess() throws Exception {
         ProcessInstance pi = runtimeService.startProcessInstanceByKey("terminateEndEventWithBoundary");
@@ -556,6 +580,7 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     @Deployment(resources = {"org/flowable/engine/test/bpmn/event/end/TerminateEndEventTest.testTerminateInParentProcess.bpmn",
             "org/flowable/engine/test/api/runtime/oneTaskProcess.bpmn20.xml"})
     public void testProcessInstanceTerminatedEvents_terminateInParentProcess() throws Exception {
@@ -596,6 +621,7 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     @Deployment(resources = {
             "org/flowable/engine/test/bpmn/event/error/BoundaryErrorEventTest.testCatchErrorOnCallActivity-parent.bpmn20.xml",
             "org/flowable/engine/test/bpmn/event/error/BoundaryErrorEventTest.subprocess.bpmn20.xml"
@@ -626,6 +652,7 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
         assertProcessEnded(pi.getId());
     }
 
+    @Test
     @Deployment(resources = {
             "org/flowable/engine/test/bpmn/multiinstance/MultiInstanceTest.testParallelCallActivity.bpmn20.xml",
             "org/flowable/engine/test/bpmn/multiinstance/MultiInstanceTest.externalSubProcess.bpmn20.xml"})
@@ -644,6 +671,7 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
         assertEquals(0, taskService.createTaskQuery().count());
     }
 
+    @Test
     @Deployment(resources = "org/flowable/engine/test/api/runtime/subProcessWithTerminateEnd.bpmn20.xml")
     public void testProcessInstanceTerminatedEventInSubProcess() throws Exception {
         ProcessInstance pi = runtimeService.startProcessInstanceByKey("subProcessWithTerminateEndTest");
@@ -684,6 +712,7 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
     }
 
 
+    @Test
     @Deployment(resources = "org/flowable/engine/test/api/runtime/multipleSubprocessTerminateEnd.bpmn20.xml")
     public void testProcessInstanceWithMultipleSubprocessAndTerminateEnd2() throws Exception {
         ProcessInstance pi = runtimeService.startProcessInstanceByKey("multiplesubProcessWithTerminateEndTest");
@@ -755,22 +784,31 @@ public class ProcessInstanceEventsTest extends PluggableFlowableTestCase {
         assertEquals(0, processCanceledEvents.size());
     }
 
+    @Test
+    @Deployment(resources = "org/flowable/engine/test/api/event/ProcessInstanceEventsTest.testProcessInstanceEvents.bpmn20.xml")
+    public void startAsyncProcessInstanceEvents() {
+        ProcessInstance processInstance = runtimeService.createProcessInstanceBuilder().processDefinitionKey("oneTaskProcess").startAsync();
+        assertNotNull(processInstance);
+
+        assertProcessStartedEvents(processInstance);
+        listener.clearEventsReceived();
+        FilteredStaticTestFlowableEventListener.clearEventsReceived();
+    }
+
     private void assertEventsEqual(FlowableEvent event1, FlowableEvent event2) {
         assertTrue(EqualsBuilder.reflectionEquals(event1, event2));
 
     }
 
-    @Override
-    protected void initializeServices() {
-        super.initializeServices();
+    @BeforeEach
+    protected void setUp() {
         this.listener = new TestInitializedEntityEventListener();
         processEngineConfiguration.getEventDispatcher().addEventListener(this.listener);
         FilteredStaticTestFlowableEventListener.clearEventsReceived();
     }
 
-    @Override
+    @AfterEach
     protected void tearDown() throws Exception {
-        super.tearDown();
 
         if (listener != null) {
             listener.clearEventsReceived();

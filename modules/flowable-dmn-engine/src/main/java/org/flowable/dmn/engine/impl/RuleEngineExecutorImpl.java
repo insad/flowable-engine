@@ -85,7 +85,7 @@ public class RuleEngineExecutorImpl implements RuleEngineExecutor {
         DecisionTable currentDecisionTable = (DecisionTable) decision.getExpression();
 
         // create execution context and audit trail
-        ELExecutionContext executionContext = ELExecutionContextBuilder.build(decision, executeDecisionInfo.getVariables());
+        ELExecutionContext executionContext = ELExecutionContextBuilder.build(decision, executeDecisionInfo);
 
         try {
             sanityCheckDecisionTable(currentDecisionTable);
@@ -222,7 +222,7 @@ public class RuleEngineExecutorImpl implements RuleEngineExecutor {
                 // add audit entry
                 executionContext.getAuditContainer().addInputEntry(rule.getRuleNumber(), inputEntryId, conditionResult);
 
-                LOGGER.debug("input entry {} ( {} {} ): {} ", inputEntryId,
+                LOGGER.debug("input entry {} ( {} {} ): {}", inputEntryId,
                         conditionContainer.getInputClause().getInputExpression().getText(),
                         inputEntryText, conditionResult);
 
@@ -296,7 +296,7 @@ public class RuleEngineExecutorImpl implements RuleEngineExecutor {
                 executionContext.getAuditContainer().addDecisionResultType(outputVariableId, outputVariableType);
 
                 if (executionVariable != null) {
-                    LOGGER.debug("Created conclusion result: {} of type: {} with value {} ", outputVariableId, resultValue.getClass(), resultValue.toString());
+                    LOGGER.debug("Created conclusion result: {} of type: {} with value {}", outputVariableId, resultValue.getClass(), resultValue);
                 } else {
                     LOGGER.warn("Could not create conclusion result");
                 }

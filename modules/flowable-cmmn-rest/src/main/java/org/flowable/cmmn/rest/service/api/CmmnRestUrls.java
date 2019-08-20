@@ -45,6 +45,7 @@ public final class CmmnRestUrls {
     public static final String SEGMENT_EVENTS = "events";
     public static final String SEGMENT_IDENTITYLINKS_FAMILY_GROUPS = "groups";
     public static final String SEGMENT_IDENTITYLINKS_FAMILY_USERS = "users";
+    public static final String SEGMENT_FORM = "form";
     public static final String SEGMENT_VARIABLE_DATA = "data";
     public static final String SEGMENT_HISTORIC_CASE_INSTANCE_RESOURCE = "historic-case-instances";
     public static final String SEGMENT_HISTORIC_TASK_INSTANCE_RESOURCE = "historic-task-instances";
@@ -77,8 +78,10 @@ public final class CmmnRestUrls {
     public static final String SEGMENT_DIAGRAM = "diagram";
     public static final String SEGMENT_SIGNALS = "signals";
     public static final String SEGMENT_IMAGE = "image";
+    public static final String SEGMENT_START_FORM = "start-form";
     public static final String SEGMENT_DECISION_TABLES = "decision-tables";
     public static final String SEGMENT_FORM_DEFINITIONS = "form-definitions";
+    public static final String SEGMENT_STAGE_OVERVIEW = "stage-overview";
 
     /**
      * URL template for the deployment collection: <i>cmmn-repository/deployments</i>
@@ -130,6 +133,11 @@ public final class CmmnRestUrls {
      */
     public static final String[] URL_CASE_DEFINITION_IDENTITYLINK = { SEGMENT_REPOSITORY_RESOURCES, SEGMENT_CASE_DEFINITION_RESOURCE, "{0}", SEGMENT_IDENTITYLINKS, "{1}", "{2}" };
 
+    /**
+     * URL template for the start form of a case definition: <i>cmmn-repository/case-definitions/{0:caseDefinitionId}/start-form</i>
+     */
+    public static final String[] URL_CASE_DEFINITION_START_FORM = { SEGMENT_REPOSITORY_RESOURCES, SEGMENT_CASE_DEFINITION_RESOURCE, "{0}", SEGMENT_START_FORM };
+    
     /**
      * URL template for the image of a case definition: <i>cmmn-repository/case-definitions/{0:caseDefinitionId}/image</i>
      */
@@ -191,6 +199,11 @@ public final class CmmnRestUrls {
     public static final String[] URL_TASK_IDENTITYLINK = { SEGMENT_RUNTIME_RESOURCES, SEGMENT_TASK_RESOURCE, "{0}", SEGMENT_IDENTITYLINKS, "{1}", "{2}", "{3}" };
     
     /**
+     * URL template for a task form: <i>runtime/tasks/{0:taskId}/form</i>
+     */
+    public static final String[] URL_TASK_FORM = { SEGMENT_RUNTIME_RESOURCES, SEGMENT_TASK_RESOURCE, "{0}", SEGMENT_FORM };
+    
+    /**
      * URL template for an task's events: <i>runtime/tasks/{0:taskId}/events</i>
      */
     public static final String[] URL_TASK_EVENT_COLLECTION = { SEGMENT_RUNTIME_RESOURCES, SEGMENT_TASK_RESOURCE, "{0}", SEGMENT_EVENTS };
@@ -234,6 +247,11 @@ public final class CmmnRestUrls {
      * URL template for a single case instance variable data: <i>cmmn-runtime/case-instances/{0:processInstanceId}/variables/{1:variableName}/data</i>
      */
     public static final String[] URL_CASE_INSTANCE_VARIABLE_DATA = { SEGMENT_RUNTIME_RESOURCES, SEGMENT_CASE_INSTANCE_RESOURCE, "{0}", SEGMENT_VARIABLES, "{1}", SEGMENT_VARIABLE_DATA };
+
+    /**
+     * URL template for a single case instance stage overview: <i>cmmn-runtime/case-instances/{0:caseInstanceId}/stage-overview</i>
+     */
+    public static final String[] URL_CASE_INSTANCE_STAGE_OVERVIEW = { SEGMENT_RUNTIME_RESOURCES, SEGMENT_CASE_INSTANCE_RESOURCE, "{0}", SEGMENT_STAGE_OVERVIEW};
 
     /**
      * URL template for a case instance's identity links: <i>cmmn-runtime/case-instances/{0:caseInstanceId}/identitylinks</i>
@@ -327,6 +345,11 @@ public final class CmmnRestUrls {
     public static final String[] URL_HISTORIC_CASE_INSTANCE = { SEGMENT_HISTORY_RESOURCES, SEGMENT_HISTORIC_CASE_INSTANCE_RESOURCE, "{0}" };
 
     /**
+     * URL template for a single historic case instance stage overview: <i>cmmn-history/historic-case-instances/{0:caseInstanceId}/stage-overview</i>
+     */
+    public static final String[] URL_HISTORIC_CASE_INSTANCE_STAGE_OVERVIEW = { SEGMENT_HISTORY_RESOURCES, SEGMENT_HISTORIC_CASE_INSTANCE_RESOURCE, "{0}", SEGMENT_STAGE_OVERVIEW};
+
+    /**
      * URL template for historic process instance query: <i>cmmn-history/historic-case-instances</i>
      */
     public static final String[] URL_HISTORIC_CASE_INSTANCES = { SEGMENT_HISTORY_RESOURCES, SEGMENT_HISTORIC_CASE_INSTANCE_RESOURCE };
@@ -341,7 +364,7 @@ public final class CmmnRestUrls {
      */
     public static final String[] URL_HISTORIC_CASE_INSTANCE_VARIABLE_DATA = { SEGMENT_HISTORY_RESOURCES, SEGMENT_HISTORIC_CASE_INSTANCE_RESOURCE, "{0}", SEGMENT_VARIABLES, "{1}",
             SEGMENT_VARIABLE_DATA };
-
+    
     /**
      * URL template for a single historic task instance: <i>history/historic-task-instances/{0:taskId}</i>
      */
@@ -358,10 +381,15 @@ public final class CmmnRestUrls {
     public static final String[] URL_HISTORIC_TASK_INSTANCE_IDENTITY_LINKS = { SEGMENT_HISTORY_RESOURCES, SEGMENT_HISTORIC_TASK_INSTANCE_RESOURCE, "{0}", SEGMENT_IDENTITYLINKS };
 
     /**
-     * URL template for a single historic task instance: <i>history/historic-task -instances/{0:taskId}/variables/{1:variableName}</i>
+     * URL template for a single historic task instance: <i>history/historic-task-instances/{0:taskId}/variables/{1:variableName}</i>
      */
     public static final String[] URL_HISTORIC_TASK_INSTANCE_VARIABLE_DATA = { SEGMENT_HISTORY_RESOURCES, SEGMENT_HISTORIC_TASK_INSTANCE_RESOURCE, "{0}", SEGMENT_VARIABLES, "{1}", SEGMENT_VARIABLE_DATA };
 
+    /**
+     * URL template for a historic task instance form: <i>history/historic-task-instances/{0:taskId}/form</i>
+     */
+    public static final String[] URL_HISTORIC_TASK_INSTANCE_FORM = { SEGMENT_HISTORY_RESOURCES, SEGMENT_HISTORIC_TASK_INSTANCE_RESOURCE, "{0}", SEGMENT_FORM };
+    
     /**
      * URL template for historic activity instance query: <i>history/historic-activity-instances</i>
      */

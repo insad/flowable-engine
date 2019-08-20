@@ -16,8 +16,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 
-import java.util.List;
-
 import org.flowable.cmmn.api.runtime.PlanItemInstanceState;
 import org.flowable.cmmn.engine.CmmnEngine;
 import org.flowable.cmmn.engine.CmmnEngines;
@@ -105,8 +103,8 @@ public class CmmnEngineConfiguratorAsyncHistoryTest {
             // Execution scope should be all (see the CmmnEngineConfigurator)
             assertEquals(JobServiceConfiguration.JOB_EXECUTION_SCOPE_ALL, historyJob.getScopeType());
         }
-        assertEquals(bpmnHistoryJobs, 1);
-        assertEquals(cmmnHistoryJobs, 2);
+        assertEquals(1, bpmnHistoryJobs);
+        assertEquals(2, cmmnHistoryJobs);
         
         // Starting the async history executor should process all of these
         CmmnJobTestHelper.waitForAsyncHistoryExecutorToProcessAllJobs(cmmnEngine.getCmmnEngineConfiguration(), 10000L, 200L, true);

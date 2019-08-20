@@ -31,11 +31,14 @@ import org.flowable.bpmn.converter.child.BaseChildElementParser;
 import org.flowable.bpmn.converter.child.CancelEventDefinitionParser;
 import org.flowable.bpmn.converter.child.CompensateEventDefinitionParser;
 import org.flowable.bpmn.converter.child.ConditionExpressionParser;
+import org.flowable.bpmn.converter.child.ConditionParser;
+import org.flowable.bpmn.converter.child.ConditionalEventDefinitionParser;
 import org.flowable.bpmn.converter.child.DataInputAssociationParser;
 import org.flowable.bpmn.converter.child.DataOutputAssociationParser;
 import org.flowable.bpmn.converter.child.DataStateParser;
 import org.flowable.bpmn.converter.child.DocumentationParser;
 import org.flowable.bpmn.converter.child.ErrorEventDefinitionParser;
+import org.flowable.bpmn.converter.child.EscalationEventDefinitionParser;
 import org.flowable.bpmn.converter.child.ExecutionListenerParser;
 import org.flowable.bpmn.converter.child.FieldExtensionParser;
 import org.flowable.bpmn.converter.child.FlowNodeRefParser;
@@ -60,6 +63,7 @@ import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.ExtensionAttribute;
 import org.flowable.bpmn.model.ExtensionElement;
 import org.flowable.bpmn.model.GraphicInfo;
+import org.flowable.bpmn.model.IOParameter;
 
 public class BpmnXMLUtil implements BpmnXMLConstants {
 
@@ -68,12 +72,15 @@ public class BpmnXMLUtil implements BpmnXMLConstants {
     static {
         addGenericParser(new CancelEventDefinitionParser());
         addGenericParser(new CompensateEventDefinitionParser());
+        addGenericParser(new ConditionalEventDefinitionParser());
+        addGenericParser(new ConditionParser());
         addGenericParser(new ConditionExpressionParser());
         addGenericParser(new DataInputAssociationParser());
         addGenericParser(new DataOutputAssociationParser());
         addGenericParser(new DataStateParser());
         addGenericParser(new DocumentationParser());
         addGenericParser(new ErrorEventDefinitionParser());
+        addGenericParser(new EscalationEventDefinitionParser());
         addGenericParser(new ExecutionListenerParser());
         addGenericParser(new FieldExtensionParser());
         addGenericParser(new FlowableEventListenerParser());
@@ -271,6 +278,7 @@ public class BpmnXMLUtil implements BpmnXMLConstants {
 
                                     xtw.writeNamespace(attribute.getNamespacePrefix(), attribute.getNamespace());
                                     namespaceMap.put(attribute.getNamespacePrefix(), attribute.getNamespace());
+                                    localNamespaceMap.put(attribute.getNamespacePrefix(), attribute.getNamespace());
                                 }
 
                                 xtw.writeAttribute(attribute.getNamespacePrefix(), attribute.getNamespace(), attribute.getName(), attribute.getValue());
@@ -301,6 +309,35 @@ public class BpmnXMLUtil implements BpmnXMLConstants {
             xtw.writeEndElement();
         }
     }
+    
+    public static boolean writeIOParameters(String elementName, List<IOParameter> parameterList, boolean didWriteExtensionStartElement, XMLStreamWriter xtw) throws Exception {
+
+        if (parameterList.isEmpty()) {
+            return didWriteExtensionStartElement;
+        }
+
+        for (IOParameter ioParameter : parameterList) {
+            if (!didWriteExtensionStartElement) {
+                xtw.writeStartElement(ELEMENT_EXTENSIONS);
+                didWriteExtensionStartElement = true;
+            }
+
+            xtw.writeStartElement(FLOWABLE_EXTENSIONS_PREFIX, elementName, FLOWABLE_EXTENSIONS_NAMESPACE);
+            if (StringUtils.isNotEmpty(ioParameter.getSource())) {
+                writeDefaultAttribute(ATTRIBUTE_IOPARAMETER_SOURCE, ioParameter.getSource(), xtw);
+            }
+            if (StringUtils.isNotEmpty(ioParameter.getSourceExpression())) {
+                writeDefaultAttribute(ATTRIBUTE_IOPARAMETER_SOURCE_EXPRESSION, ioParameter.getSourceExpression(), xtw);
+            }
+            if (StringUtils.isNotEmpty(ioParameter.getTarget())) {
+                writeDefaultAttribute(ATTRIBUTE_IOPARAMETER_TARGET, ioParameter.getTarget(), xtw);
+            }
+
+            xtw.writeEndElement();
+        }
+
+        return didWriteExtensionStartElement;
+    }
 
     public static List<String> parseDelimitedList(String s) {
         List<String> result = new ArrayList<>();
@@ -322,7 +359,7 @@ public class BpmnXMLUtil implements BpmnXMLConstants {
                     strb.delete(0, strb.length());
                 }
 
-                if (c != ',' || (insideExpression)) {
+                if (c != ',' || insideExpression) {
                     strb.append(c);
                 }
 

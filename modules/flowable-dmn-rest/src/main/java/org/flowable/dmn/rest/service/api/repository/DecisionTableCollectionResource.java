@@ -12,6 +12,8 @@
  */
 package org.flowable.dmn.rest.service.api.repository;
 
+import static org.flowable.common.rest.api.PaginateListUtil.paginateList;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -70,7 +72,7 @@ public class DecisionTableCollectionResource {
     @ApiImplicitParams({
             @ApiImplicitParam(name = "category", dataType = "string", value = "Only return decision tables with the given category.", paramType = "query"),
             @ApiImplicitParam(name = "categoryLike", dataType = "string", value = "Only return decision tables with a category like the given name.", paramType = "query"),
-            @ApiImplicitParam(name = "categoryNotEquals", dataType = "string", value = "Only return decision tables which don’t have the given category.", paramType = "query"),
+            @ApiImplicitParam(name = "categoryNotEquals", dataType = "string", value = "Only return decision tables which do not have the given category.", paramType = "query"),
             @ApiImplicitParam(name = "key", dataType = "string", value = "Only return decision tables with the given key.", paramType = "query"),
             @ApiImplicitParam(name = "keyLike", dataType = "string", value = "Only return decision tables with a name like the given key.", paramType = "query"),
             @ApiImplicitParam(name = "name", dataType = "string", value = "Only return decision tables with the given name.", paramType = "query"),
@@ -143,6 +145,6 @@ public class DecisionTableCollectionResource {
             restApiInterceptor.accessDecisionTableInfoWithQuery(decisionTableQuery);
         }
 
-        return new DecisionTablesDmnPaginateList(dmnRestResponseFactory).paginateList(allRequestParams, decisionTableQuery, "name", properties);
+        return paginateList(allRequestParams, decisionTableQuery, "name", properties, dmnRestResponseFactory::createDecisionTableResponseList);
     }
 }

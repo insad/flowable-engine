@@ -12,6 +12,8 @@
  */
 package org.flowable.form.rest.service.api.repository;
 
+import static org.flowable.common.rest.api.PaginateListUtil.paginateList;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,6 +30,7 @@ import org.flowable.form.api.FormDeploymentBuilder;
 import org.flowable.form.api.FormDeploymentQuery;
 import org.flowable.form.api.FormRepositoryService;
 import org.flowable.form.engine.impl.DeploymentQueryProperty;
+import org.flowable.form.rest.FormRestApiInterceptor;
 import org.flowable.form.rest.FormRestResponseFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -68,13 +71,16 @@ public class FormDeploymentCollectionResource {
 
     @Autowired
     protected FormRepositoryService formRepositoryService;
+    
+    @Autowired(required=false)
+    protected FormRestApiInterceptor restApiInterceptor;
 
     @ApiOperation(value = "List of Form Deployments", nickname = "listFormDeployments", tags = { "Form Deployments" })
     @ApiImplicitParams({
             @ApiImplicitParam(name = "name", dataType = "string", value = "Only return form deployments with the given name.", paramType = "query"),
             @ApiImplicitParam(name = "nameLike", dataType = "string", value = "Only return form deployments with a name like the given name.", paramType = "query"),
             @ApiImplicitParam(name = "category", dataType = "string", value = "Only return form deployments with the given category.", paramType = "query"),
-            @ApiImplicitParam(name = "categoryNotEquals", dataType = "string", value = "Only return form deployments which don’t have the given category.", paramType = "query"),
+            @ApiImplicitParam(name = "categoryNotEquals", dataType = "string", value = "Only return form deployments which do not have the given category.", paramType = "query"),
             @ApiImplicitParam(name = "parentDeploymentId", dataType = "string", value = "Only return form deployments with the given parent deployment id.", paramType = "query"),
             @ApiImplicitParam(name = "parentDeploymentIdLike", dataType = "string", value = "Only return form deployments with a parent deployment id like the given value.", paramType = "query"),
             @ApiImplicitParam(name = "tenantId", dataType = "string", value = "Only return form deployments with the given tenantId.", paramType = "query"),
@@ -120,8 +126,12 @@ public class FormDeploymentCollectionResource {
                 deploymentQuery.deploymentWithoutTenantId();
             }
         }
+        
+        if (restApiInterceptor != null) {
+            restApiInterceptor.accessDeploymentsWithQuery(deploymentQuery);
+        }
 
-        return new FormDeploymentsPaginateList(formRestResponseFactory).paginateList(allRequestParams, deploymentQuery, "id", allowedSortProperties);
+        return paginateList(allRequestParams, deploymentQuery, "id", allowedSortProperties, formRestResponseFactory::createFormDeploymentResponseList);
     }
 
     @ApiOperation(value = "Create a new form deployment", tags = {
@@ -139,6 +149,10 @@ public class FormDeploymentCollectionResource {
         if (!(request instanceof MultipartHttpServletRequest)) {
             throw new FlowableIllegalArgumentException("Multipart request is required");
         }
+        
+        if (restApiInterceptor != null) {
+            restApiInterceptor.executeNewDeploymentForTenantId(tenantId);
+        }
 
         MultipartHttpServletRequest multipartRequest = (MultipartHttpServletRequest) request;
 
@@ -151,7 +165,7 @@ public class FormDeploymentCollectionResource {
         try {
             FormDeploymentBuilder deploymentBuilder = formRepositoryService.createDeployment();
             String fileName = file.getOriginalFilename();
-            if (StringUtils.isEmpty(fileName) || !(fileName.endsWith(".form"))) {
+            if (StringUtils.isEmpty(fileName) || !fileName.endsWith(".form")) {
                 fileName = file.getName();
             }
 
@@ -164,6 +178,10 @@ public class FormDeploymentCollectionResource {
 
             if (tenantId != null) {
                 deploymentBuilder.tenantId(tenantId);
+            }
+
+            if (restApiInterceptor != null) {
+                restApiInterceptor.enhanceDeployment(deploymentBuilder);
             }
 
             FormDeployment deployment = deploymentBuilder.deploy();

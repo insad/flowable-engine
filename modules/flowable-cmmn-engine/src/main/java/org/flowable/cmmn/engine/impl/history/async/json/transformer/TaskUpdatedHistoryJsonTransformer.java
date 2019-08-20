@@ -12,7 +12,9 @@
  */
 package org.flowable.cmmn.engine.impl.history.async.json.transformer;
 
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 
 import org.flowable.cmmn.engine.impl.history.async.CmmnAsyncHistoryConstants;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
@@ -34,8 +36,8 @@ public class TaskUpdatedHistoryJsonTransformer extends AbstractTaskHistoryJsonTr
     private static final Logger LOGGER = LoggerFactory.getLogger(TaskUpdatedHistoryJsonTransformer.class);
 
     @Override
-    public String getType() {
-        return CmmnAsyncHistoryConstants.TYPE_TASK_UPDATED;
+    public List<String> getTypes() {
+        return Collections.singletonList(CmmnAsyncHistoryConstants.TYPE_TASK_UPDATED);
     }
     
     @Override
@@ -47,7 +49,11 @@ public class TaskUpdatedHistoryJsonTransformer extends AbstractTaskHistoryJsonTr
     public void transformJson(HistoryJobEntity job, ObjectNode historicalData, CommandContext commandContext) {
         HistoricTaskInstanceEntity historicTaskInstance = getHistoricTaskEntity(historicalData, commandContext);
 
-        Date lastUpdateTime = getDateFromJson(historicalData, AsyncHistorySession.TIMESTAMP);
+        Date lastUpdateTime = getDateFromJson(historicalData, CmmnAsyncHistoryConstants.FIELD_LAST_UPDATE_TIME);
+        if (lastUpdateTime == null) {
+            // this is for backwards compatibility for jobs that don't have the last update time set
+            lastUpdateTime = getDateFromJson(historicalData, AsyncHistorySession.TIMESTAMP);
+        }
         if (historicTaskInstance.getLastUpdateTime() == null || !historicTaskInstance.getLastUpdateTime().after(lastUpdateTime)) {
            copyCommonHistoricTaskInstanceFields(historicalData, historicTaskInstance);
         

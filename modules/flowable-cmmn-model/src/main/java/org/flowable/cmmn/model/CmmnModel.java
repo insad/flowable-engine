@@ -101,7 +101,7 @@ public class CmmnModel {
     public PlanItemDefinition findPlanItemDefinition(String id) {
         PlanItemDefinition foundPlanItemDefinition = null;
         for (Case caseModel : cases) {
-            foundPlanItemDefinition = caseModel.getPlanModel().findPlanItemDefinition(id);
+            foundPlanItemDefinition = caseModel.getPlanModel().findPlanItemDefinitionInStageOrUpwards(id);
             if (foundPlanItemDefinition != null) {
                 break;
             }
@@ -110,7 +110,7 @@ public class CmmnModel {
         if (foundPlanItemDefinition == null) {
             for (Case caseModel : cases) {
                 for (Stage stage : caseModel.getPlanModel().findPlanItemDefinitionsOfType(Stage.class, true)) {
-                    foundPlanItemDefinition = stage.findPlanItemDefinition(id);
+                    foundPlanItemDefinition = stage.findPlanItemDefinitionInStageOrUpwards(id);
                     if (foundPlanItemDefinition != null) {
                         break;
                     }
@@ -137,6 +137,32 @@ public class CmmnModel {
             for (Case caseModel : cases) {
                 for (Stage stage : caseModel.getPlanModel().findPlanItemDefinitionsOfType(Stage.class, true)) {
                     foundPlanItem = stage.findPlanItemInPlanFragmentOrUpwards(id);
+                    if (foundPlanItem != null) {
+                        break;
+                    }
+                }
+                if (foundPlanItem != null) {
+                    break;
+                }
+            }
+        }
+
+        return foundPlanItem;
+    }
+    
+    public PlanItem findPlanItemByPlanItemDefinitionId(String id) {
+        PlanItem foundPlanItem = null;
+        for (Case caseModel : cases) {
+            foundPlanItem = caseModel.getPlanModel().findPlanItemForPlanItemDefinitionInPlanFragmentOrDownwards(id);
+            if (foundPlanItem != null) {
+                break;
+            }
+        }
+
+        if (foundPlanItem == null) {
+            for (Case caseModel : cases) {
+                for (Stage stage : caseModel.getPlanModel().findPlanItemDefinitionsOfType(Stage.class, true)) {
+                    foundPlanItem = stage.findPlanItemForPlanItemDefinitionInPlanFragmentOrDownwards(id);
                     if (foundPlanItem != null) {
                         break;
                     }

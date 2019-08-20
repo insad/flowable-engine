@@ -14,24 +14,28 @@
 	</parent>
 
 	<packaging>pom</packaging>
-	<version>6.3.2-SNAPSHOT</version>
+	<version>6.5.0-SNAPSHOT</version>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<jdk.version>1.8</jdk.version>
-		<spring.framework.version>4.3.14.RELEASE</spring.framework.version>
-		<spring.security.version>4.2.4.RELEASE</spring.security.version>
-		<jackson.version>2.8.11</jackson.version>
+		<spring.framework.version>5.1.9.RELEASE</spring.framework.version>
+		<spring.security.version>5.1.6.RELEASE</spring.security.version>
+		<jackson.version>2.9.9</jackson.version>
 		<mule.version>3.8.0</mule.version>
-    <camel.version>2.22.0</camel.version>
-		<cxf.version>3.2.5</cxf.version>
-		<slf4j.version>1.7.25</slf4j.version>
-		<spring.boot.version>1.5.10.RELEASE</spring.boot.version>
+        <camel.version>2.24.0</camel.version>
+		<cxf.version>3.3.3</cxf.version>
+		<slf4j.version>1.7.28</slf4j.version>
+		<spring.boot.version>2.1.7.RELEASE</spring.boot.version>
+
+		<junit.version>4.12</junit.version>
+		<junit.jupiter.version>5.5.1</junit.jupiter.version>
+		<mockito.version>3.0.0</mockito.version>
 
         <checkstyle.config.location>checkstyle/flowable-checkstyle.xml</checkstyle.config.location>
         <checkstyle.suppressions.location>/checkstyle/flowable-suppressions.xml</checkstyle.suppressions.location>
 
         <!-- JVM params for test execution -->
-		<argLine>-Duser.language=en</argLine>
+		<argLine>-Duser.language=en -XX:+UseParallelGC</argLine>
 
 		<!-- OSGi bundles properties -->
 		<flowable.artifact />
@@ -76,7 +80,7 @@
 			<dependency>
 				<groupId>com.h2database</groupId>
 				<artifactId>h2</artifactId>
-				<version>1.4.197</version>
+				<version>1.4.199</version>
 			</dependency>
 			<!-- Logging -->
 			<dependency>
@@ -102,7 +106,7 @@
 			<dependency>
 				<groupId>org.apache.commons</groupId>
 				<artifactId>commons-lang3</artifactId>
-				<version>3.7</version>
+				<version>3.9</version>
 			</dependency>
 			<dependency>
 				<groupId>commons-io</groupId>
@@ -112,22 +116,22 @@
 			<dependency>
 			    <groupId>commons-codec</groupId>
 			    <artifactId>commons-codec</artifactId>
-			    <version>1.11</version>
+			    <version>1.13</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.httpcomponents</groupId>
 				<artifactId>httpclient</artifactId>
-				<version>4.5.6</version>
+				<version>4.5.9</version>
 			</dependency>
             <dependency>
                 <groupId>org.apache.httpcomponents</groupId>
                 <artifactId>httpcore</artifactId>
-                <version>4.4.10</version>
+                <version>4.4.11</version>
             </dependency>
 			<dependency>
 				<groupId>org.apache.httpcomponents</groupId>
 				<artifactId>httpmime</artifactId>
-				<version>4.5.6</version>
+				<version>4.5.9</version>
 			</dependency>
 			<dependency>
 				<groupId>com.oracle.jdbc</groupId>
@@ -138,32 +142,33 @@
 			<dependency>
 				<groupId>javax.xml.bind</groupId>
 				<artifactId>jaxb-api</artifactId>
-				<version>2.3.0</version>
+				<version>2.3.1</version>
 			</dependency>
 			<dependency>
 				<groupId>com.sun.xml.bind</groupId>
 				<artifactId>jaxb-impl</artifactId>
-				<version>2.3.0</version>
+				<version>2.3.1</version>
 			</dependency>
 			<dependency>
 				<groupId>com.sun.xml.bind</groupId>
 				<artifactId>jaxb-xjc</artifactId>
-				<version>2.3.0</version>
+				<version>2.3.1</version>
 			</dependency>
 			<dependency>
 				<groupId>javax.servlet</groupId>
 				<artifactId>javax.servlet-api</artifactId>
 				<version>3.1.0</version>
+                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>com.sun.mail</groupId>
 				<artifactId>javax.mail</artifactId>
-				<version>1.6.1</version>
+				<version>1.6.2</version>
 			</dependency>
 			<dependency>
 				<groupId>javax.persistence</groupId>
-				<artifactId>persistence-api</artifactId>
-				<version>1.0</version>
+				<artifactId>javax.persistence-api</artifactId>
+				<version>2.2</version>
 				<scope>provided</scope>
 			</dependency>
 			<dependency>
@@ -175,17 +180,24 @@
 			<dependency>
 				<groupId>io.swagger</groupId>
 				<artifactId>swagger-annotations</artifactId>
-				<version>1.5.19</version>
+				<version>1.5.22</version>
 			</dependency>
 			<dependency>
 				<groupId>io.swagger</groupId>
 				<artifactId>swagger-models</artifactId>
-				<version>1.5.19</version>
+				<version>1.5.22</version>
+			</dependency>
+			<dependency>
+				<groupId>org.junit</groupId>
+				<artifactId>junit-bom</artifactId>
+				<version>${junit.jupiter.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
 			</dependency>
 			<dependency>
 				<groupId>junit</groupId>
 				<artifactId>junit</artifactId>
-				<version>4.12</version>
+				<version>${junit.version}</version>
 				<scope>test</scope>
 			</dependency>
 			<dependency>
@@ -195,9 +207,9 @@
 				<scope>test</scope>
 			</dependency>
 			<dependency>
-				<groupId>com.ibm.db2.jcc</groupId>
-				<artifactId>db2jcc4</artifactId>
-				<version>10.1</version>
+				<groupId>com.ibm.db2</groupId>
+				<artifactId>jcc</artifactId>
+				<version>11.1.4.4</version>
 				<scope>test</scope>
 			</dependency>
 			<dependency>
@@ -522,6 +534,26 @@
             </dependency>
             <dependency>
                 <groupId>org.flowable</groupId>
+                <artifactId>flowable-entitylink-service-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.flowable</groupId>
+                <artifactId>flowable-entitylink-service</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+				<groupId>org.flowable</groupId>
+				<artifactId>flowable-eventsubscription-service</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+            <dependency>
+                <groupId>org.flowable</groupId>
+                <artifactId>flowable-eventsubscription-service-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.flowable</groupId>
                 <artifactId>flowable-task-service-api</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -543,6 +575,16 @@
             <dependency>
                 <groupId>org.flowable</groupId>
                 <artifactId>flowable-job-spring-service</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.flowable</groupId>
+                <artifactId>flowable-batch-service-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.flowable</groupId>
+                <artifactId>flowable-batch-service</artifactId>
                 <version>${project.version}</version>
             </dependency>
 			<dependency>
@@ -664,21 +706,14 @@
 				<version>1.1.1</version>
 			</dependency>
 			<dependency>
-				<groupId>org.apache.openjpa</groupId>
-				<artifactId>openjpa</artifactId>
-				<version>1.2.2</version>
-				<scope>test</scope>
-				<exclusions>
-					<exclusion>
-						<artifactId>commons-logging</artifactId>
-						<groupId>commons-logging</groupId>
-					</exclusion>
-				</exclusions>
+				<groupId>org.hibernate</groupId>
+				<artifactId>hibernate-core</artifactId>
+				<version>5.3.5.Final</version>
 			</dependency>
 			<dependency>
 				<groupId>org.codehaus.groovy</groupId>
-				<artifactId>groovy-all</artifactId>
-				<version>2.4.15</version>
+				<artifactId>groovy-jsr223</artifactId>
+				<version>2.5.8</version>
 			</dependency>
 			<dependency>
 				<groupId>org.drools</groupId>
@@ -703,24 +738,30 @@
 			<dependency>
 				<groupId>org.mybatis</groupId>
 				<artifactId>mybatis</artifactId>
-				<version>3.4.5</version>
+				<version>3.5.2</version>
 			</dependency>
 			<dependency>
               <groupId>org.mybatis</groupId>
               <artifactId>mybatis-spring</artifactId>
-              <version>1.3.1</version>
+              <version>2.0.2</version>
             </dependency>
             <dependency>
                 <groupId>com.zaxxer</groupId>
                 <artifactId>HikariCP</artifactId>
-                <version>2.7.9</version>
+                <version>3.3.1</version>
             </dependency>
 			<dependency>
 				<groupId>org.mockito</groupId>
 				<artifactId>mockito-core</artifactId>
-				<version>2.19.0</version>
+				<version>${mockito.version}</version>
 				<scope>test</scope>
 			</dependency>
+			<dependency>
+				<groupId>org.mockito</groupId>
+				<artifactId>mockito-junit-jupiter</artifactId>
+				<version>${mockito.version}</version>
+			</dependency>
+
 			<dependency>
 				<groupId>org.osgi</groupId>
 				<artifactId>org.osgi.core</artifactId>
@@ -850,7 +891,7 @@
 			<dependency>
 				<groupId>org.liquibase</groupId>
 				<artifactId>liquibase-core</artifactId>
-				<version>3.6.1</version>
+				<version>3.7.0</version>
 				<exclusions>
 					<exclusion>
 						<groupId>ch.qos.logback</groupId>
@@ -867,23 +908,23 @@
 			<dependency>
 				<groupId>org.postgresql</groupId>
 				<artifactId>postgresql</artifactId>
-				<version>9.4.1212.jre7</version>
+				<version>42.2.6</version>
 				<scope>test</scope>
 			</dependency>
 			<dependency>
 				<groupId>xerces</groupId>
 				<artifactId>xercesImpl</artifactId>
-				<version>2.11.0</version>
+				<version>2.12.0</version>
 			</dependency>
 			<dependency>
 				<groupId>joda-time</groupId>
 				<artifactId>joda-time</artifactId>
-				<version>2.10</version>
+				<version>2.10.3</version>
 			</dependency>
 			<dependency>
 				<groupId>com.google.guava</groupId>
 				<artifactId>guava</artifactId>
-				<version>25.0-jre</version>
+				<version>28.0-jre</version>
 			</dependency>
 			<dependency>
 				<groupId>com.fasterxml.jackson.core</groupId>
@@ -898,7 +939,7 @@
 			<dependency>
 				<groupId>com.fasterxml.jackson.core</groupId>
 				<artifactId>jackson-databind</artifactId>
-				<version>${jackson.version}.1</version>
+				<version>2.9.9.3</version>
 			</dependency>
 			<dependency>
 				<groupId>com.fasterxml.jackson.datatype</groupId>
@@ -934,7 +975,7 @@
 			<dependency>
 				<groupId>com.fasterxml.uuid</groupId>
 				<artifactId>java-uuid-generator</artifactId>
-				<version>3.1.5</version>
+				<version>3.2.0</version>
 			</dependency>
 			<dependency>
 				<groupId>net.sourceforge.jtds</groupId>
@@ -942,15 +983,26 @@
 				<version>1.3.0</version>
 			</dependency>
 			<dependency>
+				<groupId>com.microsoft.sqlserver</groupId>
+				<artifactId>mssql-jdbc</artifactId>
+				<version>6.4.0.jre8</version>
+			</dependency>
+			<dependency>
 				<groupId>org.assertj</groupId>
 				<artifactId>assertj-core</artifactId>
-				<version>3.10.0</version>
+				<version>3.13.2</version>
+				<scope>test</scope>
+			</dependency>
+			<dependency>
+				<groupId>net.javacrumbs.json-unit</groupId>
+				<artifactId>json-unit-assertj</artifactId>
+				<version>2.8.0</version>
 				<scope>test</scope>
 			</dependency>
 			<dependency>
 				<groupId>com.spotify</groupId>
 				<artifactId>dockerfile-maven-plugin</artifactId>
-				<version>1.4.0</version>
+				<version>1.4.10</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
@@ -963,11 +1015,29 @@
 		<module>modules/flowable-bpmn-converter</module>
 		<module>modules/flowable-engine-common-api</module>
 		<module>modules/flowable-engine-common</module>
+		<module>modules/flowable-entitylink-service-api</module>
+		<module>modules/flowable-entitylink-service</module>
+		<module>modules/flowable-variable-service-api</module>
+		<module>modules/flowable-variable-service</module>
+        <module>modules/flowable-identitylink-service-api</module>
+		<module>modules/flowable-identitylink-service</module>
+		<module>modules/flowable-eventsubscription-service-api</module>
+		<module>modules/flowable-eventsubscription-service</module>
+        <module>modules/flowable-task-service-api</module>
+        <module>modules/flowable-task-service</module>
+        <module>modules/flowable-job-service-api</module>
+        <module>modules/flowable-job-service</module>
+        <module>modules/flowable-job-spring-service</module>
+        <module>modules/flowable-batch-service-api</module>
+        <module>modules/flowable-batch-service</module>
 		<module>modules/flowable-idm-api</module>
 		<module>modules/flowable-idm-engine</module>
 		<module>modules/flowable-idm-engine-configurator</module>
 		<module>modules/flowable-form-model</module>
 		<module>modules/flowable-form-api</module>
+        <module>modules/flowable-form-json-converter</module>
+        <module>modules/flowable-form-engine</module>
+        <module>modules/flowable-form-engine-configurator</module>
 		<module>modules/flowable-dmn-model</module>
 		<module>modules/flowable-dmn-api</module>
 		<module>modules/flowable-content-api</module>
@@ -976,15 +1046,7 @@
         <module>modules/flowable-cmmn-converter</module>
         <module>modules/flowable-cmmn-image-generator</module>
         <module>modules/flowable-cmmn-engine</module>
-        <module>modules/flowable-variable-service-api</module>
-		<module>modules/flowable-variable-service</module>
-        <module>modules/flowable-identitylink-service-api</module>
-		<module>modules/flowable-identitylink-service</module>
-        <module>modules/flowable-task-service-api</module>
-        <module>modules/flowable-task-service</module>
-        <module>modules/flowable-job-service-api</module>
-        <module>modules/flowable-job-service</module>
-        <module>modules/flowable-job-spring-service</module>
+		<module>modules/flowable-cmmn-engine-configurator</module>
 		<module>modules/flowable-engine</module>
 		<module>modules/flowable-app-engine-api</module>
 		<module>modules/flowable-app-engine</module>
@@ -995,18 +1057,17 @@
 		<plugins>
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.7.0</version>
+				<version>3.8.0</version>
 				<configuration>
 					<source>${jdk.version}</source>
 					<target>${jdk.version}</target>
 					<showDeprecation>true</showDeprecation>
 					<showWarnings>true</showWarnings>
-					<optimize>true</optimize>
 				</configuration>
 			</plugin>
 			<plugin>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>2.22.0</version>
+				<version>2.22.1</version>
 				<configuration>
 					<failIfNoTests>false</failIfNoTests>
 					<trimStackTrace>false</trimStackTrace>
@@ -1365,6 +1426,32 @@
 				<skipTests>true</skipTests>
 			</properties>
 		</profile>
+        <profile>
+            <id>coverage</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <version>0.8.3</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>prepare-agent</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>report</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
 		<profile>
 			<id>distro</id>
 			<modules>
@@ -1379,6 +1466,23 @@
                 <module>modules/flowable-spring-configurator</module>
 				<module>modules/flowable-secure-javascript</module>
 				<module>modules/flowable-groovy-script-static-engine</module>
+                <module>modules/flowable-form-model</module>
+                <module>modules/flowable-form-json-converter</module>
+                <module>modules/flowable-form-engine</module>
+                <module>modules/flowable-form-engine-configurator</module>
+                <module>modules/flowable-form-spring</module>
+                <module>modules/flowable-form-spring-configurator</module>
+                <module>modules/flowable-form-rest</module>
+                <module>modules/flowable-idm-engine-configurator</module>
+                <module>modules/flowable-idm-spring</module>
+                <module>modules/flowable-idm-spring-configurator</module>
+                <module>modules/flowable-idm-rest</module>
+                <module>modules/flowable-content-engine</module>
+                <module>modules/flowable-content-engine-configurator</module>
+                <module>modules/flowable-content-spring</module>
+                <module>modules/flowable-content-spring-configurator</module>
+                <module>modules/flowable-content-rest</module>
+                <module>modules/flowable-spring</module>
                 <module>modules/flowable-app-engine-spring</module>
                 <module>modules/flowable-app-engine-rest</module>
 				<module>modules/flowable-dmn-model</module>
@@ -1398,23 +1502,6 @@
                 <module>modules/flowable-cmmn-spring</module>
                 <module>modules/flowable-cmmn-spring-configurator</module>
                 <module>modules/flowable-cmmn-rest</module>
-				<module>modules/flowable-form-model</module>
-				<module>modules/flowable-form-json-converter</module>
-				<module>modules/flowable-form-engine</module>
-				<module>modules/flowable-form-engine-configurator</module>
-				<module>modules/flowable-form-spring</module>
-				<module>modules/flowable-form-spring-configurator</module>
-				<module>modules/flowable-form-rest</module>
-				<module>modules/flowable-idm-engine-configurator</module>
-				<module>modules/flowable-idm-spring</module>
-				<module>modules/flowable-idm-spring-configurator</module>
-                <module>modules/flowable-idm-rest</module>
-				<module>modules/flowable-content-engine</module>
-				<module>modules/flowable-content-engine-configurator</module>
-				<module>modules/flowable-content-spring</module>
-				<module>modules/flowable-content-spring-configurator</module>
-				<module>modules/flowable-content-rest</module>
-				<module>modules/flowable-spring</module>
 				<module>modules/flowable5-engine</module>
 				<module>modules/flowable5-compatibility</module>
 				<module>modules/flowable5-spring</module>
@@ -1626,15 +1713,6 @@
                 </plugins>
             </build>
 		</profile>
-        <profile>
-            <id>java9+</id>
-            <activation>
-                <jdk>[9,)</jdk>
-            </activation>
-            <properties>
-                <argLine>--add-modules java.xml.bind</argLine>
-            </properties>
-        </profile>
 	</profiles>
 
     <reporting>

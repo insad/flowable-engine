@@ -13,6 +13,8 @@
 
 package org.flowable.cmmn.rest.service.api.history.milestone;
 
+import static org.flowable.common.rest.api.PaginateListUtil.paginateList;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -59,10 +61,11 @@ public abstract class HistoricMilestoneInstanceBaseResource {
         Optional.ofNullable(queryRequest.getReachedAfter()).ifPresent(query::milestoneInstanceReachedAfter);
         
         if (restApiInterceptor != null) {
-            restApiInterceptor.accessHistoryMilestoneInfoWithQuery(query);
+            restApiInterceptor.accessHistoryMilestoneInfoWithQuery(query, queryRequest);
         }
 
-        return new HistoricMilestoneInstancePaginateList(restResponseFactory).paginateList(allRequestParams, queryRequest, query, "timestamp", allowedSortProperties);
+        return paginateList(allRequestParams, queryRequest, query, "timestamp", allowedSortProperties,
+            restResponseFactory::createHistoricMilestoneInstanceResponseList);
     }
 
 }

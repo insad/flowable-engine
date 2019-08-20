@@ -12,6 +12,16 @@
  */
 package org.flowable.engine.impl;
 
+import java.sql.Connection;
+import java.util.List;
+import java.util.Map;
+
+import org.flowable.batch.api.Batch;
+import org.flowable.batch.api.BatchBuilder;
+import org.flowable.batch.api.BatchPart;
+import org.flowable.batch.api.BatchQuery;
+import org.flowable.batch.service.impl.BatchBuilderImpl;
+import org.flowable.batch.service.impl.BatchQueryImpl;
 import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.api.FlowableIllegalArgumentException;
 import org.flowable.common.engine.api.management.TableMetaData;
@@ -26,13 +36,21 @@ import org.flowable.common.engine.impl.service.CommonEngineServiceImpl;
 import org.flowable.engine.ManagementService;
 import org.flowable.engine.event.EventLogEntry;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
+import org.flowable.engine.impl.cmd.DeleteBatchCmd;
 import org.flowable.engine.impl.cmd.DeleteEventLogEntry;
 import org.flowable.engine.impl.cmd.ExecuteCustomSqlCmd;
+import org.flowable.engine.impl.cmd.FindBatchPartsByBatchIdCmd;
+import org.flowable.engine.impl.cmd.FindBatchesBySearchKeyCmd;
+import org.flowable.engine.impl.cmd.GetAllBatchesCmd;
+import org.flowable.engine.impl.cmd.GetBatchDocumentCmd;
+import org.flowable.engine.impl.cmd.GetBatchPartCmd;
+import org.flowable.engine.impl.cmd.GetBatchPartDocumentCmd;
 import org.flowable.engine.impl.cmd.GetEventLogEntriesCmd;
 import org.flowable.engine.impl.cmd.GetPropertiesCmd;
 import org.flowable.engine.impl.cmd.GetTableCountCmd;
 import org.flowable.engine.impl.cmd.GetTableMetaDataCmd;
 import org.flowable.engine.impl.cmd.GetTableNameCmd;
+import org.flowable.engine.impl.cmd.HandleHistoryCleanupTimerJobCmd;
 import org.flowable.engine.impl.cmd.RescheduleTimerJobCmd;
 import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.job.api.DeadLetterJobQuery;
@@ -51,6 +69,7 @@ import org.flowable.job.service.impl.cmd.DeleteHistoryJobCmd;
 import org.flowable.job.service.impl.cmd.DeleteJobCmd;
 import org.flowable.job.service.impl.cmd.DeleteSuspendedJobCmd;
 import org.flowable.job.service.impl.cmd.DeleteTimerJobCmd;
+import org.flowable.job.service.impl.cmd.ExecuteHistoryJobCmd;
 import org.flowable.job.service.impl.cmd.ExecuteJobCmd;
 import org.flowable.job.service.impl.cmd.GetJobExceptionStacktraceCmd;
 import org.flowable.job.service.impl.cmd.JobType;
@@ -60,10 +79,6 @@ import org.flowable.job.service.impl.cmd.MoveSuspendedJobToExecutableJobCmd;
 import org.flowable.job.service.impl.cmd.MoveTimerToExecutableJobCmd;
 import org.flowable.job.service.impl.cmd.SetJobRetriesCmd;
 import org.flowable.job.service.impl.cmd.SetTimerJobRetriesCmd;
-
-import java.sql.Connection;
-import java.util.List;
-import java.util.Map;
 
 /**
  * @author Tom Baeyens
@@ -84,16 +99,17 @@ public class ManagementServiceImpl extends CommonEngineServiceImpl<ProcessEngine
     }
 
     @Override
+    public String getTableName(Class<?> entityClass, boolean includePrefix) {
+        return commandExecutor.execute(new GetTableNameCmd(entityClass, includePrefix));
+    }
+
+    @Override
     public TableMetaData getTableMetaData(String tableName) {
         return commandExecutor.execute(new GetTableMetaDataCmd(tableName));
     }
 
     @Override
     public void executeJob(String jobId) {
-        if (jobId == null) {
-            throw new FlowableIllegalArgumentException("JobId is null");
-        }
-
         try {
             commandExecutor.execute(new ExecuteJobCmd(jobId));
 
@@ -104,6 +120,11 @@ public class ManagementServiceImpl extends CommonEngineServiceImpl<ProcessEngine
                 throw new FlowableException("Job " + jobId + " failed", e);
             }
         }
+    }
+    
+    @Override
+    public void executeHistoryJob(String historyJobId) {
+        commandExecutor.execute(new ExecuteHistoryJobCmd(historyJobId));
     }
 
     @Override
@@ -230,6 +251,61 @@ public class ManagementServiceImpl extends CommonEngineServiceImpl<ProcessEngine
     public String getDeadLetterJobExceptionStacktrace(String jobId) {
         return commandExecutor.execute(new GetJobExceptionStacktraceCmd(jobId, JobType.DEADLETTER));
     }
+    
+    @Override
+    public void handleHistoryCleanupTimerJob() {
+        commandExecutor.execute(new HandleHistoryCleanupTimerJobCmd());
+    }
+    
+    @Override
+    public List<Batch> getAllBatches() {
+        return commandExecutor.execute(new GetAllBatchesCmd());
+    }
+    
+    @Override
+    public List<Batch> findBatchesBySearchKey(String searchKey) {
+        return commandExecutor.execute(new FindBatchesBySearchKeyCmd(searchKey));
+    }
+    
+    @Override
+    public String getBatchDocument(String batchId) {
+        return commandExecutor.execute(new GetBatchDocumentCmd(batchId));
+    }
+    
+    @Override
+    public BatchPart getBatchPart(String batchPartId) {
+        return commandExecutor.execute(new GetBatchPartCmd(batchPartId));
+    }
+    
+    @Override
+    public List<BatchPart> findBatchPartsByBatchId(String batchId) {
+        return commandExecutor.execute(new FindBatchPartsByBatchIdCmd(batchId));
+    }
+    
+    @Override
+    public List<BatchPart> findBatchPartsByBatchIdAndStatus(String batchId, String status) {
+        return commandExecutor.execute(new FindBatchPartsByBatchIdCmd(batchId, status));
+    }
+    
+    @Override
+    public String getBatchPartDocument(String batchPartId) {
+        return commandExecutor.execute(new GetBatchPartDocumentCmd(batchPartId));
+    }
+    
+    @Override
+    public BatchQuery createBatchQuery() {
+        return new BatchQueryImpl(commandExecutor);
+    }
+    
+    @Override
+    public BatchBuilder createBatchBuilder() {
+        return new BatchBuilderImpl(commandExecutor);
+    }
+    
+    @Override
+    public void deleteBatch(String batchId) {
+        commandExecutor.execute(new DeleteBatchCmd(batchId));
+    }
 
     @Override
     public Map<String, String> getProperties() {
@@ -245,7 +321,7 @@ public class ManagementServiceImpl extends CommonEngineServiceImpl<ProcessEngine
                 DbSqlSessionFactory dbSqlSessionFactory = (DbSqlSessionFactory) commandContext.getSessionFactories().get(DbSqlSession.class);
                 DbSqlSession dbSqlSession = new DbSqlSession(dbSqlSessionFactory, CommandContextUtil.getEntityCache(commandContext), connection, catalog, schema);
                 commandContext.getSessions().put(DbSqlSession.class, dbSqlSession);
-                return CommandContextUtil.getProcessEngineConfiguration(commandContext).getDbSchemaManager().dbSchemaUpdate();
+                return CommandContextUtil.getProcessEngineConfiguration(commandContext).getSchemaManager().schemaUpdate();
             }
         });
     }

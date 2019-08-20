@@ -42,6 +42,7 @@ import org.flowable.idm.api.event.FlowableIdmEventType;
 import org.flowable.idm.engine.impl.IdmEngineImpl;
 import org.flowable.idm.engine.impl.IdmIdentityServiceImpl;
 import org.flowable.idm.engine.impl.IdmManagementServiceImpl;
+import org.flowable.idm.engine.impl.SchemaOperationsIdmEngineBuild;
 import org.flowable.idm.engine.impl.authentication.BlankSalt;
 import org.flowable.idm.engine.impl.authentication.ClearTextPasswordEncoder;
 import org.flowable.idm.engine.impl.cfg.StandaloneIdmEngineConfiguration;
@@ -86,12 +87,8 @@ import org.flowable.idm.engine.impl.persistence.entity.data.impl.MybatisPrivileg
 import org.flowable.idm.engine.impl.persistence.entity.data.impl.MybatisPropertyDataManager;
 import org.flowable.idm.engine.impl.persistence.entity.data.impl.MybatisTokenDataManager;
 import org.flowable.idm.engine.impl.persistence.entity.data.impl.MybatisUserDataManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class IdmEngineConfiguration extends AbstractEngineConfiguration implements IdmEngineConfigurationApi {
-
-    protected static final Logger LOGGER = LoggerFactory.getLogger(IdmEngineConfiguration.class);
 
     public static final String DEFAULT_MYBATIS_MAPPING_FILE = "org/flowable/idm/db/mapping/mappings.xml";
 
@@ -181,7 +178,11 @@ public class IdmEngineConfiguration extends AbstractEngineConfiguration implemen
 
         if (usingRelationalDatabase) {
             initDataSource();
-            initDbSchemaManager();
+        }
+        
+        if (usingRelationalDatabase || usingSchemaMgmt) {
+            initSchemaManager();
+            initSchemaManagementCommand();
         }
 
         initBeans();
@@ -201,9 +202,17 @@ public class IdmEngineConfiguration extends AbstractEngineConfiguration implemen
     }
 
     @Override
-    public void initDbSchemaManager() {
-        if (this.dbSchemaManager == null) {
-            this.dbSchemaManager = new IdmDbSchemaManager();
+    public void initSchemaManager() {
+        if (this.schemaManager == null) {
+            this.schemaManager = new IdmDbSchemaManager();
+        }
+    }
+    
+    public void initSchemaManagementCommand() {
+        if (schemaManagementCmd == null) {
+            if (usingRelationalDatabase && databaseSchemaUpdate != null) {
+                this.schemaManagementCmd = new SchemaOperationsIdmEngineBuild();
+            }
         }
     }
 
@@ -300,7 +309,7 @@ public class IdmEngineConfiguration extends AbstractEngineConfiguration implemen
 
     @Override
     public DbSqlSessionFactory createDbSqlSessionFactory() {
-        return new DbSqlSessionFactory();
+        return new DbSqlSessionFactory(usePrefixId);
     }
 
     @Override

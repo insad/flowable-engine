@@ -40,6 +40,10 @@ public class FormEngineImpl implements FormEngine {
         this.managementService = engineConfiguration.getFormManagementService();
         this.repositoryService = engineConfiguration.getFormRepositoryService();
         this.formService = engineConfiguration.getFormService();
+        
+        if (engineConfiguration.getSchemaManagementCmd() != null) {
+            engineConfiguration.getCommandExecutor().execute(engineConfiguration.getSchemaCommandConfig(), engineConfiguration.getSchemaManagementCmd());
+        }
 
         if (name == null) {
             LOGGER.info("default flowable FormEngine created");
@@ -53,6 +57,7 @@ public class FormEngineImpl implements FormEngine {
     @Override
     public void close() {
         FormEngines.unregister(this);
+        engineConfiguration.close();
     }
 
     // getters and setters

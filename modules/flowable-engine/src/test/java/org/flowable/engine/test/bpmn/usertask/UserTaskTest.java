@@ -17,21 +17,33 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.flowable.common.engine.api.scope.ScopeTypes;
 import org.flowable.common.engine.impl.history.HistoryLevel;
+import org.flowable.common.engine.impl.interceptor.CommandExecutor;
 import org.flowable.engine.impl.test.HistoryTestHelper;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
+import org.flowable.engine.impl.util.CommandContextUtil;
+import org.flowable.engine.interceptor.CreateUserTaskAfterContext;
+import org.flowable.engine.interceptor.CreateUserTaskBeforeContext;
+import org.flowable.engine.interceptor.CreateUserTaskInterceptor;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
+import org.flowable.entitylink.api.EntityLink;
+import org.flowable.entitylink.api.EntityLinkService;
+import org.flowable.entitylink.api.EntityLinkType;
+import org.flowable.entitylink.api.HierarchyType;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.identitylink.api.IdentityLinkType;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.history.HistoricTaskInstance;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Joram Barrez
  */
 public class UserTaskTest extends PluggableFlowableTestCase {
 
+    @Test
     @Deployment
     public void testTaskPropertiesNotNull() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
@@ -53,12 +65,42 @@ public class UserTaskTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
+    @Deployment
+    public void testEntityLinkCreated() {
+        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
+
+        org.flowable.task.api.Task task = taskService.createTaskQuery().singleResult();
+        assertNotNull(task.getId());
+        assertEquals("my task", task.getName());
+        assertEquals("Very important", task.getDescription());
+        assertTrue(task.getPriority() > 0);
+        assertEquals("kermit", task.getAssignee());
+        assertEquals(processInstance.getId(), task.getProcessInstanceId());
+        assertNotNull(task.getProcessDefinitionId());
+        assertNotNull(task.getTaskDefinitionKey());
+        assertNotNull(task.getCreateTime());
+
+        CommandExecutor commandExecutor = processEngine.getProcessEngineConfiguration().getCommandExecutor();
+
+        List<EntityLink> entityLinksByScopeIdAndType = commandExecutor.execute(commandContext -> {
+            EntityLinkService entityLinkService = CommandContextUtil.getEntityLinkService(commandContext);
+
+            return entityLinkService.findEntityLinksByScopeIdAndType(processInstance.getId(), ScopeTypes.BPMN, EntityLinkType.CHILD);
+        });
+
+        assertEquals(1, entityLinksByScopeIdAndType.size());
+        assertEquals(HierarchyType.ROOT, entityLinksByScopeIdAndType.get(0).getHierarchyType());
+    }
+
+    @Test
     @Deployment
     public void testQuerySortingWithParameter() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
         assertEquals(1, taskService.createTaskQuery().processInstanceId(processInstance.getId()).list().size());
     }
 
+    @Test
     @Deployment
     public void testCompleteAfterParallelGateway() throws InterruptedException {
         // related to https://activiti.atlassian.net/browse/ACT-1054
@@ -78,6 +120,7 @@ public class UserTaskTest extends PluggableFlowableTestCase {
         taskService.complete(task.getId());
     }
 
+    @Test
     @Deployment
     public void testTaskCategory() {
         runtimeService.startProcessInstanceByKey("testTaskCategory");
@@ -121,6 +164,7 @@ public class UserTaskTest extends PluggableFlowableTestCase {
     }
 
     // See https://activiti.atlassian.net/browse/ACT-4041
+    @Test
     public void testTaskFormKeyWhenUsingIncludeVariables() {
         deployOneTaskTestProcess();
         runtimeService.startProcessInstanceByKey("oneTaskProcess");
@@ -146,6 +190,7 @@ public class UserTaskTest extends PluggableFlowableTestCase {
         assertEquals("test123", task.getFormKey());
     }
     
+    @Test
     @Deployment
     public void testEmptyAssignmentExpression() {
         Map<String, Object> variableMap = new HashMap<>();
@@ -175,6 +220,7 @@ public class UserTaskTest extends PluggableFlowableTestCase {
         assertEquals(0, identityLinks.size());
     }
     
+    @Test
     @Deployment
     public void testNonStringProperties() {
         Map<String, Object> vars = new HashMap<>();
@@ -211,5 +257,52 @@ public class UserTaskTest extends PluggableFlowableTestCase {
         }
         assertEquals(2, candidateIdentityLinkCount);
     }
+    
+    @Test
+    @Deployment(resources="org/flowable/engine/test/bpmn/usertask/UserTaskTest.testTaskPropertiesNotNull.bpmn20.xml")
+    public void testCreateUserTaskInterceptor() throws Exception {
+        TestCreateUserTaskInterceptor testCreateUserTaskInterceptor = new TestCreateUserTaskInterceptor();
+        processEngineConfiguration.setCreateUserTaskInterceptor(testCreateUserTaskInterceptor);
+        
+        try {
+            ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
 
+            org.flowable.task.api.Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
+            assertNotNull(task.getId());
+            assertEquals("my task", task.getName());
+            assertEquals("Very important", task.getDescription());
+            assertEquals("testCategory", task.getCategory());
+            
+            assertEquals(1, testCreateUserTaskInterceptor.getBeforeCreateUserTaskCounter());
+            assertEquals(1, testCreateUserTaskInterceptor.getAfterCreateUserTaskCounter());
+            
+        } finally {
+            processEngineConfiguration.setCreateUserTaskInterceptor(null);
+        }
+    }
+
+    protected class TestCreateUserTaskInterceptor implements CreateUserTaskInterceptor {
+        
+        protected int beforeCreateUserTaskCounter = 0;
+        protected int afterCreateUserTaskCounter = 0;
+        
+        @Override
+        public void beforeCreateUserTask(CreateUserTaskBeforeContext context) {
+            beforeCreateUserTaskCounter++;
+            context.setCategory("testCategory");
+        }
+
+        @Override
+        public void afterCreateUserTask(CreateUserTaskAfterContext context) {
+            afterCreateUserTaskCounter++;
+        }
+
+        public int getBeforeCreateUserTaskCounter() {
+            return beforeCreateUserTaskCounter;
+        }
+
+        public int getAfterCreateUserTaskCounter() {
+            return afterCreateUserTaskCounter;
+        }
+    }
 }

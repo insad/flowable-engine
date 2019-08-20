@@ -64,6 +64,16 @@
     </annotation>
   </attribute>
 
+  <attribute name="formFieldValidation" type="string">
+    <annotation>
+      <documentation>
+        Attribute used on a startEvent or a userTask. The value can be any expression, which results into boolean value. Another allowed values are 'true' and 'false' case insensitive strings,
+        which represents boolean values. The default value is empty string which results in false.
+        The boolean flag value enables/disables form field validation after the form submission on the backend side.
+      </documentation>
+    </annotation>
+  </attribute>
+
   <attribute name="formHandlerClass">
     <annotation>
       <documentation>
@@ -200,8 +210,8 @@
       <documentation>
         Service Task attribute for specifying a fully qualified Java class
         name. The Java class must implement either
-        org.activiti.engine.delegate.JavaDelegate or
-        org.activiti.engine.impl.pvm.delegate.ActivityBehavior
+        org.flowable.engine.delegate.JavaDelegate or
+        org.flowable.engine.impl.delegate.ActivityBehavior
       </documentation>
     </annotation>
     <simpleType>
@@ -424,7 +434,7 @@
       <attribute name="class" type="string">
         <annotation>
           <documentation>
-            An implementation of the org.activiti.engine.impl.pvm.delegate.TaskListener interface
+            An implementation of the org.flowable.engine.delegate.TaskListener interface
             that will be called when the task event occurs.
           </documentation>
         </annotation>
@@ -477,7 +487,7 @@
       <attribute name="customPropertiesResolverClass" type="string">
         <annotation>
           <documentation>
-            An implementation of the org.activiti.engine.delegate.CustomPropertiesResolver interface
+            An implementation of the org.flowable.engine.delegate.CustomPropertiesResolver interface
             that will be called when the event occurs.
           </documentation>
         </annotation>
@@ -516,7 +526,7 @@
       <attribute name="class" type="string">
         <annotation>
           <documentation>
-            An implementation of the org.activiti.engine.impl.pvm.delegate.ExecutionListener interface
+            An implementation of the org.flowable.engine.delegate.ExecutionListener interface
             that will be called when the event occurs.
           </documentation>
         </annotation>
@@ -570,7 +580,7 @@
       <attribute name="customPropertiesResolverClass" type="string">
         <annotation>
           <documentation>
-            An implementation of the org.activiti.engine.delegate.CustomPropertiesResolver interface
+            An implementation of the org.flowable.engine.delegate.CustomPropertiesResolver interface
             that will be called when the event occurs.
           </documentation>
         </annotation>
@@ -761,6 +771,14 @@
 
   </attribute>
 
+  <attribute name="fallbackToDefaultTenant" type="boolean">
+    <annotation>
+      <documentation>
+		To be used on the callActivity element to search for process definition in the default tenant in the case when no definition was found in the current tenant
+      </documentation>
+    </annotation>
+  </attribute>
+
   <attribute name="businessKey" type="tns:tExpression">
     <annotation>
       <documentation>
@@ -791,4 +809,13 @@
       <attribute name="name" type="string" use="required" />
     </complexType>
   </element>
+
+  <attribute name="autoStoreVariables" type="boolean" default="false">
+    <annotation>
+      <documentation>
+        Optional script task attribute flag (default: false) that indicates whether or not variables defined in the script will be stored
+        in the Execution instance context.
+      </documentation>
+    </annotation>
+  </attribute>
 </schema>

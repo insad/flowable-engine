@@ -21,13 +21,10 @@ import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
-import java.io.IOException;
 import java.io.InputStream;
 
 import org.flowable.app.spring.autodeployment.DefaultAutoDeploymentStrategy;
-import org.flowable.common.engine.api.FlowableException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -80,14 +77,6 @@ public class DefaultAutoDeploymentStrategyTest extends AbstractAutoDeploymentStr
         verify(deploymentBuilderMock, never()).addInputStream(isA(String.class), isA(InputStream.class));
         verify(deploymentBuilderMock, never()).addInputStream(eq(resourceName2), isA(InputStream.class));
         verify(deploymentBuilderMock, never()).deploy();
-    }
-
-    @Test(expected = FlowableException.class)
-    public void testDeployResourcesIOExceptionYieldsActivitiException() throws Exception {
-        when(resourceMock3.getInputStream()).thenThrow(new IOException());
-
-        final Resource[] resources = new Resource[] { resourceMock3 };
-        classUnderTest.deployResources(resources, repositoryServiceMock);
     }
 
 }

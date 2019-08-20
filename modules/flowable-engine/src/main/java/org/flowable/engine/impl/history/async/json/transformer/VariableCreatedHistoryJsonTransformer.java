@@ -19,7 +19,9 @@ import static org.flowable.job.service.impl.history.async.util.AsyncHistoryJsonU
 import static org.flowable.job.service.impl.history.async.util.AsyncHistoryJsonUtil.getStringFromJson;
 
 import java.util.Base64;
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
@@ -36,8 +38,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 public class VariableCreatedHistoryJsonTransformer extends AbstractHistoryJsonTransformer {
 
     @Override
-    public String getType() {
-        return HistoryJsonConstants.TYPE_VARIABLE_CREATED;
+    public List<String> getTypes() {
+        return Collections.singletonList(HistoryJsonConstants.TYPE_VARIABLE_CREATED);
     }
 
     @Override
@@ -55,6 +57,9 @@ public class VariableCreatedHistoryJsonTransformer extends AbstractHistoryJsonTr
         historicVariableInstanceEntity.setTaskId(getStringFromJson(historicalData, HistoryJsonConstants.TASK_ID));
         historicVariableInstanceEntity.setRevision(getIntegerFromJson(historicalData, HistoryJsonConstants.REVISION));
         historicVariableInstanceEntity.setName(getStringFromJson(historicalData, HistoryJsonConstants.NAME));
+        historicVariableInstanceEntity.setScopeId(getStringFromJson(historicalData, HistoryJsonConstants.SCOPE_ID));
+        historicVariableInstanceEntity.setSubScopeId(getStringFromJson(historicalData, HistoryJsonConstants.SUB_SCOPE_ID));
+        historicVariableInstanceEntity.setScopeType(getStringFromJson(historicalData, HistoryJsonConstants.SCOPE_TYPE));
         
         VariableTypes variableTypes = CommandContextUtil.getProcessEngineConfiguration().getVariableTypes();
         VariableType variableType = variableTypes.getVariableType(getStringFromJson(historicalData, HistoryJsonConstants.VARIABLE_TYPE));

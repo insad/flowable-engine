@@ -16,6 +16,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -36,9 +37,9 @@ import org.slf4j.LoggerFactory;
 /**
  * @author Joram Barrez
  */
-public abstract class AbstractSqlScriptBasedDbSchemaManager implements DbSchemaManager {
+public abstract class AbstractSqlScriptBasedDbSchemaManager implements SchemaManager {
     
-    private static Logger LOGGER = LoggerFactory.getLogger(AbstractSqlScriptBasedDbSchemaManager.class);
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
     
     public static String[] JDBC_METADATA_TABLE_TYPES = { "TABLE" };
     
@@ -49,7 +50,7 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements DbSchemaM
     protected void dbSchemaUpgradeUntil6120(final String component, final int currentDatabaseVersionsIndex) {
         FlowableVersion version = FlowableVersions.FLOWABLE_VERSIONS.get(currentDatabaseVersionsIndex);
         String dbVersion = version.getMainVersion();
-        LOGGER.info("upgrading flowable {} schema from {} to {}", component, dbVersion, FlowableVersions.LAST_V6_VERSION_BEFORE_SERVICES);
+        logger.info("upgrading flowable {} schema from {} to {}", component, dbVersion, FlowableVersions.LAST_V6_VERSION_BEFORE_SERVICES);
         
         // Actual execution of schema DDL SQL
         for (int i = currentDatabaseVersionsIndex + 1; i < FlowableVersions.getFlowableVersionIndexForDbVersion(FlowableVersions.LAST_V6_VERSION_BEFORE_SERVICES); i++) {
@@ -62,7 +63,7 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements DbSchemaM
 
             dbVersion = dbVersion.replace(".", "");
             nextVersion = nextVersion.replace(".", "");
-            LOGGER.info("Upgrade needed: {} -> {}. Looking for schema update resource for component '{}'", dbVersion, nextVersion, component);
+            logger.info("Upgrade needed: {} -> {}. Looking for schema update resource for component '{}'", dbVersion, nextVersion, component);
             String databaseType = getDbSqlSession().getDbSqlSessionFactory().getDatabaseType();
             executeSchemaResource("upgrade", component, getResourceForDbOperation("upgrade", "upgradestep." + dbVersion + ".to." + nextVersion, component, databaseType), true);
             
@@ -76,7 +77,7 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements DbSchemaM
     protected void dbSchemaUpgrade(final String component, final int currentDatabaseVersionsIndex) {
         FlowableVersion version = FlowableVersions.FLOWABLE_VERSIONS.get(currentDatabaseVersionsIndex);
         String dbVersion = version.getMainVersion();
-        LOGGER.info("upgrading flowable {} schema from {} to {}", component, dbVersion, FlowableVersions.CURRENT_VERSION);
+        logger.info("upgrading flowable {} schema from {} to {}", component, dbVersion, FlowableVersions.CURRENT_VERSION);
 
         // Actual execution of schema DDL SQL
         for (int i = currentDatabaseVersionsIndex + 1; i < FlowableVersions.FLOWABLE_VERSIONS.size(); i++) {
@@ -89,7 +90,7 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements DbSchemaM
 
             dbVersion = dbVersion.replace(".", "");
             nextVersion = nextVersion.replace(".", "");
-            LOGGER.info("Upgrade needed: {} -> {}. Looking for schema update resource for component '{}'", dbVersion, nextVersion, component);
+            logger.info("Upgrade needed: {} -> {}. Looking for schema update resource for component '{}'", dbVersion, nextVersion, component);
             String databaseType = getDbSqlSession().getDbSqlSessionFactory().getDatabaseType();
             executeSchemaResource("upgrade", component, getResourceForDbOperation("upgrade", "upgradestep." + dbVersion + ".to." + nextVersion, component, databaseType), true);
             
@@ -134,6 +135,9 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements DbSchemaM
 
             if ("postgres".equals(databaseType)) {
                 tableName = tableName.toLowerCase();
+            } else if ("cockroachdb".equals(databaseType)) {
+                tableName = tableName.toLowerCase(); // same as postgres
+                schema = "public"; // CRDB only supports public right now
             }
 
             if (schema != null && "oracle".equals(databaseType)) {
@@ -153,7 +157,7 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements DbSchemaM
                         tables.close();
                     }
                 } catch (Exception e) {
-                    LOGGER.error("Error closing meta data tables", e);
+                    logger.error("Error closing meta data tables", e);
                 }
             }
 
@@ -193,7 +197,7 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements DbSchemaM
                 return null;
             }
         } catch (SQLException e) {
-            LOGGER.error("Could not get property from table {}", tableName, e);
+            logger.error("Could not get property from table {}", tableName, e);
             return null;
         } finally {
             if (statement != null) {
@@ -238,7 +242,7 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements DbSchemaM
     }
 
     protected void executeSchemaResource(String operation, String component, String resourceName, InputStream inputStream) {
-        LOGGER.info("performing {} on {} with resource {}", operation, component, resourceName);
+        logger.info("performing {} on {} with resource {}", operation, component, resourceName);
         String sqlStatement = null;
         String exceptionSqlStatement = null;
         DbSqlSession dbSqlSession = getDbSqlSession();
@@ -246,7 +250,7 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements DbSchemaM
             Connection connection = dbSqlSession.getSqlSession().getConnection();
             Exception exception = null;
             byte[] bytes = IoUtil.readInputStream(inputStream, resourceName);
-            String ddlStatements = new String(bytes);
+            String ddlStatements = new String(bytes, StandardCharsets.UTF_8);
 
             // Special DDL handling for certain databases
             try {
@@ -254,7 +258,7 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements DbSchemaM
                     DatabaseMetaData databaseMetaData = connection.getMetaData();
                     int majorVersion = databaseMetaData.getDatabaseMajorVersion();
                     int minorVersion = databaseMetaData.getDatabaseMinorVersion();
-                    LOGGER.info("Found MySQL: majorVersion={} minorVersion={}", majorVersion, minorVersion);
+                    logger.info("Found MySQL: majorVersion={} minorVersion={}", majorVersion, minorVersion);
 
                     // Special care for MySQL < 5.6
                     if (majorVersion <= 5 && minorVersion < 6) {
@@ -262,7 +266,7 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements DbSchemaM
                     }
                 }
             } catch (Exception e) {
-                LOGGER.info("Could not get database metadata", e);
+                logger.info("Could not get database metadata", e);
             }
 
             BufferedReader reader = new BufferedReader(new StringReader(ddlStatements));
@@ -270,10 +274,18 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements DbSchemaM
             boolean inOraclePlsqlBlock = false;
             while (line != null) {
                 if (line.startsWith("# ")) {
-                    LOGGER.debug(line.substring(2));
+                    logger.debug(line.substring(2));
 
                 } else if (line.startsWith("-- ")) {
-                    LOGGER.debug(line.substring(3));
+
+                    if ("-- force-commit".equals(line)) {
+                        connection.commit();
+                        logger.debug("Forcing commit");
+
+                    } else {
+                        logger.debug(line.substring(3));
+
+                    }
 
                 } else if (line.startsWith("execute java ")) {
                     String upgradestepClassName = line.substring(13).trim();
@@ -284,7 +296,7 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements DbSchemaM
                         throw new FlowableException("database update java class '" + upgradestepClassName + "' can't be instantiated: " + e.getMessage(), e);
                     }
                     try {
-                        LOGGER.debug("executing upgrade step java class {}", upgradestepClassName);
+                        logger.debug("executing upgrade step java class {}", upgradestepClassName);
                         dbUpgradeStep.execute();
                     } catch (Exception e) {
                         throw new FlowableException("error while executing database update java class '" + upgradestepClassName + "': " + e.getMessage(), e);
@@ -306,8 +318,8 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements DbSchemaM
 
                         Statement jdbcStatement = connection.createStatement();
                         try {
-                            // no logging needed as the connection will log it
-                            LOGGER.debug("SQL: {}", sqlStatement);
+
+                            logger.debug("SQL: {}", sqlStatement);
                             jdbcStatement.execute(sqlStatement);
                             jdbcStatement.close();
                             
@@ -316,7 +328,7 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements DbSchemaM
                                 exception = e;
                                 exceptionSqlStatement = sqlStatement;
                             }
-                            LOGGER.error("problem during schema {}, statement {}", operation, sqlStatement, e);
+                            logger.error("problem during schema {}, statement {}", operation, sqlStatement, e);
                             
                         } finally {
                             sqlStatement = null;
@@ -334,7 +346,7 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements DbSchemaM
                 throw exception;
             }
 
-            LOGGER.debug("flowable db schema {} for component {} successful", operation, component);
+            logger.debug("flowable db schema {} for component {} successful", operation, component);
 
         } catch (Exception e) {
             throw new FlowableException("couldn't " + operation + " db schema: " + exceptionSqlStatement, e);

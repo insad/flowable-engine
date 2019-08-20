@@ -30,11 +30,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public abstract class AbstractServiceConfiguration {
     
-    protected static final Logger LOGGER = LoggerFactory.getLogger(AbstractServiceConfiguration.class);
+    protected final Logger logger = LoggerFactory.getLogger(AbstractServiceConfiguration.class);
     
     /** The tenant id indicating 'no tenant' */
     public static final String NO_TENANT_ID = "";
 
+    protected String engineName;
     protected boolean enableEventDispatcher = true;
     protected FlowableEventDispatcher eventDispatcher;
     protected List<FlowableEventListener> eventListeners;
@@ -47,19 +48,31 @@ public abstract class AbstractServiceConfiguration {
 
     protected Clock clock;
     
+    public AbstractServiceConfiguration(String engineName) {
+        this.engineName = engineName;
+    }
+    
     public boolean isHistoryLevelAtLeast(HistoryLevel level) {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Current history level: {}, level required: {}", historyLevel, level);
+        if (logger.isDebugEnabled()) {
+            logger.debug("Current history level: {}, level required: {}", historyLevel, level);
         }
         // Comparing enums actually compares the location of values declared in the enum
         return historyLevel.isAtLeast(level);
     }
 
     public boolean isHistoryEnabled() {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Current history level: {}", historyLevel);
+        if (logger.isDebugEnabled()) {
+            logger.debug("Current history level: {}", historyLevel);
         }
         return historyLevel != HistoryLevel.NONE;
+    }
+
+    public String getEngineName() {
+        return engineName;
+    }
+
+    public void setEngineName(String engineName) {
+        this.engineName = engineName;
     }
 
     public boolean isEnableEventDispatcher() {

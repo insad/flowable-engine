@@ -17,18 +17,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.engine.impl.EventSubscriptionQueryImpl;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
-import org.flowable.engine.runtime.EventSubscription;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
+import org.flowable.eventsubscription.api.EventSubscription;
+import org.flowable.eventsubscription.service.impl.EventSubscriptionQueryImpl;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Tijs Rademakers
  */
 public class MessageIntermediateEventTest extends PluggableFlowableTestCase {
 
+    @Test
     @Deployment
     public void testSingleIntermediateMessageEvent() {
         ProcessInstance pi = runtimeService.startProcessInstanceByKey("process");
@@ -59,6 +61,7 @@ public class MessageIntermediateEventTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     @Deployment
     public void testSingleIntermediateMessageExpressionEvent() {
         Map<String, Object> variableMap = new HashMap<>();
@@ -81,6 +84,7 @@ public class MessageIntermediateEventTest extends PluggableFlowableTestCase {
         taskService.complete(task.getId());
     }
 
+    @Test
     @Deployment
     public void testConcurrentIntermediateMessageEvent() {
 
@@ -111,6 +115,7 @@ public class MessageIntermediateEventTest extends PluggableFlowableTestCase {
         taskService.complete(task.getId());
     }
 
+    @Test
     @Deployment
     public void testAsyncTriggeredMessageEvent() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("process");

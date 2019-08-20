@@ -195,7 +195,7 @@ public abstract class ReflectUtil {
         try {
             field = clazz.getDeclaredField(fieldName);
         } catch (SecurityException e) {
-            throw new FlowableException("not allowed to access field " + field + " on class " + clazz.getCanonicalName());
+            throw new FlowableException("not allowed to access field " + field + " on class " + clazz.getCanonicalName(), e);
         } catch (NoSuchFieldException e) {
             // for some reason getDeclaredFields doesn't search superclasses
             // (which getFields() does ... but that gives only public fields)
@@ -212,9 +212,9 @@ public abstract class ReflectUtil {
             field.setAccessible(true);
             field.set(object, value);
         } catch (IllegalArgumentException e) {
-            throw new FlowableException("Could not set field " + field.toString(), e);
+            throw new FlowableException("Could not set field " + field, e);
         } catch (IllegalAccessException e) {
-            throw new FlowableException("Could not set field " + field.toString(), e);
+            throw new FlowableException("Could not set field " + field, e);
         }
     }
 
@@ -237,7 +237,7 @@ public abstract class ReflectUtil {
             }
             return null;
         } catch (SecurityException e) {
-            throw new FlowableException("Not allowed to access method " + setterName + " on class " + clazz.getCanonicalName());
+            throw new FlowableException("Not allowed to access method " + setterName + " on class " + clazz.getCanonicalName(), e);
         }
     }
     
@@ -298,7 +298,7 @@ public abstract class ReflectUtil {
             return false;
         }
         for (int i = 0; i < parameterTypes.length; i++) {
-            if ((args[i] != null) && (!parameterTypes[i].isAssignableFrom(args[i].getClass()))) {
+            if ((args[i] != null) && !parameterTypes[i].isAssignableFrom(args[i].getClass())) {
                 return false;
             }
         }

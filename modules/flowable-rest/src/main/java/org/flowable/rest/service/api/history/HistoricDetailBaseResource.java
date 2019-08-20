@@ -13,6 +13,8 @@
 
 package org.flowable.rest.service.api.history;
 
+import static org.flowable.common.rest.api.PaginateListUtil.paginateList;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -77,9 +79,10 @@ public class HistoricDetailBaseResource {
         }
         
         if (restApiInterceptor != null) {
-            restApiInterceptor.accessHistoryDetailInfoWithQuery(query);
+            restApiInterceptor.accessHistoryDetailInfoWithQuery(query, queryRequest);
         }
 
-        return new HistoricDetailPaginateList(restResponseFactory).paginateList(allRequestParams, queryRequest, query, "processInstanceId", allowedSortProperties);
+        return paginateList(allRequestParams, queryRequest, query, "processInstanceId", allowedSortProperties,
+            restResponseFactory::createHistoricDetailResponse);
     }
 }

@@ -23,7 +23,9 @@ import java.util.Map;
 public class PlanFragment extends PlanItemDefinition {
 
     protected Case caze;
+    protected PlanItem planItem;
     protected Map<String, PlanItem> planItemMap = new LinkedHashMap<>();
+    protected Map<String, PlanItem> planItemDefinitionToItemMap = new LinkedHashMap<>();
     protected List<Sentry> sentries = new ArrayList<>();
     
     public PlanItem findPlanItemInPlanFragmentOrDownwards(String planItemId) {
@@ -48,7 +50,43 @@ public class PlanFragment extends PlanItemDefinition {
         
         PlanFragment parentPlanFragment = getParent();
         if (parentPlanFragment != null) {
-            return parentPlanFragment.findPlanItemInPlanFragmentOrUpwards(planItemId);
+            PlanItem p = parentPlanFragment.findPlanItemInPlanFragmentOrUpwards(planItemId);
+            if (p != null) {
+                return p;
+            }
+        }
+
+        return null;
+    }
+
+    public PlanItem findPlanItemForPlanItemDefinitionInPlanFragmentOrUpwards(String planItemDefinitionId) {
+        if (planItemDefinitionToItemMap.containsKey(planItemDefinitionId)) {
+            return planItemDefinitionToItemMap.get(planItemDefinitionId);
+        }
+
+        PlanFragment parentPlanFragment = getParent();
+        if (parentPlanFragment != null) {
+            PlanItem p = parentPlanFragment.findPlanItemForPlanItemDefinitionInPlanFragmentOrUpwards(planItemDefinitionId);
+            if (p != null) {
+                return p;
+            }
+        }
+
+        return null;
+    }
+
+    public PlanItem findPlanItemForPlanItemDefinitionInPlanFragmentOrDownwards(String planItemDefinitionId) {
+        if (planItemDefinitionToItemMap.containsKey(planItemDefinitionId)) {
+            return planItemDefinitionToItemMap.get(planItemDefinitionId);
+        }
+
+        for (PlanItem planItem : planItemMap.values()) {
+            if (planItem.getPlanItemDefinition() instanceof PlanFragment) {
+                PlanItem p = ((PlanFragment) planItem.getPlanItemDefinition()).findPlanItemForPlanItemDefinitionInPlanFragmentOrDownwards(planItemDefinitionId);
+                if (p != null) {
+                    return p;
+                }
+            }
         }
 
         return null;
@@ -71,6 +109,7 @@ public class PlanFragment extends PlanItemDefinition {
 
     public void addPlanItem(PlanItem planItem) {
         planItemMap.put(planItem.getId(), planItem);
+        planItemDefinitionToItemMap.put(planItem.getDefinitionRef(), planItem);
     }
 
     public void addSentry(Sentry sentry) {
@@ -83,6 +122,14 @@ public class PlanFragment extends PlanItemDefinition {
 
     public void setCase(Case caze) {
         this.caze = caze;
+    }
+
+    public PlanItem getPlanItem() {
+        return planItem;
+    }
+
+    public void setPlanItem(PlanItem planItem) {
+        this.planItem = planItem;
     }
 
     public List<PlanItem> getPlanItems() {

@@ -18,6 +18,7 @@ public class ExecuteDecisionInfo {
 
     protected String decisionKey;
     protected String decisionDefinitionId;
+    protected int decisionVersion;
     protected String deploymentId;
     protected String parentDeploymentId;
     protected String instanceId;
@@ -26,6 +27,7 @@ public class ExecuteDecisionInfo {
     protected String scopeType;
     protected Map<String, Object> variables;
     protected String tenantId;
+    protected boolean fallbackToDefaultTenant;
     
     public String getDecisionKey() {
         return decisionKey;
@@ -38,6 +40,12 @@ public class ExecuteDecisionInfo {
     }
     public void setDecisionDefinitionId(String decisionDefinitionId) {
         this.decisionDefinitionId = decisionDefinitionId;
+    }
+    public int getDecisionVersion() {
+        return decisionVersion;
+    }
+    public void setDecisionVersion(int decisionVersion) {
+        this.decisionVersion = decisionVersion;
     }
     public String getDeploymentId() {
         return deploymentId;
@@ -86,5 +94,11 @@ public class ExecuteDecisionInfo {
     }
     public void setTenantId(String tenantId) {
         this.tenantId = tenantId;
+    }
+    public boolean isFallbackToDefaultTenant() {
+        return fallbackToDefaultTenant;
+    }
+    public void setFallbackToDefaultTenant(boolean fallbackToDefaultTenant) {
+        this.fallbackToDefaultTenant = fallbackToDefaultTenant;
     }
 }

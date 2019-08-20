@@ -25,6 +25,7 @@ import org.flowable.engine.IdentityService;
 import org.flowable.engine.ManagementService;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngines;
+import org.flowable.engine.ProcessMigrationService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
@@ -50,6 +51,7 @@ public class ProcessEngineImpl implements ProcessEngine {
     protected FormService formService;
     protected ManagementService managementService;
     protected DynamicBpmnService dynamicBpmnService;
+    protected ProcessMigrationService processInstanceMigrationService;
     protected AsyncExecutor asyncExecutor;
     protected AsyncExecutor asyncHistoryExecutor;
     protected CommandExecutor commandExecutor;
@@ -68,14 +70,15 @@ public class ProcessEngineImpl implements ProcessEngine {
         this.formService = processEngineConfiguration.getFormService();
         this.managementService = processEngineConfiguration.getManagementService();
         this.dynamicBpmnService = processEngineConfiguration.getDynamicBpmnService();
+        this.processInstanceMigrationService = processEngineConfiguration.getProcessMigrationService();
         this.asyncExecutor = processEngineConfiguration.getAsyncExecutor();
         this.asyncHistoryExecutor = processEngineConfiguration.getAsyncHistoryExecutor();
         this.commandExecutor = processEngineConfiguration.getCommandExecutor();
         this.sessionFactories = processEngineConfiguration.getSessionFactories();
         this.transactionContextFactory = processEngineConfiguration.getTransactionContextFactory();
 
-        if (processEngineConfiguration.isUsingRelationalDatabase() && processEngineConfiguration.getDatabaseSchemaUpdate() != null) {
-            commandExecutor.execute(processEngineConfiguration.getSchemaCommandConfig(), new SchemaOperationsProcessEngineBuild());
+        if (processEngineConfiguration.getSchemaManagementCmd() != null) {
+            commandExecutor.execute(processEngineConfiguration.getSchemaCommandConfig(), processEngineConfiguration.getSchemaManagementCmd());
         }
 
         if (name == null) {
@@ -91,12 +94,20 @@ public class ProcessEngineImpl implements ProcessEngine {
         }
 
         processEngineConfiguration.getEventDispatcher().dispatchEvent(FlowableEventBuilder.createGlobalEvent(FlowableEngineEventType.ENGINE_CREATED));
+    }
 
+    @Override
+    public void handleExecutors() {
         if (asyncExecutor != null && asyncExecutor.isAutoActivate()) {
             asyncExecutor.start();
         }
+        
         if (asyncHistoryExecutor != null && asyncHistoryExecutor.isAutoActivate()) {
             asyncHistoryExecutor.start();
+        }
+        
+        if (processEngineConfiguration.isEnableHistoryCleaning()) {
+            managementService.handleHistoryCleanupTimerJob();
         }
     }
 
@@ -115,9 +126,12 @@ public class ProcessEngineImpl implements ProcessEngine {
             closeRunnable.run();
         }
 
+        processEngineConfiguration.close();
+
         if (processEngineConfiguration.getProcessEngineLifecycleListener() != null) {
             processEngineConfiguration.getProcessEngineLifecycleListener().onProcessEngineClosed(this);
         }
+
 
         processEngineConfiguration.getEventDispatcher().dispatchEvent(FlowableEventBuilder.createGlobalEvent(FlowableEngineEventType.ENGINE_CLOSED));
     }
@@ -168,6 +182,11 @@ public class ProcessEngineImpl implements ProcessEngine {
     @Override
     public DynamicBpmnService getDynamicBpmnService() {
         return dynamicBpmnService;
+    }
+
+    @Override
+    public ProcessMigrationService getProcessMigrationService() {
+        return processInstanceMigrationService;
     }
 
     @Override

@@ -16,21 +16,30 @@ import java.util.List;
 
 import org.flowable.cmmn.api.delegate.DelegatePlanItemInstance;
 import org.flowable.cmmn.api.delegate.PlanItemJavaDelegate;
+import org.flowable.cmmn.api.listener.CaseInstanceLifecycleListener;
+import org.flowable.cmmn.api.listener.PlanItemInstanceLifecycleListener;
+import org.flowable.cmmn.api.runtime.CaseInstance;
+import org.flowable.cmmn.api.runtime.PlanItemInstance;
 import org.flowable.cmmn.engine.impl.behavior.CmmnActivityBehavior;
 import org.flowable.cmmn.engine.impl.behavior.impl.PlanItemJavaDelegateActivityBehavior;
+import org.flowable.cmmn.engine.impl.persistence.entity.CaseInstanceEntity;
 import org.flowable.cmmn.engine.impl.util.CommandContextUtil;
 import org.flowable.cmmn.model.FieldExtension;
 import org.flowable.common.engine.api.FlowableIllegalArgumentException;
 import org.flowable.common.engine.api.variable.VariableContainer;
 import org.flowable.common.engine.impl.el.ExpressionManager;
 import org.flowable.common.engine.impl.util.ReflectUtil;
+import org.flowable.task.service.delegate.DelegateTask;
+import org.flowable.task.service.delegate.TaskListener;
 import org.flowable.variable.api.delegate.VariableScope;
 
 /**
  * @author Joram Barrez
  */
-public class CmmnClassDelegate implements CmmnActivityBehavior {
+public class CmmnClassDelegate implements CmmnActivityBehavior, TaskListener, PlanItemInstanceLifecycleListener, CaseInstanceLifecycleListener {
 
+    protected String sourceState;
+    protected String targetState;
     protected String className;
     protected List<FieldExtension> fieldExtensions;
     protected CmmnActivityBehavior activityBehaviorInstance;
@@ -65,6 +74,55 @@ public class CmmnClassDelegate implements CmmnActivityBehavior {
         }
     }
 
+    @Override
+    public void notify(DelegateTask delegateTask) {
+        TaskListener taskListenerInstance = getTaskListenerInstance(delegateTask);
+        taskListenerInstance.notify(delegateTask);
+    }
+
+    protected TaskListener getTaskListenerInstance(DelegateTask delegateTask) {
+        Object delegateInstance = instantiate(className);
+        applyFieldExtensions(fieldExtensions, delegateInstance, delegateTask, false);
+
+        if (delegateInstance instanceof TaskListener) {
+            return (TaskListener) delegateInstance;
+        } else {
+            throw new FlowableIllegalArgumentException(delegateInstance.getClass().getName() + " doesn't implement " + TaskListener.class);
+        }
+    }
+
+    @Override
+    public void stateChanged(DelegatePlanItemInstance planItemInstance, String oldState, String newState) {
+        PlanItemInstanceLifecycleListener planItemLifeCycleListenerInstance = getPlanItemLifeCycleListenerInstance(planItemInstance);
+        planItemLifeCycleListenerInstance.stateChanged(planItemInstance, oldState, newState);
+    }
+
+    @Override
+    public void stateChanged(CaseInstance caseInstance, String oldState, String newState) {
+        CaseInstanceLifecycleListener caseLifeCycleListenerInstance = getCaseLifeCycleListenerInstance(caseInstance);
+        caseLifeCycleListenerInstance.stateChanged(caseInstance, oldState, newState);
+    }
+
+    protected PlanItemInstanceLifecycleListener getPlanItemLifeCycleListenerInstance(PlanItemInstance planItemInstance) {
+        Object delegateInstance = instantiate(className);
+        applyFieldExtensions(fieldExtensions, delegateInstance, (DelegatePlanItemInstance) planItemInstance, false);
+        if (delegateInstance instanceof PlanItemInstanceLifecycleListener) {
+            return (PlanItemInstanceLifecycleListener) delegateInstance;
+        } else {
+            throw new FlowableIllegalArgumentException(delegateInstance.getClass().getName() + " doesn't implement " + PlanItemInstanceLifecycleListener.class);
+        }
+    }
+
+    protected CaseInstanceLifecycleListener getCaseLifeCycleListenerInstance(CaseInstance caseInstance) {
+        Object delegateInstance = instantiate(className);
+        applyFieldExtensions(fieldExtensions, delegateInstance, (CaseInstanceEntity) caseInstance, false);
+        if (delegateInstance instanceof CaseInstanceLifecycleListener) {
+            return (CaseInstanceLifecycleListener) delegateInstance;
+        } else {
+            throw new FlowableIllegalArgumentException(delegateInstance.getClass().getName() + " doesn't implement " + CaseInstanceLifecycleListener.class);
+        }
+    }
+
     protected Object instantiate(String className) {
         return ReflectUtil.instantiate(className);
     }
@@ -89,4 +147,36 @@ public class CmmnClassDelegate implements CmmnActivityBehavior {
         ReflectUtil.invokeSetterOrField(target, fieldExtension.getFieldName(), value, throwExceptionOnMissingField);
     }
 
+    @Override
+    public String getSourceState() {
+        return sourceState;
+    }
+    public void setSourceState(String sourceState) {
+        this.sourceState = sourceState;
+    }
+    @Override
+    public String getTargetState() {
+        return targetState;
+    }
+    public void setTargetState(String targetState) {
+        this.targetState = targetState;
+    }
+    public String getClassName() {
+        return className;
+    }
+    public void setClassName(String className) {
+        this.className = className;
+    }
+    public List<FieldExtension> getFieldExtensions() {
+        return fieldExtensions;
+    }
+    public void setFieldExtensions(List<FieldExtension> fieldExtensions) {
+        this.fieldExtensions = fieldExtensions;
+    }
+    public CmmnActivityBehavior getActivityBehaviorInstance() {
+        return activityBehaviorInstance;
+    }
+    public void setActivityBehaviorInstance(CmmnActivityBehavior activityBehaviorInstance) {
+        this.activityBehaviorInstance = activityBehaviorInstance;
+    }
 }

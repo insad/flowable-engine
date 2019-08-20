@@ -208,10 +208,10 @@ public class BpmnParse implements BpmnXMLConstants {
 
                         for (ValidationError error : validationErrors) {
                             if (error.isWarning()) {
-                                warningBuilder.append(error.toString());
+                                warningBuilder.append(error);
                                 warningBuilder.append("\n");
                             } else {
-                                errorBuilder.append(error.toString());
+                                errorBuilder.append(error);
                                 errorBuilder.append("\n");
                             }
                         }
@@ -223,7 +223,7 @@ public class BpmnParse implements BpmnXMLConstants {
 
                         // Write out warnings (if any)
                         if (warningBuilder.length() > 0) {
-                            LOGGER.warn("Following warnings encountered during process validation: {}", warningBuilder.toString());
+                            LOGGER.warn("Following warnings encountered during process validation: {}", warningBuilder);
                         }
 
                     }
@@ -334,7 +334,7 @@ public class BpmnParse implements BpmnXMLConstants {
                     this.importers.put(theImport.getImportType(), newInstance);
                     return newInstance;
                 } catch (Exception e) {
-                    throw new ActivitiException("Could not find importer for type " + theImport.getImportType());
+                    throw new ActivitiException("Could not find importer for type " + theImport.getImportType(), e);
                 }
             }
             return null;

@@ -12,17 +12,16 @@
  */
 package org.flowable.cmmn.engine.impl.persistence.entity;
 
-import org.flowable.cmmn.engine.CmmnEngineConfiguration;
-import org.flowable.common.engine.impl.persistence.entity.AbstractEntity;
-
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.flowable.cmmn.engine.CmmnEngineConfiguration;
+
 /**
  * @author Dennis Federico
  */
-public class HistoricPlanItemInstanceEntityImpl extends AbstractEntity implements HistoricPlanItemInstanceEntity {
+public class HistoricPlanItemInstanceEntityImpl extends AbstractCmmnEngineEntity implements HistoricPlanItemInstanceEntity {
 
     protected String name;
     protected String state;
@@ -33,7 +32,7 @@ public class HistoricPlanItemInstanceEntityImpl extends AbstractEntity implement
     protected String elementId;
     protected String planItemDefinitionId;
     protected String planItemDefinitionType;
-    protected Date createdTime;
+    protected Date createTime;
     protected Date lastAvailableTime;
     protected Date lastEnabledTime;
     protected Date lastDisabledTime;
@@ -48,6 +47,8 @@ public class HistoricPlanItemInstanceEntityImpl extends AbstractEntity implement
     protected String startUserId;
     protected String referenceId;
     protected String referenceType;
+    protected String entryCriterionId;
+    protected String exitCriterionId;
     protected String tenantId = CmmnEngineConfiguration.NO_TENANT_ID;
 
     @Override
@@ -60,7 +61,7 @@ public class HistoricPlanItemInstanceEntityImpl extends AbstractEntity implement
         persistentState.put("elementId", elementId);
         persistentState.put("name", name);
         persistentState.put("state", state);
-        persistentState.put("createdTime", createdTime);
+        persistentState.put("createTime", createTime);
         persistentState.put("lastAvailableTime", lastAvailableTime);
         persistentState.put("lastEnabledTime", lastEnabledTime);
         persistentState.put("lastDisabledTime", lastDisabledTime);
@@ -75,9 +76,11 @@ public class HistoricPlanItemInstanceEntityImpl extends AbstractEntity implement
         persistentState.put("startUserId", startUserId);
         persistentState.put("referenceId", referenceId);
         persistentState.put("referenceType", referenceType);
-        persistentState.put("tenantId", tenantId);
         persistentState.put("planItemDefinitionId", planItemDefinitionId);
         persistentState.put("planItemDefinitionType", planItemDefinitionType);
+        persistentState.put("entryCriterionId", entryCriterionId);
+        persistentState.put("exitCriterionId", exitCriterionId);
+        persistentState.put("tenantId", tenantId);
         return persistentState;
     }
 
@@ -172,13 +175,13 @@ public class HistoricPlanItemInstanceEntityImpl extends AbstractEntity implement
     }
 
     @Override
-    public Date getCreatedTime() {
-        return createdTime;
+    public Date getCreateTime() {
+        return createTime;
     }
 
     @Override
-    public void setCreatedTime(Date createdTime) {
-        this.createdTime = createdTime;
+    public void setCreateTime(Date createTime) {
+        this.createTime = createTime;
     }
 
     @Override
@@ -319,6 +322,26 @@ public class HistoricPlanItemInstanceEntityImpl extends AbstractEntity implement
     @Override
     public void setReferenceType(String referenceType) {
         this.referenceType = referenceType;
+    }
+
+    @Override
+    public String getEntryCriterionId() {
+        return entryCriterionId;
+    }
+
+    @Override
+    public void setEntryCriterionId(String entryCriterionId) {
+        this.entryCriterionId = entryCriterionId;
+    }
+
+    @Override
+    public String getExitCriterionId() {
+        return exitCriterionId;
+    }
+
+    @Override
+    public void setExitCriterionId(String exitCriterionId) {
+        this.exitCriterionId = exitCriterionId;
     }
 
     @Override

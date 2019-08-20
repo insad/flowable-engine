@@ -12,24 +12,28 @@
  */
 package org.flowable.cmmn.editor;
 
-import org.flowable.cmmn.model.CmmnModel;
-import org.flowable.cmmn.model.Criterion;
-import org.flowable.cmmn.model.PlanItem;
-import org.flowable.cmmn.model.PlanItemTransition;
-import org.flowable.cmmn.model.Sentry;
-import org.flowable.cmmn.model.SentryOnPart;
-import org.flowable.cmmn.model.Stage;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import org.flowable.cmmn.model.CmmnModel;
+import org.flowable.cmmn.model.Criterion;
+import org.flowable.cmmn.model.EventListener;
+import org.flowable.cmmn.model.PlanItem;
+import org.flowable.cmmn.model.PlanItemDefinition;
+import org.flowable.cmmn.model.PlanItemTransition;
+import org.flowable.cmmn.model.Sentry;
+import org.flowable.cmmn.model.SentryOnPart;
+import org.flowable.cmmn.model.Stage;
 
 /**
  * @author Dennis Federico
+ * @author Joram Barrez
  */
 public class UserEventListenerConverterTest extends AbstractConverterTest {
 
@@ -59,7 +63,7 @@ public class UserEventListenerConverterTest extends AbstractConverterTest {
         SentryOnPart onPart = onParts.get(0);
         assertEquals(PlanItemTransition.OCCUR, onPart.getStandardEvent());
         assertEquals("startTaskAUserEvent", onPart.getSource().getPlanItemDefinition().getId());
-        PlanItem task = model.findPlanItemInPlanFragmentOrUpwards(model.findPlanItemDefinition("taskA").getPlanItemRef());
+        PlanItem task = model.findPlanItemInPlanFragmentOrUpwards(model.findPlanItemDefinitionInStageOrUpwards("taskA").getPlanItemRef());
         List<Criterion> criterions = task.getEntryCriteria();
         assertNotNull(criterions);
         assertEquals(1, criterions.size());
@@ -73,11 +77,15 @@ public class UserEventListenerConverterTest extends AbstractConverterTest {
         onPart = onParts.get(0);
         assertEquals(PlanItemTransition.OCCUR, onPart.getStandardEvent());
         assertEquals("stopTaskBUserEvent", onPart.getSource().getPlanItemDefinition().getId());
-        task = model.findPlanItemInPlanFragmentOrUpwards(model.findPlanItemDefinition("taskB").getPlanItemRef());
+        task = model.findPlanItemInPlanFragmentOrUpwards(model.findPlanItemDefinitionInStageOrUpwards("taskB").getPlanItemRef());
         criterions = task.getExitCriteria();
         assertNotNull(criterions);
         assertEquals(1, criterions.size());
         assertEquals(criterions.get(0).getSentryRef(), sentry.getId());
+
+        PlanItemDefinition planItemDefinition = model.findPlanItemDefinitionInStageOrDownwards("stopTaskBUserEvent");
+        assertTrue(planItemDefinition instanceof EventListener);
+        assertEquals("${someCondition}", ((EventListener) planItemDefinition).getAvailableConditionExpression());
 
     }
 

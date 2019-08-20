@@ -17,6 +17,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,6 +30,7 @@ import org.flowable.bpmn.constants.BpmnXMLConstants;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.GraphicInfo;
+import org.flowable.common.engine.impl.util.io.InputStreamSource;
 
 public abstract class AbstractConverterTest implements BpmnXMLConstants {
 
@@ -38,18 +40,12 @@ public abstract class AbstractConverterTest implements BpmnXMLConstants {
     }
     
     protected BpmnModel readXMLFile(InputStream inputStream) throws Exception {
-        XMLInputFactory xif = XMLInputFactory.newInstance();
-        InputStreamReader in = new InputStreamReader(inputStream, "UTF-8");
-        XMLStreamReader xtr = xif.createXMLStreamReader(in);
-        return new BpmnXMLConverter().convertToBpmnModel(xtr);
+        return new BpmnXMLConverter().convertToBpmnModel(new InputStreamSource(inputStream), true, false, "UTF-8");
     }
 
     protected BpmnModel exportAndReadXMLFile(BpmnModel bpmnModel) throws Exception {
         byte[] xml = new BpmnXMLConverter().convertToXML(bpmnModel);
-        XMLInputFactory xif = XMLInputFactory.newInstance();
-        InputStreamReader in = new InputStreamReader(new ByteArrayInputStream(xml), "UTF-8");
-        XMLStreamReader xtr = xif.createXMLStreamReader(in);
-        return new BpmnXMLConverter().convertToBpmnModel(xtr);
+        return new BpmnXMLConverter().convertToBpmnModel(new InputStreamSource(new ByteArrayInputStream(xml)), true, false, "UTF-8");
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
@@ -59,7 +55,7 @@ public abstract class AbstractConverterTest implements BpmnXMLConstants {
     	Map<String, GraphicInfo> shapesMap = null;
 
         XMLInputFactory xif = XMLInputFactory.newInstance();
-        InputStreamReader in = new InputStreamReader(new ByteArrayInputStream(xml), "UTF-8");
+        InputStreamReader in = new InputStreamReader(new ByteArrayInputStream(xml), StandardCharsets.UTF_8);
         XMLStreamReader xtr = xif.createXMLStreamReader(in);
 
     	String diagramId = null;

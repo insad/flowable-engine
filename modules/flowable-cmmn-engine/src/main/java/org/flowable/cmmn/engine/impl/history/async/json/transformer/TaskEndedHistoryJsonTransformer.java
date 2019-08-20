@@ -12,12 +12,13 @@
  */
 package org.flowable.cmmn.engine.impl.history.async.json.transformer;
 
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 
 import org.flowable.cmmn.engine.impl.history.async.CmmnAsyncHistoryConstants;
 import org.flowable.cmmn.engine.impl.util.CommandContextUtil;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
-import org.flowable.job.service.impl.history.async.AsyncHistorySession;
 import org.flowable.job.service.impl.persistence.entity.HistoryJobEntity;
 import org.flowable.task.service.HistoricTaskService;
 import org.flowable.task.service.impl.persistence.entity.HistoricTaskInstanceEntity;
@@ -30,8 +31,8 @@ import static org.flowable.job.service.impl.history.async.util.AsyncHistoryJsonU
 public class TaskEndedHistoryJsonTransformer extends AbstractTaskHistoryJsonTransformer {
     
     @Override
-    public String getType() {
-        return CmmnAsyncHistoryConstants.TYPE_TASK_REMOVED;
+    public List<String> getTypes() {
+        return Collections.singletonList(CmmnAsyncHistoryConstants.TYPE_TASK_REMOVED);
     }
     
     @Override
@@ -44,7 +45,8 @@ public class TaskEndedHistoryJsonTransformer extends AbstractTaskHistoryJsonTran
         HistoricTaskInstanceEntity historicTaskInstance = getHistoricTaskEntity(historicalData, commandContext);
         
         if (historicTaskInstance != null) {
-            Date lastUpdateTime = getDateFromJson(historicalData, AsyncHistorySession.TIMESTAMP);
+            // The end time is the last update time
+            Date lastUpdateTime = getDateFromJson(historicalData, CmmnAsyncHistoryConstants.FIELD_END_TIME);
             if (historicTaskInstance.getLastUpdateTime() == null || !historicTaskInstance.getLastUpdateTime().after(lastUpdateTime)) {
                 historicTaskInstance.setLastUpdateTime(lastUpdateTime);
                 copyCommonHistoricTaskInstanceFields(historicalData, historicTaskInstance);

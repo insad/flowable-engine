@@ -21,6 +21,7 @@ import java.util.Map;
 import org.flowable.cmmn.api.CallbackTypes;
 import org.flowable.cmmn.engine.CmmnEngine;
 import org.flowable.cmmn.engine.CmmnEngineConfiguration;
+import org.flowable.cmmn.engine.configurator.impl.cmmn.DefaultCaseInstanceService;
 import org.flowable.cmmn.engine.configurator.impl.deployer.CmmnDeployer;
 import org.flowable.cmmn.engine.configurator.impl.process.DefaultProcessInstanceService;
 import org.flowable.cmmn.engine.impl.callback.ChildProcessInstanceStateChangeCallback;
@@ -29,7 +30,6 @@ import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.impl.AbstractEngineConfiguration;
 import org.flowable.common.engine.impl.AbstractEngineConfigurator;
 import org.flowable.common.engine.impl.EngineDeployer;
-import org.flowable.common.engine.impl.HasTaskIdGeneratorEngineConfiguration;
 import org.flowable.common.engine.impl.callback.RuntimeInstanceStateChangeCallback;
 import org.flowable.common.engine.impl.interceptor.EngineConfigurationConstants;
 import org.flowable.common.engine.impl.persistence.entity.Entity;
@@ -51,7 +51,7 @@ public class CmmnEngineConfigurator extends AbstractEngineConfigurator {
 
     @Override
     protected List<EngineDeployer> getCustomDeployers() {
-        return Collections.<EngineDeployer>singletonList(new CmmnDeployer());
+        return Collections.singletonList(new CmmnDeployer());
     }
 
     @Override
@@ -88,7 +88,7 @@ public class CmmnEngineConfigurator extends AbstractEngineConfigurator {
             
         }
 
-        cmmnEngineConfiguration.setExecuteServiceDbSchemaManagers(false);
+        cmmnEngineConfiguration.setExecuteServiceSchemaManagers(false);
 
         initCmmnEngine();
 
@@ -98,6 +98,7 @@ public class CmmnEngineConfigurator extends AbstractEngineConfigurator {
     protected void copyProcessEngineProperties(ProcessEngineConfigurationImpl processEngineConfiguration) {
         initProcessInstanceService(processEngineConfiguration);
         initProcessInstanceStateChangedCallbacks(processEngineConfiguration);
+        initCaseInstanceService(processEngineConfiguration);
         
         cmmnEngineConfiguration.setEnableTaskRelationshipCounts(processEngineConfiguration.getPerformanceSettings().isEnableTaskRelationshipCounts());
         cmmnEngineConfiguration.setTaskQueryLimit(processEngineConfiguration.getTaskQueryLimit());
@@ -131,7 +132,11 @@ public class CmmnEngineConfigurator extends AbstractEngineConfigurator {
     }
 
     protected void initProcessInstanceService(ProcessEngineConfigurationImpl processEngineConfiguration) {
-        cmmnEngineConfiguration.setProcessInstanceService(new DefaultProcessInstanceService(processEngineConfiguration.getRuntimeService()));
+        cmmnEngineConfiguration.setProcessInstanceService(new DefaultProcessInstanceService(processEngineConfiguration));
+    }
+    
+    protected void initCaseInstanceService(ProcessEngineConfigurationImpl processEngineConfiguration) {
+        processEngineConfiguration.setCaseInstanceService(new DefaultCaseInstanceService(cmmnEngineConfiguration));
     }
 
     protected void initProcessInstanceStateChangedCallbacks(ProcessEngineConfigurationImpl processEngineConfiguration) {
@@ -161,21 +166,6 @@ public class CmmnEngineConfigurator extends AbstractEngineConfigurator {
         }
 
         return cmmnEngineConfiguration.buildCmmnEngine();
-    }
-
-    @Override
-    protected void initIdGenerator(AbstractEngineConfiguration engineConfiguration, AbstractEngineConfiguration targetEngineConfiguration) {
-        super.initIdGenerator(engineConfiguration, targetEngineConfiguration);
-        if (targetEngineConfiguration instanceof HasTaskIdGeneratorEngineConfiguration) {
-            HasTaskIdGeneratorEngineConfiguration targetEgineConfiguration = (HasTaskIdGeneratorEngineConfiguration) targetEngineConfiguration;
-            if (targetEgineConfiguration.getTaskIdGenerator() == null) {
-                if (engineConfiguration instanceof HasTaskIdGeneratorEngineConfiguration) {
-                    targetEgineConfiguration.setTaskIdGenerator(((HasTaskIdGeneratorEngineConfiguration) engineConfiguration).getTaskIdGenerator());
-                } else {
-                    targetEgineConfiguration.setTaskIdGenerator(targetEngineConfiguration.getIdGenerator());
-                }
-            }
-        }
     }
 
     public CmmnEngineConfiguration getCmmnEngineConfiguration() {

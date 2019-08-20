@@ -16,6 +16,7 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.flowable.app.api.AppRepositoryService;
 import org.flowable.app.api.repository.AppDefinition;
+import org.flowable.app.rest.AppRestApiInterceptor;
 import org.flowable.app.rest.AppRestResponseFactory;
 import org.flowable.common.engine.api.FlowableIllegalArgumentException;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
@@ -45,6 +46,9 @@ public class AppDefinitionResource {
 
     @Autowired
     protected AppRepositoryService appRepositoryService;
+    
+    @Autowired(required=false)
+    protected AppRestApiInterceptor restApiInterceptor;
 
     @ApiOperation(value = "Get a app definition", tags = { "App Definitions" })
     @ApiResponses(value = {
@@ -58,6 +62,10 @@ public class AppDefinitionResource {
         if (appDefinition == null) {
             throw new FlowableObjectNotFoundException("Could not find an app definition with id '" + appDefinitionId);
         }
+        
+        if (restApiInterceptor != null) {
+            restApiInterceptor.accessAppDefinitionInfoById(appDefinition);
+        }
 
         return appRestResponseFactory.createAppDefinitionResponse(appDefinition);
     }
@@ -65,7 +73,7 @@ public class AppDefinitionResource {
     @ApiOperation(value = "Execute actions for an app definition", tags = { "Case Definitions" },
             notes = "Execute actions for an app definition (Update category)")
     @ApiResponses(value = {
-            @ApiResponse(code = 200, message = "Indicates action has been executed for the specified app defintion. (category altered)"),
+            @ApiResponse(code = 200, message = "Indicates action has been executed for the specified app definition. (category altered)"),
             @ApiResponse(code = 400, message = "Indicates no category was defined in the request body."),
             @ApiResponse(code = 404, message = "Indicates the requested app definition was not found.")
     })
@@ -83,6 +91,10 @@ public class AppDefinitionResource {
 
         if (appDefinition == null) {
             throw new FlowableObjectNotFoundException("Could not find an app definition with id '" + appDefinitionId + "'.", AppDefinition.class);
+        }
+        
+        if (restApiInterceptor != null) {
+            restApiInterceptor.accessAppDefinitionInfoById(appDefinition);
         }
 
         if (actionRequest.getCategory() != null) {

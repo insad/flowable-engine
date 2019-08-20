@@ -243,6 +243,16 @@ public interface TaskInfoQuery<T extends TaskInfoQuery<?, ?>, V extends TaskInfo
      * Only select tasks for the given scope definition identifier. 
      */
     T scopeDefinitionId(String scopeDefinitionId);
+    
+    /**
+     * Select all tasks for the given process instance id and its children.
+     */
+    T processInstanceIdWithChildren(String processInstanceId);
+    
+    /**
+     * Select all tasks for the given case instance id and its children.
+     */
+    T caseInstanceIdWithChildren(String caseInstanceId);
 
     /**
      * Only select tasks that are created on the given date.
@@ -263,6 +273,16 @@ public interface TaskInfoQuery<T extends TaskInfoQuery<?, ?>, V extends TaskInfo
      * Only select tasks with the given category.
      */
     T taskCategory(String category);
+    
+    /**
+     * Only select tasks with form key.
+     */
+    T taskWithFormKey();
+
+    /**
+     * Only select tasks with the given formKey.
+     */
+    T taskFormKey(String formKey);
 
     /**
      * Only select tasks with the given taskDefinitionKey. The task definition key is the id of the userTask: &lt;userTask id="xxx" .../&gt;
@@ -635,7 +655,13 @@ public interface TaskInfoQuery<T extends TaskInfoQuery<?, ?>, V extends TaskInfo
     /**
      * All query clauses called will be added to a single or-statement. This or-statement will be included with the other already existing clauses in the query, joined by an 'and'.
      * 
-     * Calling endOr() will add all clauses to the regular query again. Calling or() after endOr() has been called will result in an exception.
+     * Calling endOr() will add all clauses to the regular query again. Calling or() after or() has been called or calling endOr() after endOr() has been called will result in an exception.
+     * It is possible to call or() endOr() several times if each or() has a matching endOr(), e.g.:
+     * query.<ConditionA>
+     *  .or().<conditionB>.<conditionC>.endOr()
+     *  .<conditionD>.<conditionE>
+     *  .or().<conditionF>.<conditionG>.endOr()
+     * will result in: conditionA & (conditionB | conditionC) & conditionD & conditionE & (conditionF | conditionG)
      */
     T or();
 

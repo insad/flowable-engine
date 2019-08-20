@@ -16,18 +16,14 @@ package org.flowable.spring.test.autodeployment;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
-import java.io.IOException;
 import java.io.InputStream;
 
-import org.flowable.common.engine.api.FlowableException;
 import org.flowable.dmn.spring.autodeployment.DefaultAutoDeploymentStrategy;
 import org.junit.Before;
 import org.junit.Test;
@@ -82,25 +78,6 @@ public class DefaultAutoDeploymentStrategyTest extends AbstractAutoDeploymentStr
         verify(deploymentBuilderMock, never()).addInputStream(isA(String.class), isA(InputStream.class));
         verify(deploymentBuilderMock, never()).addInputStream(eq(resourceName2), isA(InputStream.class));
         verify(deploymentBuilderMock, times(1)).deploy();
-    }
-
-    @Test(expected = FlowableException.class)
-    public void testDeployResourcesIOExceptionYieldsActivitiException() throws Exception {
-        when(resourceMock3.getInputStream()).thenThrow(new IOException());
-
-        final Resource[] resources = new Resource[] { resourceMock3 };
-        classUnderTest.deployResources(deploymentNameHint, resources, repositoryServiceMock);
-
-        fail("Expected exception for IOException");
-    }
-
-    @Test
-    public void testDetermineResourceNameWithExceptionFailsGracefully() throws Exception {
-        when(resourceMock3.getFile()).thenThrow(new IOException());
-        when(resourceMock3.getFilename()).thenReturn(resourceName3);
-
-        final Resource[] resources = new Resource[] { resourceMock3 };
-        classUnderTest.deployResources(deploymentNameHint, resources, repositoryServiceMock);
     }
 
 }

@@ -33,6 +33,13 @@ public class HistoricIdentityLinkEntityManagerImpl extends AbstractEntityManager
     }
 
     @Override
+    public HistoricIdentityLinkEntity create() {
+        HistoricIdentityLinkEntity identityLinkEntity = super.create();
+        identityLinkEntity.setCreateTime(identityLinkServiceConfiguration.getClock().getCurrentTime());
+        return identityLinkEntity;
+    }
+
+    @Override
     protected DataManager<HistoricIdentityLinkEntity> getDataManager() {
         return historicIdentityLinkDataManager;
     }
@@ -78,6 +85,21 @@ public class HistoricIdentityLinkEntityManagerImpl extends AbstractEntityManager
     @Override
     public void deleteHistoricIdentityLinksByScopeDefinitionIdAndScopeType(String scopeDefinitionId, String scopeType) {
         historicIdentityLinkDataManager.deleteHistoricIdentityLinksByScopeDefinitionIdAndType(scopeDefinitionId, scopeType);
+    }
+
+    @Override
+    public void deleteHistoricProcessIdentityLinksForNonExistingInstances() {
+        historicIdentityLinkDataManager.deleteHistoricProcessIdentityLinksForNonExistingInstances();
+    }
+    
+    @Override
+    public void deleteHistoricCaseIdentityLinksForNonExistingInstances() {
+        historicIdentityLinkDataManager.deleteHistoricCaseIdentityLinksForNonExistingInstances();
+    }
+    
+    @Override
+    public void deleteHistoricTaskIdentityLinksForNonExistingInstances() {
+        historicIdentityLinkDataManager.deleteHistoricTaskIdentityLinksForNonExistingInstances();
     }
 
     public HistoricIdentityLinkDataManager getHistoricIdentityLinkDataManager() {

@@ -12,6 +12,12 @@
  */
 package org.flowable.cmmn.editor;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import org.flowable.cmmn.model.Case;
 import org.flowable.cmmn.model.CmmnModel;
 import org.flowable.cmmn.model.DecisionTask;
@@ -19,14 +25,6 @@ import org.flowable.cmmn.model.FieldExtension;
 import org.flowable.cmmn.model.PlanItem;
 import org.flowable.cmmn.model.PlanItemDefinition;
 import org.flowable.cmmn.model.Stage;
-import org.hamcrest.core.Is;
-
-import java.util.Collections;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 /**
  * @author martin.grofcik
@@ -58,9 +56,13 @@ public class DecisionTaskJsonConverterTest extends AbstractConverterTest {
         assertEquals("sid-F4BCA0C7-8737-4279-B50F-59272C7C65A2", decisionTask.getId());
         assertEquals("dmnTask", decisionTask.getName());
 
-        FieldExtension fieldExtension = new FieldExtension();
-        fieldExtension.setFieldName("decisionTaskThrowErrorOnNoHits");
-        fieldExtension.setStringValue("false");
-        assertThat(((DecisionTask) planItemDefinition).getFieldExtensions(), Is.is(Collections.singletonList(fieldExtension)));
+        assertThat(decisionTask.getFieldExtensions())
+            .extracting(FieldExtension::getFieldName, FieldExtension::getStringValue)
+            .as("fieldName, stringValue")
+            .contains(
+                tuple("fallbackToDefaultTenant", "true"),
+                tuple("decisionTaskThrowErrorOnNoHits", "false")
+            );
     }
+
 }

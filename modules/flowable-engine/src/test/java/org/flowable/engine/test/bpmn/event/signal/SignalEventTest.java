@@ -22,20 +22,23 @@ import java.util.Map;
 import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.impl.history.HistoryLevel;
 import org.flowable.common.engine.impl.util.CollectionUtil;
-import org.flowable.engine.impl.EventSubscriptionQueryImpl;
 import org.flowable.engine.impl.test.HistoryTestHelper;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
+import org.flowable.eventsubscription.service.impl.EventSubscriptionQueryImpl;
 import org.flowable.job.api.Job;
+import org.flowable.task.api.Task;
 import org.flowable.validation.validator.Problems;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Tijs Rademakers
  */
 public class SignalEventTest extends PluggableFlowableTestCase {
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/bpmn/event/signal/SignalEventTests.catchAlertSignal.bpmn20.xml",
             "org/flowable/engine/test/bpmn/event/signal/SignalEventTests.throwAlertSignal.bpmn20.xml" })
     public void testSignalCatchIntermediate() {
@@ -50,6 +53,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
         assertEquals(0, runtimeService.createProcessInstanceQuery().count());
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/bpmn/event/signal/SignalEventTests.catchAlertSignalExpression.bpmn20.xml",
             "org/flowable/engine/test/bpmn/event/signal/SignalEventTests.throwAlertSignalExpression.bpmn20.xml" })
     public void testSignalCatchIntermediateExpression() {
@@ -66,6 +70,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
         assertEquals(0, runtimeService.createProcessInstanceQuery().count());
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/bpmn/event/signal/SignalEventTests.catchAlertSignalBoundary.bpmn20.xml",
             "org/flowable/engine/test/bpmn/event/signal/SignalEventTests.throwAlertSignal.bpmn20.xml" })
     public void testSignalCatchBoundary() {
@@ -80,6 +85,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
         assertEquals(0, runtimeService.createProcessInstanceQuery().count());
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/bpmn/event/signal/SignalEventTests.catchAlertSignalBoundaryWithReceiveTask.bpmn20.xml",
             "org/flowable/engine/test/bpmn/event/signal/SignalEventTests.throwAlertSignal.bpmn20.xml" })
     public void testSignalCatchBoundaryWithVariables() {
@@ -94,6 +100,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
         assertEquals("catchSignal", runtimeService.getVariable(pi.getId(), "processName"));
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/bpmn/event/signal/SignalEventTests.catchAlertSignal.bpmn20.xml",
             "org/flowable/engine/test/bpmn/event/signal/SignalEventTests.throwAlertSignalAsynch.bpmn20.xml" })
     public void testSignalCatchIntermediateAsynch() {
@@ -124,6 +131,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/bpmn/event/signal/SignalEventTests.catchMultipleSignals.bpmn20.xml",
             "org/flowable/engine/test/bpmn/event/signal/SignalEventTests.throwAlertSignal.bpmn20.xml", "org/flowable/engine/test/bpmn/event/signal/SignalEventTests.throwAbortSignal.bpmn20.xml" })
     public void testSignalCatchDifferentSignals() {
@@ -151,6 +159,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
     /**
      * Verifies the solution of https://jira.codehaus.org/browse/ACT-1309
      */
+    @Test
     @Deployment
     public void testSignalBoundaryOnSubProcess() {
         ProcessInstance pi = runtimeService.startProcessInstanceByKey("signalEventOnSubprocess");
@@ -158,6 +167,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
         assertProcessEnded(pi.getProcessInstanceId());
     }
 
+    @Test
     public void testDuplicateSignalNames() {
         try {
             repositoryService.createDeployment().addClasspathResource("org/flowable/engine/test/bpmn/event/signal/SignalEventTests.duplicateSignalNames.bpmn20.xml").deploy();
@@ -169,6 +179,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     public void testNoSignalName() {
         try {
             repositoryService.createDeployment().addClasspathResource("org/flowable/engine/test/bpmn/event/signal/SignalEventTests.noSignalName.bpmn20.xml").deploy();
@@ -180,6 +191,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     public void testSignalNoId() {
         try {
             repositoryService.createDeployment().addClasspathResource("org/flowable/engine/test/bpmn/event/signal/SignalEventTests.signalNoId.bpmn20.xml").deploy();
@@ -191,6 +203,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     public void testSignalNoRef() {
         try {
             repositoryService.createDeployment().addClasspathResource("org/flowable/engine/test/bpmn/event/signal/SignalEventTests.signalNoRef.bpmn20.xml").deploy();
@@ -209,6 +222,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
     /**
      * TestCase to reproduce Issue ACT-1344
      */
+    @Test
     @Deployment
     public void testNonInterruptingSignal() {
         ProcessInstance pi = runtimeService.startProcessInstanceByKey("nonInterruptingSignalEvent");
@@ -240,6 +254,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
     /**
      * TestCase to reproduce Issue ACT-1344
      */
+    @Test
     @Deployment
     public void testNonInterruptingSignalWithSubProcess() {
         ProcessInstance pi = runtimeService.startProcessInstanceByKey("nonInterruptingSignalWithSubProcess");
@@ -274,6 +289,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
         assertEquals(1, tasks.size());
     }
 
+    @Test
     @Deployment
     public void testUseSignalForExceptionsBetweenParallelPaths() {
         runtimeService.startProcessInstanceByKey("processWithSignal");
@@ -301,6 +317,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
         assertEquals(0, runtimeService.createExecutionQuery().count());
     }
 
+    @Test
     @Deployment
     public void testSignalWithProcessInstanceScope() {
         // Start the process that catches the signal
@@ -310,15 +327,38 @@ public class SignalEventTest extends PluggableFlowableTestCase {
         // Then start the process that will throw the signal
         runtimeService.startProcessInstanceByKey("processWithSignalThrow");
 
-        // Since the signal is process instance scoped, the second process
-        // shouldn't have proceeded in any way
+        // Since the signal is process instance scoped, the second process shouldn't have proceeded in any way
         assertEquals("userTaskWithSignalCatch", taskService.createTaskQuery().processInstanceId(processInstanceCatch.getId()).singleResult().getName());
 
         // Let's try to trigger the catch using the API, that should also fail
         runtimeService.signalEventReceived("The Signal");
         assertEquals("userTaskWithSignalCatch", taskService.createTaskQuery().processInstanceId(processInstanceCatch.getId()).singleResult().getName());
     }
+    
+    @Test
+    @Deployment
+    public void testCallActivityWithInstanceScopeSignal() {
+        // start process with call activity and catching signal   
+        ProcessInstance processInstanceCatch = runtimeService.startProcessInstanceByKey("processWithSignalCatch");
+        assertEquals("userTaskWithSignalCatch", taskService.createTaskQuery().processInstanceId(processInstanceCatch.getId()).singleResult().getName());
+        
+        ProcessInstance throwingProcessInstance = runtimeService.createProcessInstanceQuery().superProcessInstanceId(processInstanceCatch.getId()).singleResult();
+        assertNotNull(throwingProcessInstance);
+        
+        Task beforeThrowTask = taskService.createTaskQuery().processInstanceId(throwingProcessInstance.getId()).singleResult();
+        assertEquals("beforeThrowTask", beforeThrowTask.getTaskDefinitionKey());
+        taskService.complete(beforeThrowTask.getId());
+        
+        assertEquals(0, runtimeService.createProcessInstanceQuery().processInstanceId(throwingProcessInstance.getId()).count());
+        
+        Task afterSignalReceiveTask = taskService.createTaskQuery().processInstanceId(processInstanceCatch.getId()).singleResult();
+        assertEquals("userTaskAfterSignalCatch", afterSignalReceiveTask.getTaskDefinitionKey());
+        taskService.complete(afterSignalReceiveTask.getId());
+        
+        assertEquals(0, runtimeService.createProcessInstanceQuery().processInstanceId(processInstanceCatch.getId()).count());
+    }
 
+    @Test
     @Deployment
     public void testSignalWithGlobalScope() {
         // Start the process that catches the signal
@@ -333,6 +373,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
         assertEquals("userTaskAfterSignalCatch", taskService.createTaskQuery().processInstanceId(processInstanceCatch.getId()).singleResult().getName());
     }
 
+    @Test
     @Deployment
     public void testAsyncTriggeredSignalEvent() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("processWithSignalCatch");
@@ -353,6 +394,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
         assertEquals(0, managementService.createJobQuery().count());
     }
 
+    @Test
     @Deployment
     public void testSignalUserTask() {
         runtimeService.startProcessInstanceByKey("catchSignal");
@@ -369,6 +411,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     public void testSignalStartEventFromProcess() {
 
         // Deploy test processes
@@ -408,6 +451,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     public void testSignalStartEventFromProcesAsync() {
 
         // Deploy test processes
@@ -458,6 +502,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     public void testSignalStartEventFromAPI() {
 
         // Deploy test processes
@@ -495,6 +540,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     public void testSignalStartEventFromAPIAsync() {
 
         // Deploy test processes
@@ -539,12 +585,14 @@ public class SignalEventTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     @Deployment
     public void testEarlyFinishedProcess() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("callerProcess");
         assertNotNull(processInstance.getId());
     }
 
+    @Test
     @Deployment
     public void testNoneEndEventAfterSignalInConcurrentProcess() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("my-process");
@@ -563,6 +611,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
         assertEquals("usertask2", task.getTaskDefinitionKey());
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/bpmn/event/signal/SignalEventTests.catchAlertSignal.bpmn20.xml",
             "org/flowable/engine/test/bpmn/event/signal/SignalEventTests.throwAlertSignal.bpmn20.xml" })
     public void testSignalCatchSuspendedDefinition() {
@@ -579,6 +628,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
         assertEquals(0, runtimeService.createProcessInstanceQuery().count());
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/bpmn/event/signal/SignalEventTests.catchAlertSignal.bpmn20.xml",
             "org/flowable/engine/test/bpmn/event/signal/SignalEventTests.throwAlertSignal.bpmn20.xml" })
     public void testSignalCatchSuspendedDefinitionAndInstances() {
@@ -604,6 +654,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
         assertEquals(0, runtimeService.createProcessInstanceQuery().count());
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/bpmn/event/signal/SignalEventTests.catchAlertSignal.bpmn20.xml",
             "org/flowable/engine/test/bpmn/event/signal/SignalEventTests.throwAlertSignal.bpmn20.xml" })
     public void testSignalCatchSuspendedInstance() {
@@ -629,6 +680,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
         assertEquals(0, runtimeService.createProcessInstanceQuery().count());
     }
 
+    @Test
     public void testSignalStartEventWithSuspendedDefinition() {
 
         repositoryService.createDeployment().addClasspathResource("org/flowable/engine/test/bpmn/event/signal/SignalEventTest.testSignalStartEvent.bpmn20.xml").deploy();
@@ -665,6 +717,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
     /**
      * Test case for https://activiti.atlassian.net/browse/ACT-1978
      */
+    @Test
     public void testSignalDeleteOnRedeploy() {
 
         // Deploy test processes
@@ -685,6 +738,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     @Deployment
     public void testSignalWaitOnUserTaskBoundaryEvent() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("signal-wait");
@@ -701,6 +755,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
     /**
      * From https://forums.activiti.org/content/boundary-signal-causes-already-taking-transition
      */
+    @Test
     @Deployment
     public void testSignalThrowAndCatchInSameTransaction() {
 
@@ -753,6 +808,7 @@ public class SignalEventTest extends PluggableFlowableTestCase {
         assertEquals(1, usingTask.size());
     }
 
+    @Test
     @Deployment
     public void testMultipleSignalStartEvents() {
         runtimeService.signalEventReceived("signal1");
@@ -772,6 +828,16 @@ public class SignalEventTest extends PluggableFlowableTestCase {
 
         runtimeService.signalEventReceived("signal3");
         validateTaskCounts(3, 1, 2);
+    }
+    
+    @Test
+    @Deployment
+    public void testSingleSignalCatchAfterEventGateway() {
+        String processInstanceId = runtimeService.startProcessInstanceByKey("testSignalAfterEventGateway").getId();
+        assertEquals(1, runtimeService.createEventSubscriptionQuery().processInstanceId(processInstanceId).count());
+        runtimeService.signalEventReceived("mySignal");
+        
+        assertEquals(1, taskService.createTaskQuery().processInstanceId(processInstanceId).count());
     }
 
     private void validateTaskCounts(long taskACount, long taskBCount, long taskCCount) {

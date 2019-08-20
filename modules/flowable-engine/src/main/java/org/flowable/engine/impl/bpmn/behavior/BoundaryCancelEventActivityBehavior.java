@@ -23,11 +23,11 @@ import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.history.DeleteReason;
 import org.flowable.engine.impl.bpmn.helper.ScopeUtil;
-import org.flowable.engine.impl.persistence.entity.CompensateEventSubscriptionEntity;
-import org.flowable.engine.impl.persistence.entity.EventSubscriptionEntityManager;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntityManager;
 import org.flowable.engine.impl.util.CommandContextUtil;
+import org.flowable.eventsubscription.service.EventSubscriptionService;
+import org.flowable.eventsubscription.service.impl.persistence.entity.CompensateEventSubscriptionEntity;
 
 /**
  * @author Tijs Rademakers
@@ -58,8 +58,8 @@ public class BoundaryCancelEventActivityBehavior extends BoundaryEventActivityBe
             throw new FlowableException("No execution found for sub process of boundary cancel event " + boundaryEvent.getId());
         }
 
-        EventSubscriptionEntityManager eventSubscriptionEntityManager = CommandContextUtil.getEventSubscriptionEntityManager(commandContext);
-        List<CompensateEventSubscriptionEntity> eventSubscriptions = eventSubscriptionEntityManager.findCompensateEventSubscriptionsByExecutionId(subProcessExecution.getParentId());
+        EventSubscriptionService eventSubscriptionService = CommandContextUtil.getEventSubscriptionService(commandContext);
+        List<CompensateEventSubscriptionEntity> eventSubscriptions = eventSubscriptionService.findCompensateEventSubscriptionsByExecutionId(subProcessExecution.getParentId());
 
         if (eventSubscriptions.isEmpty()) {
             leave(execution);
@@ -69,7 +69,7 @@ public class BoundaryCancelEventActivityBehavior extends BoundaryEventActivityBe
 
             // cancel boundary is always sync
             ScopeUtil.throwCompensationEvent(eventSubscriptions, execution, false);
-            executionEntityManager.deleteExecutionAndRelatedData(subProcessExecution, deleteReason);
+            executionEntityManager.deleteExecutionAndRelatedData(subProcessExecution, deleteReason, false);
             if (subProcessExecution.getCurrentFlowElement() instanceof Activity) {
                 Activity activity = (Activity) subProcessExecution.getCurrentFlowElement();
                 if (activity.getLoopCharacteristics() != null) {
@@ -77,7 +77,7 @@ public class BoundaryCancelEventActivityBehavior extends BoundaryEventActivityBe
                     List<ExecutionEntity> miChildExecutions = executionEntityManager.findChildExecutionsByParentExecutionId(miExecution.getId());
                     for (ExecutionEntity miChildExecution : miChildExecutions) {
                         if (!subProcessExecution.getId().equals(miChildExecution.getId()) && activity.getId().equals(miChildExecution.getCurrentActivityId())) {
-                            executionEntityManager.deleteExecutionAndRelatedData(miChildExecution, deleteReason);
+                            executionEntityManager.deleteExecutionAndRelatedData(miChildExecution, deleteReason, false);
                         }
                     }
                 }

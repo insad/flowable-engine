@@ -23,6 +23,8 @@ public interface CaseInstanceBuilder {
     CaseInstanceBuilder caseDefinitionId(String caseDefinitionId);
 
     CaseInstanceBuilder caseDefinitionKey(String caseDefinitionKey);
+    
+    CaseInstanceBuilder predefinedCaseInstanceId(String caseInstanceId);
 
     CaseInstanceBuilder name(String name);
 
@@ -37,6 +39,19 @@ public interface CaseInstanceBuilder {
     CaseInstanceBuilder transientVariable(String variableName, Object value);
 
     CaseInstanceBuilder tenantId(String tenantId);
+    
+    /**
+     * Indicator to override the tenant id of the case definition with the provided value.
+     * The tenantId to lookup the case definition should still be provided if needed.
+     */
+    CaseInstanceBuilder overrideCaseDefinitionTenantId(String tenantId);
+
+    /**
+     * Allows to pass any variables if they come from a form.
+     * The difference with regular {@link #variables(Map)} is that the  start form will be fetched
+     * and the variables matched with the {@link org.flowable.form.api.FormInfo}.
+     */
+    CaseInstanceBuilder startFormVariables(Map<String, Object> formVariables);
     
     CaseInstanceBuilder outcome(String outcome);
 
@@ -55,13 +70,32 @@ public interface CaseInstanceBuilder {
      */
     CaseInstanceBuilder callbackId(String callbackId);
 
+    /**
+     * Set parent case instanceId of the newly create case instance
+     *
+     * @param parentCaseInstanceId parent case instance identifier
+     * @return modified case instance builder which creates case instance with the reference to parent
+     */
+    CaseInstanceBuilder parentId(String parentCaseInstanceId);
+
+    /**
+     * If case definition is not found by key in the specified tenant use default tenant search as a fall back
+     *
+     * @return modified case instance builder
+     */
+    CaseInstanceBuilder fallbackToDefaultTenant();
+
     CaseInstance start();
-    
+
+    CaseInstance startAsync();
+
     CaseInstance startWithForm();
 
     String getCaseDefinitionId();
 
     String getCaseDefinitionKey();
+    
+    String getPredefinedCaseInstanceId();
 
     String getName();
 
@@ -72,10 +106,20 @@ public interface CaseInstanceBuilder {
     Map<String, Object> getTransientVariables();
 
     String getTenantId();
+    
+    String getOverrideDefinitionTenantId();
+
+    Map<String, Object> getStartFormVariables();
 
     String getOutcome();
 
     String getCallbackType();
 
     String getCallbackId();
+
+    String getParentId();
+
+    boolean isFallbackToDefaultTenant();
+
+    boolean isStartWithForm();
 }

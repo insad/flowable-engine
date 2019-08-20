@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.flowable.cmmn.api.delegate.DelegatePlanItemInstance;
+import org.flowable.cmmn.engine.CmmnEngineConfiguration;
 import org.flowable.cmmn.engine.impl.behavior.PlanItemActivityBehavior;
 import org.flowable.cmmn.engine.impl.persistence.entity.PlanItemInstanceEntity;
 import org.flowable.cmmn.engine.impl.repository.CaseDefinitionUtil;
@@ -28,6 +29,7 @@ import org.flowable.common.engine.api.scope.ScopeTypes;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.dmn.api.DecisionExecutionAuditContainer;
 import org.flowable.dmn.api.DmnRuleService;
+import org.flowable.dmn.api.ExecuteDecisionBuilder;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,6 +44,7 @@ import liquibase.util.StringUtils;
 public class DecisionTaskActivityBehavior extends TaskActivityBehavior implements PlanItemActivityBehavior {
 
     protected static final String EXPRESSION_DECISION_TABLE_THROW_ERROR_FLAG = "decisionTaskThrowErrorOnNoHits";
+    protected static final String STRING_DECISION_TABLE_FALLBACK_TO_DEFAULT_TENANT = "fallbackToDefaultTenant";
 
     protected DecisionTask decisionTask;
     protected Expression decisionRefExpression;
@@ -76,16 +79,22 @@ public class DecisionTaskActivityBehavior extends TaskActivityBehavior implement
             }
         }
 
-        DecisionExecutionAuditContainer decisionExecutionAuditContainer = dmnRuleService.createExecuteDecisionBuilder().
-                parentDeploymentId(CaseDefinitionUtil.getDefinitionDeploymentId(planItemInstanceEntity.getCaseDefinitionId())).
-                decisionKey(externalRef).
-                instanceId(planItemInstanceEntity.getCaseInstanceId()).
-                executionId(planItemInstanceEntity.getId()).
-                activityId(decisionTask.getId()).
-                scopeType(ScopeTypes.CMMN).
-                variables(planItemInstanceEntity.getVariables()).
-                tenantId(planItemInstanceEntity.getTenantId()).
-                executeWithAuditTrail();
+        ExecuteDecisionBuilder executeDecisionBuilder = dmnRuleService.createExecuteDecisionBuilder().
+            parentDeploymentId(CaseDefinitionUtil.getDefinitionDeploymentId(planItemInstanceEntity.getCaseDefinitionId())).
+            decisionKey(externalRef).
+            instanceId(planItemInstanceEntity.getCaseInstanceId()).
+            executionId(planItemInstanceEntity.getId()).
+            activityId(decisionTask.getId()).
+            scopeType(ScopeTypes.CMMN).
+            variables(planItemInstanceEntity.getVariables()).
+            tenantId(planItemInstanceEntity.getTenantId());
+
+        String fallBackToDefaultTenantValue = getFieldString(STRING_DECISION_TABLE_FALLBACK_TO_DEFAULT_TENANT);
+        if (fallBackToDefaultTenantValue != null && Boolean.parseBoolean(fallBackToDefaultTenantValue)) {
+            executeDecisionBuilder.fallbackToDefaultTenant();
+        }
+
+        DecisionExecutionAuditContainer decisionExecutionAuditContainer = executeDecisionBuilder.executeWithAuditTrail();
 
         if (decisionExecutionAuditContainer == null) {
             throw new FlowableException("DMN decision table with key " + externalRef + " was not executed.");
@@ -105,23 +114,27 @@ public class DecisionTaskActivityBehavior extends TaskActivityBehavior implement
                 Expression expression = CommandContextUtil.getExpressionManager(commandContext).createExpression(throwErrorFieldValue);
                 Object expressionValue = expression.getValue(planItemInstanceEntity);
                 
-                if (expressionValue != null && expressionValue instanceof Boolean && ((Boolean) expressionValue)) {
+                if (expressionValue instanceof Boolean && ((Boolean) expressionValue)) {
                     throw new FlowableException("DMN decision table with key " + externalRef + " did not hit any rules for the provided input.");
                 }
             }
         }
 
-        setVariables(decisionExecutionAuditContainer.getDecisionResult(), externalRef, planItemInstanceEntity, 
-                        CommandContextUtil.getCmmnEngineConfiguration(commandContext).getObjectMapper());
+        CmmnEngineConfiguration cmmnEngineConfiguration = CommandContextUtil.getCmmnEngineConfiguration(commandContext);
+        if (cmmnEngineConfiguration.getDecisionTableVariableManager() != null) {
+            cmmnEngineConfiguration.getDecisionTableVariableManager().setVariablesOnPlanItemInstance(decisionExecutionAuditContainer.getDecisionResult(), 
+                            externalRef, planItemInstanceEntity, cmmnEngineConfiguration.getObjectMapper());
+            
+        } else {
+            setVariablesOnPlanItemInstance(decisionExecutionAuditContainer.getDecisionResult(), externalRef, 
+                            planItemInstanceEntity, cmmnEngineConfiguration.getObjectMapper());
+        }
 
         CommandContextUtil.getAgenda().planCompletePlanItemInstanceOperation(planItemInstanceEntity);
     }
 
-
-    protected void setVariables(List<Map<String, Object>> executionResult,
-                                String decisionKey,
-                                PlanItemInstanceEntity planItemInstanceEntity,
-                                ObjectMapper objectMapper) {
+    protected void setVariablesOnPlanItemInstance(List<Map<String, Object>> executionResult, String decisionKey, 
+                    PlanItemInstanceEntity planItemInstanceEntity, ObjectMapper objectMapper) {
         
         if (executionResult == null || executionResult.isEmpty()) {
             return;

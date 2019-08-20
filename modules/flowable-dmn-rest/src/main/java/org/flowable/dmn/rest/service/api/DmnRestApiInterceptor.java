@@ -15,7 +15,9 @@ package org.flowable.dmn.rest.service.api;
 import org.flowable.dmn.api.DmnDecisionTable;
 import org.flowable.dmn.api.DmnDecisionTableQuery;
 import org.flowable.dmn.api.DmnDeployment;
+import org.flowable.dmn.api.DmnDeploymentBuilder;
 import org.flowable.dmn.api.DmnDeploymentQuery;
+import org.flowable.dmn.api.DmnHistoricDecisionExecution;
 import org.flowable.dmn.api.DmnHistoricDecisionExecutionQuery;
 import org.flowable.dmn.rest.service.api.decision.DmnRuleServiceRequest;
 
@@ -32,10 +34,14 @@ public interface DmnRestApiInterceptor {
     void accessDeploymentsWithQuery(DmnDeploymentQuery deploymentQuery);
     
     void executeNewDeploymentForTenantId(String tenantId);
+
+    void enhanceDeployment(DmnDeploymentBuilder dmnDeploymentBuilder);
     
     void deleteDeployment(DmnDeployment deployment);
     
     void accessDmnManagementInfo();
     
+    void accessDecisionHistoryInfoById(DmnHistoricDecisionExecution historicExecutionQuery);
+
     void accessDecisionHistoryInfoWithQuery(DmnHistoricDecisionExecutionQuery historicExecutionQuery);
 }

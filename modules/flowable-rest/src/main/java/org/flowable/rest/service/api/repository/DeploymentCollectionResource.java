@@ -13,6 +13,8 @@
 
 package org.flowable.rest.service.api.repository;
 
+import static org.flowable.common.rest.api.PaginateListUtil.paginateList;
+
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.Collections;
@@ -86,7 +88,7 @@ public class DeploymentCollectionResource {
             @ApiImplicitParam(name = "name", dataType = "string", value = "Only return deployments with the given name.", paramType = "query"),
             @ApiImplicitParam(name = "nameLike", dataType = "string", value = "Only return deployments with a name like the given name.", paramType = "query"),
             @ApiImplicitParam(name = "category", dataType = "string", value = "Only return deployments with the given category.", paramType = "query"),
-            @ApiImplicitParam(name = "categoryNotEquals", dataType = "string", value = "Only return deployments which don’t have the given category.", paramType = "query"),
+            @ApiImplicitParam(name = "categoryNotEquals", dataType = "string", value = "Only return deployments which do not have the given category.", paramType = "query"),
             @ApiImplicitParam(name = "parentDeploymentId", dataType = "string", value = "Only return deployments with the given parent deployment id.", paramType = "query"),
             @ApiImplicitParam(name = "parentDeploymentIdLike", dataType = "string", value = "Only return deployments with a parent deployment id like the given value.", paramType = "query"),
             @ApiImplicitParam(name = "tenantId", dataType = "string", value = "Only return deployments with the given tenantId.", paramType = "query"),
@@ -137,7 +139,7 @@ public class DeploymentCollectionResource {
             restApiInterceptor.accessDeploymentsWithQuery(deploymentQuery);
         }
 
-        return new DeploymentsPaginateList(restResponseFactory).paginateList(allRequestParams, deploymentQuery, "id", allowedSortProperties);
+        return paginateList(allRequestParams, deploymentQuery, "id", allowedSortProperties, restResponseFactory::createDeploymentResponseList);
     }
 
     @ApiOperation(value = "Create a new deployment", tags = {
@@ -211,6 +213,10 @@ public class DeploymentCollectionResource {
 
             if (tenantId != null) {
                 deploymentBuilder.tenantId(tenantId);
+            }
+
+            if (restApiInterceptor != null) {
+                restApiInterceptor.enhanceDeployment(deploymentBuilder);
             }
 
             Deployment deployment = deploymentBuilder.deploy();

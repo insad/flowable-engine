@@ -31,6 +31,7 @@ public interface CmmnStencilConstants {
     String STENCIL_TASK_PROCESS = "ProcessTask";
     String STENCIL_TASK_SCRIPT = "ScriptTask";
     String STENCIL_MILESTONE = "Milestone";
+    String STENCIL_GENERIC_EVENT_LISTENER = "EventListener";
     String STENCIL_TIMER_EVENT_LISTENER ="TimerEventListener";
     String STENCIL_USER_EVENT_LISTENER ="UserEventListener";
 
@@ -61,6 +62,7 @@ public interface CmmnStencilConstants {
 
     String PROPERTY_FORMKEY = "formkeydefinition";
     String PROPERTY_FORM_REFERENCE = "formreference";
+    String PROPERTY_FORM_FIELD_VALIDATION = "formfieldvalidation";
 
     String PROPERTY_IS_BLOCKING = "isblocking";
     String PROPERTY_IS_BLOCKING_EXPRESSION = "isblockingexpression";
@@ -84,6 +86,9 @@ public interface CmmnStencilConstants {
     String PROPERTY_COMPLETION_NEUTRAL_ENABLED = "completionneutralenabled";
     String PROPERTY_COMPLETION_NEUTRAL_RULE_CONDITION = "completionneutralrulecondition";
 
+    String PROPERTY_DISPLAY_ORDER = "displayorder";
+    String PROPERTY_INCLUDE_IN_STAGE_OVERVIEW  = "includeinstageoverview";
+
     String PROPERTY_USERTASK_ASSIGNMENT = "usertaskassignment";
     String PROPERTY_USERTASK_PRIORITY = "prioritydefinition";
     String PROPERTY_USERTASK_DUEDATE = "duedatedefinition";
@@ -92,6 +97,22 @@ public interface CmmnStencilConstants {
     String PROPERTY_USERTASK_CANDIDATE_USERS = "candidateUsers";
     String PROPERTY_USERTASK_CANDIDATE_GROUPS = "candidateGroups";
     String PROPERTY_USERTASK_CATEGORY = "categorydefinition";
+
+    String PROPERTY_USERTASK_LISTENERS = "tasklisteners";
+    String PROPERTY_LISTENER_EVENT = "event";
+    String PROPERTY_LISTENER_CLASS_NAME = "className";
+    String PROPERTY_LISTENER_EXPRESSION = "expression";
+    String PROPERTY_LISTENER_DELEGATE_EXPRESSION = "delegateExpression";
+    String PROPERTY_LISTENER_FIELDS = "fields";
+
+    String PROPERTY_LIFECYCLE_LISTENERS = "planitemlifecyclelisteners";
+    String PROPERTY_LISTENER_SOURCE_STATE = "sourceState";
+    String PROPERTY_LISTENER_TARGET_STATE = "targetState";
+
+    String PROPERTY_FIELD_NAME = "name";
+    String PROPERTY_FIELD_STRING_VALUE = "stringValue";
+    String PROPERTY_FIELD_EXPRESSION = "expression";
+    String PROPERTY_FIELD_STRING = "string";
 
     String PROPERTY_SERVICETASK_CLASS = "servicetaskclass";
     String PROPERTY_SERVICETASK_EXPRESSION = "servicetaskexpression";
@@ -112,17 +133,25 @@ public interface CmmnStencilConstants {
     String PROPERTY_DECISIONTABLE_REFERENCE_KEY = "decisionTableReferenceKey";
     String PROPERTY_DECISIONTABLE_THROW_ERROR_NO_HITS = "decisiontaskthrowerroronnohits";
     String PROPERTY_DECISIONTABLE_THROW_ERROR_NO_HITS_KEY = "decisionTaskThrowErrorOnNoHits";
+    String PROPERTY_DECISIONTABLE_FALLBACK_TO_DEFAULT_TENANT = "decisiontaskfallbacktodefaulttenant";
+    String PROPERTY_DECISIONTABLE_FALLBACK_TO_DEFAULT_TENANT_KEY = "fallbackToDefaultTenant";
 
     String PROPERTY_CASE_REFERENCE = "casetaskcasereference";
+    String PROPERTY_CASE_IN_PARAMETERS = "casetaskinparameters";
+    String PROPERTY_CASE_OUT_PARAMETERS = "casetaskoutparameters";
+    String PROPERTY_CASE_BUSINESS_KEY = "casetaskbusinesskey";
+    String PROPERTY_CASE_INHERIT_BUSINESS_KEY = "casetaskinheritbusinesskey";
 
     String PROPERTY_PROCESS_REFERENCE = "processtaskprocessreference";
     String PROPERTY_PROCESS_IN_PARAMETERS = "processtaskinparameters";
     String PROPERTY_PROCESS_OUT_PARAMETERS = "processtaskoutparameters";
+    String PROPERTY_FALLBACK_TO_DEFAULT_TENANT = "fallbacktodefaulttenant";
 
     String PROPERTY_IN_PARAMETERS = "inParameters";
     String PROPERTY_OUT_PARAMETERS = "outParameters";
 
     String PROPERTY_IF_PART_CONDITION = "ifpartcondition";
+    String PROPERTY_TRIGGER_MODE = "triggermode";
 
     String PROPERTY_TRANSITION_EVENT = "transitionevent";
 
@@ -130,6 +159,7 @@ public interface CmmnStencilConstants {
     String PROPERTY_HTTPTASK_REQ_URL = "httptaskrequesturl";
     String PROPERTY_HTTPTASK_REQ_HEADERS = "httptaskrequestheaders";
     String PROPERTY_HTTPTASK_REQ_BODY  = "httptaskrequestbody";
+    String PROPERTY_HTTPTASK_REQ_BODY_ENCODING  = "httptaskrequestbodyencoding";
     String PROPERTY_HTTPTASK_REQ_TIMEOUT = "httptaskrequesttimeout";
     String PROPERTY_HTTPTASK_REQ_DISALLOW_REDIRECTS = "httptaskdisallowredirects";
     String PROPERTY_HTTPTASK_REQ_FAIL_STATUS_CODES = "httptaskfailstatuscodes";
@@ -145,5 +175,7 @@ public interface CmmnStencilConstants {
     String PROPERTY_TIMER_EXPRESSION = "timerexpression";
     String PROPERTY_TIMER_START_TRIGGER_SOURCE_REF = "timerstarttriggersourceref";
     String PROPERTY_TIMER_START_TRIGGER_STANDARD_EVENT = "transitionevent";
+
+    String PROPERTY_EVENT_LISTENER_AVAILABLE_CONDITION = "availablecondition";
 
 }

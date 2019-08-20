@@ -12,7 +12,9 @@
  */
 package org.flowable.cmmn.engine.impl.history.async.json.transformer;
 
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 
 import org.flowable.cmmn.engine.impl.history.async.CmmnAsyncHistoryConstants;
 import org.flowable.cmmn.engine.impl.persistence.entity.HistoricPlanItemInstanceEntity;
@@ -26,11 +28,12 @@ import static org.flowable.job.service.impl.history.async.util.AsyncHistoryJsonU
 /**
  * @author Joram Barrez
  */
+@Deprecated
 public class PlanItemInstanceDisabledHistoryJsonTransformer extends AbstractNeedsHistoricPlanItemInstanceHistoryJsonTransformer {
     
     @Override
-    public String getType() {
-        return CmmnAsyncHistoryConstants.TYPE_PLAN_ITEM_INSTANCE_DISABLED;
+    public List<String> getTypes() {
+        return Collections.singletonList(CmmnAsyncHistoryConstants.TYPE_PLAN_ITEM_INSTANCE_DISABLED);
     }
 
     @Override

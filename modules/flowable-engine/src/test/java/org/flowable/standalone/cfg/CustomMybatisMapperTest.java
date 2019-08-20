@@ -18,6 +18,7 @@ import java.util.Map;
 import org.flowable.common.engine.impl.cmd.CustomSqlExecution;
 import org.flowable.engine.impl.cmd.AbstractCustomSqlExecution;
 import org.flowable.engine.impl.test.ResourceFlowableTestCase;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author jbarrez
@@ -28,6 +29,7 @@ public class CustomMybatisMapperTest extends ResourceFlowableTestCase {
         super("org/flowable/standalone/cfg/custom-mybatis-mappers-flowable.cfg.xml");
     }
 
+    @Test
     public void testSelectTaskColumns() {
 
         // Create test data
@@ -58,12 +60,12 @@ public class CustomMybatisMapperTest extends ResourceFlowableTestCase {
 
         // Cleanup
         for (org.flowable.task.api.Task task : taskService.createTaskQuery().list()) {
-            taskService.deleteTask(task.getId());
-            historyService.deleteHistoricTaskInstance(task.getId());
+            taskService.deleteTask(task.getId(), true);
         }
 
     }
 
+    @Test
     public void testFetchTaskWithSpecificVariable() {
 
         // Create test data
@@ -98,8 +100,7 @@ public class CustomMybatisMapperTest extends ResourceFlowableTestCase {
 
         // Cleanup
         for (org.flowable.task.api.Task task : taskService.createTaskQuery().list()) {
-            taskService.deleteTask(task.getId());
-            historyService.deleteHistoricTaskInstance(task.getId());
+            taskService.deleteTask(task.getId(), true);
         }
 
     }

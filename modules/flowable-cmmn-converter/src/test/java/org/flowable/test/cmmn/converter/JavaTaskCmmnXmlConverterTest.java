@@ -13,6 +13,7 @@
 package org.flowable.test.cmmn.converter;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -21,6 +22,7 @@ import java.util.List;
 
 import org.flowable.cmmn.model.Case;
 import org.flowable.cmmn.model.CmmnModel;
+import org.flowable.cmmn.model.ExtensionElement;
 import org.flowable.cmmn.model.FieldExtension;
 import org.flowable.cmmn.model.ImplementationType;
 import org.flowable.cmmn.model.PlanItem;
@@ -83,6 +85,8 @@ public class JavaTaskCmmnXmlConverterTest extends AbstractConverterTest {
         assertEquals(ImplementationType.IMPLEMENTATION_TYPE_CLASS, taskA.getImplementationType());
         assertEquals("org.flowable.TestJavaDelegate", taskA.getImplementation());
         assertEquals("result", taskA.getResultVariableName());
+        assertFalse(taskA.isAsync());
+        assertFalse(taskA.isExclusive());
         
         PlanItem planItemTaskB = cmmnModel.findPlanItem("planItemTaskB");
         planItemDefinition = planItemTaskB.getPlanItemDefinition();
@@ -93,6 +97,8 @@ public class JavaTaskCmmnXmlConverterTest extends AbstractConverterTest {
         assertEquals(ImplementationType.IMPLEMENTATION_TYPE_DELEGATEEXPRESSION, taskB.getImplementationType());
         assertEquals("${testJavaDelegate}", taskB.getImplementation());
         assertNull(taskB.getResultVariableName());
+        assertTrue(taskB.isAsync());
+        assertTrue(taskB.isExclusive());
         
         assertEquals(4, taskB.getFieldExtensions().size());
         FieldExtension fieldExtension = taskB.getFieldExtensions().get(0);
@@ -107,6 +113,13 @@ public class JavaTaskCmmnXmlConverterTest extends AbstractConverterTest {
         fieldExtension = taskB.getFieldExtensions().get(3);
         assertEquals("fieldD", fieldExtension.getFieldName());
         assertEquals("test", fieldExtension.getExpression());
+        
+        assertEquals(1, taskB.getExtensionElements().size());
+        List<ExtensionElement> extensionElements = taskB.getExtensionElements().get("taskTest");
+        assertEquals(1, extensionElements.size());
+        ExtensionElement extensionElement = extensionElements.get(0);
+        assertEquals("taskTest", extensionElement.getName());
+        assertEquals("hello", extensionElement.getElementText());
     }
 
 }

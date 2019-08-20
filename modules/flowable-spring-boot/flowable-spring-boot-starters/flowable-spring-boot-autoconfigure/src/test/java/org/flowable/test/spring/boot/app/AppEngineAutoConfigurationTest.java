@@ -145,8 +145,7 @@ public class AppEngineAutoConfigurationTest {
             ProcessEngine processEngine = context.getBean(ProcessEngine.class);
             ProcessEngineConfiguration processEngineConfiguration = processEngine.getProcessEngineConfiguration();
             assertThat(processEngineConfiguration.getIdGenerator().getNextId()).as("Process id generator must be DB id generator").doesNotContain("-");
-            assertThat(processEngineConfiguration.getTaskIdGenerator().getNextId()).as("Task id generator must be DB id generator").doesNotContain("-");
-
+            
             AppEngine appEngine = context.getBean(AppEngine.class);
             deleteDeployments(appEngine);
             deleteDeployments(processEngine);
@@ -176,9 +175,9 @@ public class AppEngineAutoConfigurationTest {
         List<AppDeployment> deployments = appRepositoryService.createDeploymentQuery().orderByDeploymentName().asc().list();
 
         assertThat(deployments)
-            .hasSize(2)
+            .hasSize(3)
             .first()
-            .satisfies(deployment -> assertThat(deployment.getName()).isEqualTo("simple.bar"));
+            .satisfies(deployment -> assertThat(deployment.getName()).isEqualTo("processTask.bar"));
     }
     
     private static ProcessEngineConfiguration processEngine(AppEngine appEngine) {

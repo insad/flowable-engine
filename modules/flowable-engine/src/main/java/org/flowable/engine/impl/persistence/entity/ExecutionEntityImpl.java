@@ -25,12 +25,15 @@ import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.impl.context.Context;
 import org.flowable.common.engine.impl.db.SuspensionState;
+import org.flowable.common.engine.impl.history.HistoryLevel;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.runtime.Clock;
 import org.flowable.engine.ProcessEngineConfiguration;
 import org.flowable.engine.impl.persistence.CountingExecutionEntity;
 import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.impl.util.CountingEntityUtil;
 import org.flowable.engine.impl.util.ProcessDefinitionUtil;
+import org.flowable.eventsubscription.service.impl.persistence.entity.EventSubscriptionEntity;
 import org.flowable.identitylink.service.impl.persistence.entity.IdentityLinkEntity;
 import org.flowable.job.service.impl.persistence.entity.JobEntity;
 import org.flowable.job.service.impl.persistence.entity.TimerJobEntity;
@@ -47,7 +50,7 @@ import org.flowable.variable.service.impl.persistence.entity.VariableScopeImpl;
  * @author Joram Barrez
  */
 
-public class ExecutionEntityImpl extends VariableScopeImpl implements ExecutionEntity, CountingExecutionEntity {
+public class ExecutionEntityImpl extends AbstractBpmnEngineVariableScopeEntity implements ExecutionEntity, CountingExecutionEntity {
 
     private static final long serialVersionUID = 1L;
 
@@ -287,8 +290,10 @@ public class ExecutionEntityImpl extends VariableScopeImpl implements ExecutionE
         this.currentFlowElement = currentFlowElement;
         if (currentFlowElement != null) {
             this.activityId = currentFlowElement.getId();
+            this.activityName = currentFlowElement.getName();
         } else {
             this.activityId = null;
+            this.activityName = null;
         }
     }
 
@@ -454,6 +459,10 @@ public class ExecutionEntityImpl extends VariableScopeImpl implements ExecutionE
     public String getSuperExecutionId() {
         return superExecutionId;
     }
+    
+    public void setSuperExecutionId(String superExecutionId) {
+        this.superExecutionId = superExecutionId;
+    }
 
     @Override
     public ExecutionEntityImpl getSuperExecution() {
@@ -505,7 +514,7 @@ public class ExecutionEntityImpl extends VariableScopeImpl implements ExecutionE
     }
 
     protected void ensureRootProcessInstanceInitialized() {
-        if (rootProcessInstanceId == null) {
+        if (rootProcessInstance == null && rootProcessInstanceId != null) {
             rootProcessInstance = (ExecutionEntityImpl) CommandContextUtil.getExecutionEntityManager().findById(rootProcessInstanceId);
         }
     }
@@ -714,11 +723,13 @@ public class ExecutionEntityImpl extends VariableScopeImpl implements ExecutionE
         
         CountingEntityUtil.handleInsertVariableInstanceEntityCount(variableInstance);
         
+        Clock clock = CommandContextUtil.getProcessEngineConfiguration().getClock();
         // Record historic variable
-        CommandContextUtil.getHistoryManager().recordVariableCreate(variableInstance);
+        CommandContextUtil.getHistoryManager().recordVariableCreate(variableInstance, clock.getCurrentTime());
 
         // Record historic detail
-        CommandContextUtil.getHistoryManager().recordHistoricDetailVariableCreate(variableInstance, sourceExecution, true);
+        CommandContextUtil.getHistoryManager().recordHistoricDetailVariableCreate(variableInstance, sourceExecution, true,
+            getRelatedActivityInstanceId(sourceExecution), clock.getCurrentTime());
 
         return variableInstance;
     }
@@ -740,23 +751,27 @@ public class ExecutionEntityImpl extends VariableScopeImpl implements ExecutionE
 
     protected void updateVariableInstance(VariableInstanceEntity variableInstance, Object value, ExecutionEntity sourceExecution) {
         super.updateVariableInstance(variableInstance, value);
-        
-        CommandContextUtil.getHistoryManager().recordHistoricDetailVariableCreate(variableInstance, sourceExecution, true);
 
-        CommandContextUtil.getHistoryManager().recordVariableUpdate(variableInstance);
+        Clock clock = CommandContextUtil.getProcessEngineConfiguration().getClock();
+        CommandContextUtil.getHistoryManager().recordHistoricDetailVariableCreate(variableInstance, sourceExecution, true,
+            getRelatedActivityInstanceId(sourceExecution), clock.getCurrentTime());
+
+        CommandContextUtil.getHistoryManager().recordVariableUpdate(variableInstance, clock.getCurrentTime());
     }
-    
+
     @Override
     protected void deleteVariableInstanceForExplicitUserCall(VariableInstanceEntity variableInstance) {
         super.deleteVariableInstanceForExplicitUserCall(variableInstance);
         
         CountingEntityUtil.handleDeleteVariableInstanceEntityCount(variableInstance, true);
         
+        Clock clock = CommandContextUtil.getProcessEngineConfiguration().getClock();
         // Record historic variable deletion
         CommandContextUtil.getHistoryManager().recordVariableRemoved(variableInstance);
 
         // Record historic detail
-        CommandContextUtil.getHistoryManager().recordHistoricDetailVariableCreate(variableInstance, this, true);
+        CommandContextUtil.getHistoryManager().recordHistoricDetailVariableCreate(variableInstance, this, true,
+            getRelatedActivityInstanceId(this), clock.getCurrentTime());
     }
     
     @Override
@@ -795,7 +810,7 @@ public class ExecutionEntityImpl extends VariableScopeImpl implements ExecutionE
 
     protected void ensureEventSubscriptionsInitialized() {
         if (eventSubscriptions == null) {
-            eventSubscriptions = CommandContextUtil.getEventSubscriptionEntityManager().findEventSubscriptionsByExecution(id);
+            eventSubscriptions = CommandContextUtil.getEventSubscriptionService().findEventSubscriptionsByExecution(id);
         }
     }
 
@@ -878,6 +893,10 @@ public class ExecutionEntityImpl extends VariableScopeImpl implements ExecutionE
     @Override
     public String getActivityId() {
         return activityId;
+    }
+    
+    public void setActivityId(String activityId) {
+        this.activityId = activityId;
     }
 
     @Override
@@ -1081,6 +1100,10 @@ public class ExecutionEntityImpl extends VariableScopeImpl implements ExecutionE
         return activityName;
     }
 
+    public String getCurrentActivityName() {
+        return activityName;
+    }
+
     @Override
     public String getStartActivityId() {
         return startActivityId;
@@ -1209,6 +1232,18 @@ public class ExecutionEntityImpl extends VariableScopeImpl implements ExecutionE
     @Override
     public void setCallbackType(String callbackType) {
         this.callbackType = callbackType;
+    }
+
+    protected String getRelatedActivityInstanceId(ExecutionEntity sourceExecution) {
+        String activityInstanceId = null;
+        if (CommandContextUtil.getHistoryManager().isHistoryLevelAtLeast(HistoryLevel.FULL)) {
+            ActivityInstanceEntity unfinishedActivityInstance = CommandContextUtil.getActivityInstanceEntityManager()
+                .findUnfinishedActivityInstance(sourceExecution);
+            if (unfinishedActivityInstance != null) {
+                activityInstanceId = unfinishedActivityInstance.getId();
+            }
+        }
+        return activityInstanceId;
     }
 
     // toString /////////////////////////////////////////////////////////////////

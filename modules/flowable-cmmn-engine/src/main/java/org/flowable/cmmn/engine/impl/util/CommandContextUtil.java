@@ -15,6 +15,7 @@ package org.flowable.cmmn.engine.impl.util;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.flowable.cmmn.api.CmmnHistoryService;
 import org.flowable.cmmn.api.CmmnRepositoryService;
 import org.flowable.cmmn.api.CmmnRuntimeService;
 import org.flowable.cmmn.api.CmmnTaskService;
@@ -45,6 +46,11 @@ import org.flowable.content.api.ContentEngineConfigurationApi;
 import org.flowable.content.api.ContentService;
 import org.flowable.dmn.api.DmnEngineConfigurationApi;
 import org.flowable.dmn.api.DmnRuleService;
+import org.flowable.entitylink.api.EntityLinkService;
+import org.flowable.entitylink.api.history.HistoricEntityLinkService;
+import org.flowable.entitylink.service.EntityLinkServiceConfiguration;
+import org.flowable.eventsubscription.service.EventSubscriptionService;
+import org.flowable.eventsubscription.service.EventSubscriptionServiceConfiguration;
 import org.flowable.form.api.FormEngineConfigurationApi;
 import org.flowable.form.api.FormManagementService;
 import org.flowable.form.api.FormRepositoryService;
@@ -54,6 +60,9 @@ import org.flowable.identitylink.service.IdentityLinkService;
 import org.flowable.identitylink.service.IdentityLinkServiceConfiguration;
 import org.flowable.idm.api.IdmEngineConfigurationApi;
 import org.flowable.idm.api.IdmIdentityService;
+import org.flowable.job.service.JobService;
+import org.flowable.job.service.JobServiceConfiguration;
+import org.flowable.job.service.TimerJobService;
 import org.flowable.task.service.HistoricTaskService;
 import org.flowable.task.service.InternalTaskAssignmentManager;
 import org.flowable.task.service.TaskService;
@@ -88,6 +97,10 @@ public class CommandContextUtil {
     
     public static CmmnTaskService getCmmnTaskService() {
         return getCmmnEngineConfiguration().getCmmnTaskService();
+    }
+
+    public static CmmnHistoryService getCmmnHistoryService() {
+        return getCmmnEngineConfiguration().getCmmnHistoryService();
     }
 
     public static ExpressionManager getExpressionManager() {
@@ -237,30 +250,42 @@ public class CommandContextUtil {
     public static FormEngineConfigurationApi getFormEngineConfiguration(CommandContext commandContext) {
         return (FormEngineConfigurationApi) commandContext.getEngineConfigurations().get(EngineConfigurationConstants.KEY_FORM_ENGINE_CONFIG);
     }
-
+    
     public static FormRepositoryService getFormRepositoryService() {
+        return getFormRepositoryService(getCommandContext());
+    }
+
+    public static FormRepositoryService getFormRepositoryService(CommandContext commandContext) {
         FormRepositoryService formRepositoryService = null;
-        FormEngineConfigurationApi formEngineConfiguration = getFormEngineConfiguration();
+        FormEngineConfigurationApi formEngineConfiguration = getFormEngineConfiguration(commandContext);
         if (formEngineConfiguration != null) {
             formRepositoryService = formEngineConfiguration.getFormRepositoryService();
         }
 
         return formRepositoryService;
     }
-
+    
     public static FormService getFormService() {
+        return getFormService(getCommandContext());
+    }
+
+    public static FormService getFormService(CommandContext commandContext) {
         FormService formService = null;
-        FormEngineConfigurationApi formEngineConfiguration = getFormEngineConfiguration();
+        FormEngineConfigurationApi formEngineConfiguration = getFormEngineConfiguration(commandContext);
         if (formEngineConfiguration != null) {
             formService = formEngineConfiguration.getFormService();
         }
 
         return formService;
     }
-
+    
     public static FormManagementService getFormManagementService() {
+        return getFormManagementService(getCommandContext());
+    }
+
+    public static FormManagementService getFormManagementService(CommandContext commandContext) {
         FormManagementService formManagementService = null;
-        FormEngineConfigurationApi formEngineConfiguration = getFormEngineConfiguration();
+        FormEngineConfigurationApi formEngineConfiguration = getFormEngineConfiguration(commandContext);
         if (formEngineConfiguration != null) {
             formManagementService = formEngineConfiguration.getFormManagementService();
         }
@@ -277,10 +302,14 @@ public class CommandContextUtil {
     public static ContentEngineConfigurationApi getContentEngineConfiguration(CommandContext commandContext) {
         return (ContentEngineConfigurationApi) commandContext.getEngineConfigurations().get(EngineConfigurationConstants.KEY_CONTENT_ENGINE_CONFIG);
     }
-
+    
     public static ContentService getContentService() {
+        return getContentService(getCommandContext());
+    }
+
+    public static ContentService getContentService(CommandContext commandContext) {
         ContentService contentService = null;
-        ContentEngineConfigurationApi contentEngineConfiguration = getContentEngineConfiguration();
+        ContentEngineConfigurationApi contentEngineConfiguration = getContentEngineConfiguration(commandContext);
         if (contentEngineConfiguration != null) {
             contentService = contentEngineConfiguration.getContentService();
         }
@@ -307,6 +336,8 @@ public class CommandContextUtil {
 
         return identityService;
     }
+    
+    // IDENTITY LINK SERVICE
 
     public static IdentityLinkServiceConfiguration getIdentityLinkServiceConfiguration() {
         return getIdentityLinkServiceConfiguration(getCommandContext());
@@ -332,6 +363,54 @@ public class CommandContextUtil {
     public static HistoricIdentityLinkService getHistoricIdentityLinkService(CommandContext commandContext) {
         return getIdentityLinkServiceConfiguration(commandContext).getHistoricIdentityLinkService();
     }
+    
+    // ENTITY LINK SERVICE
+
+    public static EntityLinkServiceConfiguration getEntityLinkServiceConfiguration() {
+        return getEntityLinkServiceConfiguration(getCommandContext());
+    }
+
+    public static EntityLinkServiceConfiguration getEntityLinkServiceConfiguration(CommandContext commandContext) {
+        return (EntityLinkServiceConfiguration) commandContext.getCurrentEngineConfiguration().getServiceConfigurations()
+                        .get(EngineConfigurationConstants.KEY_ENTITY_LINK_SERVICE_CONFIG);
+    }
+
+    public static EntityLinkService getEntityLinkService() {
+        return getEntityLinkService(getCommandContext());
+    }
+
+    public static EntityLinkService getEntityLinkService(CommandContext commandContext) {
+        return getEntityLinkServiceConfiguration(commandContext).getEntityLinkService();
+    }
+    
+    public static HistoricEntityLinkService getHistoricEntityLinkService() {
+        return getHistoricEntityLinkService(getCommandContext());
+    }
+
+    public static HistoricEntityLinkService getHistoricEntityLinkService(CommandContext commandContext) {
+        return getEntityLinkServiceConfiguration(commandContext).getHistoricEntityLinkService();
+    }
+    
+    // EVENT SUBSCRIPTION SERVICE
+
+    public static EventSubscriptionServiceConfiguration getEventSubscriptionServiceConfiguration() {
+        return getEventSubscriptionServiceConfiguration(getCommandContext());
+    }
+
+    public static EventSubscriptionServiceConfiguration getEventSubscriptionServiceConfiguration(CommandContext commandContext) {
+        return (EventSubscriptionServiceConfiguration) commandContext.getCurrentEngineConfiguration().getServiceConfigurations()
+                        .get(EngineConfigurationConstants.KEY_EVENT_SUBSCRIPTION_SERVICE_CONFIG);
+    }
+
+    public static EventSubscriptionService getEventSubscriptionService() {
+        return getEventSubscriptionService(getCommandContext());
+    }
+
+    public static EventSubscriptionService getEventSubscriptionService(CommandContext commandContext) {
+        return getEventSubscriptionServiceConfiguration(commandContext).getEventSubscriptionService();
+    }
+    
+    // VARIABLE SERVICE
 
     public static VariableServiceConfiguration getVariableServiceConfiguration() {
         return getVariableServiceConfiguration(getCommandContext());
@@ -341,6 +420,8 @@ public class CommandContextUtil {
         return (VariableServiceConfiguration) commandContext.getCurrentEngineConfiguration().getServiceConfigurations()
                         .get(EngineConfigurationConstants.KEY_VARIABLE_SERVICE_CONFIG);
     }
+    
+    // TASK SERVICE
 
     public static TaskService getTaskService() {
         return getTaskService(getCommandContext());
@@ -365,6 +446,33 @@ public class CommandContextUtil {
     public static TaskServiceConfiguration getTaskServiceConfiguration(CommandContext commandContext) {
         return (TaskServiceConfiguration) commandContext.getCurrentEngineConfiguration().getServiceConfigurations()
                         .get(EngineConfigurationConstants.KEY_TASK_SERVICE_CONFIG);
+    }
+    
+    // JOB SERVICE
+    
+    public static JobService getJobService() {
+        return getJobService(getCommandContext());
+    }
+
+    public static JobService getJobService(CommandContext commandContext) {
+        return getJobServiceConfiguration(commandContext).getJobService();
+    }
+    
+    public static TimerJobService getTimerJobService() {
+        return getTimerJobService(getCommandContext());
+    }
+
+    public static TimerJobService getTimerJobService(CommandContext commandContext) {
+        return getJobServiceConfiguration(commandContext).getTimerJobService();
+    }
+    
+    public static JobServiceConfiguration getJobServiceConfiguration() {
+        return getJobServiceConfiguration(getCommandContext());
+    }
+
+    public static JobServiceConfiguration getJobServiceConfiguration(CommandContext commandContext) {
+        return (JobServiceConfiguration) commandContext.getCurrentEngineConfiguration().getServiceConfigurations()
+                        .get(EngineConfigurationConstants.KEY_JOB_SERVICE_CONFIG);
     }
 
     public static CmmnEngineAgenda getAgenda() {

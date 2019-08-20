@@ -20,7 +20,9 @@ import static org.flowable.job.service.impl.history.async.util.AsyncHistoryJsonU
 import static org.flowable.job.service.impl.history.async.util.AsyncHistoryJsonUtil.getStringFromJson;
 
 import java.util.Base64;
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
@@ -39,8 +41,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 public class HistoricDetailVariableUpdateHistoryJsonTransformer extends AbstractHistoryJsonTransformer {
 
     @Override
-    public String getType() {
-        return HistoryJsonConstants.TYPE_HISTORIC_DETAIL_VARIABLE_UPDATE;
+    public List<String> getTypes() {
+        return Collections.singletonList(HistoryJsonConstants.TYPE_HISTORIC_DETAIL_VARIABLE_UPDATE);
     }
 
     @Override
@@ -70,14 +72,22 @@ public class HistoricDetailVariableUpdateHistoryJsonTransformer extends Abstract
         historicDetailEntity.setRevision(getIntegerFromJson(historicalData, HistoryJsonConstants.REVISION));
         historicDetailEntity.setName(getStringFromJson(historicalData, HistoryJsonConstants.NAME));
         
-        String activityId = getStringFromJson(historicalData, HistoryJsonConstants.ACTIVITY_ID);
         Boolean isMiRootExecution = getBooleanFromJson(historicalData, HistoryJsonConstants.IS_MULTI_INSTANCE_ROOT_EXECUTION, false);
-        if (!isMiRootExecution && StringUtils.isNotEmpty(activityId)) {
-            HistoricActivityInstance activityInstance = findHistoricActivityInstance(commandContext, 
-                    getStringFromJson(historicalData, HistoryJsonConstants.SOURCE_EXECUTION_ID), activityId);
-            
-            if (activityInstance != null) {
-                historicDetailEntity.setActivityInstanceId(activityInstance.getId());
+        if (!isMiRootExecution) {
+            String runtimeActivityInstanceId = getStringFromJson(historicalData, HistoryJsonConstants.RUNTIME_ACTIVITY_INSTANCE_ID);
+            if (StringUtils.isNotEmpty(runtimeActivityInstanceId)) {
+                historicDetailEntity.setActivityInstanceId(runtimeActivityInstanceId);
+            } else {
+                // there can be still jobs in the queue without runtimeActivityInstanceId
+                String activityId = getStringFromJson(historicalData, HistoryJsonConstants.ACTIVITY_ID);
+                if (StringUtils.isNotEmpty(activityId)) {
+                    HistoricActivityInstance activityInstance = findHistoricActivityInstance(commandContext,
+                        getStringFromJson(historicalData, HistoryJsonConstants.SOURCE_EXECUTION_ID), activityId);
+
+                    if (activityInstance != null) {
+                        historicDetailEntity.setActivityInstanceId(activityInstance.getId());
+                    }
+                }
             }
         }
         

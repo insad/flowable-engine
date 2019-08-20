@@ -12,13 +12,14 @@
  */
 package org.flowable.cmmn.converter.export;
 
+import javax.xml.stream.XMLStreamWriter;
+
 import org.apache.commons.lang3.StringUtils;
+import org.flowable.cmmn.model.CmmnModel;
 import org.flowable.cmmn.model.HttpServiceTask;
 import org.flowable.cmmn.model.ImplementationType;
 import org.flowable.cmmn.model.ScriptServiceTask;
 import org.flowable.cmmn.model.ServiceTask;
-
-import javax.xml.stream.XMLStreamWriter;
 
 public abstract class AbstractServiceTaskExport<T extends ServiceTask> extends AbstractPlanItemDefinitionExport<ServiceTask> {
 
@@ -30,6 +31,7 @@ public abstract class AbstractServiceTaskExport<T extends ServiceTask> extends A
     @Override
     public void writePlanItemDefinitionSpecificAttributes(ServiceTask serviceTask, XMLStreamWriter xtw) throws Exception {
         super.writePlanItemDefinitionSpecificAttributes(serviceTask, xtw);
+        TaskExport.writeCommonTaskAttributes(serviceTask, xtw);
 
         if (StringUtils.isNotEmpty(serviceTask.getType())) {
             xtw.writeAttribute(FLOWABLE_EXTENSIONS_PREFIX, FLOWABLE_EXTENSIONS_NAMESPACE, ATTRIBUTE_TYPE, serviceTask.getType());
@@ -69,11 +71,16 @@ public abstract class AbstractServiceTaskExport<T extends ServiceTask> extends A
                 break;
         }
     }
+    
+    @Override
+    protected boolean writePlanItemDefinitionExtensionElements(CmmnModel model, ServiceTask serviceTask, boolean didWriteExtensionElement, XMLStreamWriter xtw) throws Exception {
+        boolean extensionElementWritten = super.writePlanItemDefinitionExtensionElements(model, serviceTask, didWriteExtensionElement, xtw);
+        return TaskExport.writeTaskFieldExtensions(serviceTask, extensionElementWritten, xtw);
+    }
 
     @Override
-    protected void writePlanItemDefinitionBody(ServiceTask serviceTask, XMLStreamWriter xtw) throws Exception {
-        super.writePlanItemDefinitionBody(serviceTask, xtw);
-        TaskExport.writeTaskFieldExtensions(serviceTask, xtw);
+    protected void writePlanItemDefinitionBody(CmmnModel model, ServiceTask serviceTask, XMLStreamWriter xtw) throws Exception {
+        super.writePlanItemDefinitionBody(model, serviceTask, xtw);
     }
 
     public static class ServiceTaskExport extends AbstractServiceTaskExport<ServiceTask> {

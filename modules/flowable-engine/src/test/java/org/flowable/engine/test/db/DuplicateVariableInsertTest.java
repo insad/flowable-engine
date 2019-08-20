@@ -26,13 +26,17 @@ import org.flowable.engine.impl.cmd.SetExecutionVariablesCmd;
 import org.flowable.engine.impl.cmd.SetTaskVariablesCmd;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 
+@DisabledIfSystemProperty(named = "database", matches = "cockroachdb") // Disabled due to having a retry interceptor for CRDB and barriers in this test
 public class DuplicateVariableInsertTest extends PluggableFlowableTestCase {
 
     /**
      * Test for ACT-1887: Inserting the same new variable at the same time, from 2 different threads, using 2 modified commands that use a barrier for starting and a barrier for completing the
      * command, so they each insert a new variable guaranteed.
      */
+    @Test
     public void testDuplicateVariableInsertOnExecution() throws Exception {
         String processDefinitionId = deployOneTaskTestProcess();
         final ProcessInstance processInstance = runtimeService.startProcessInstanceById(processDefinitionId);
@@ -85,6 +89,7 @@ public class DuplicateVariableInsertTest extends PluggableFlowableTestCase {
      * Test for ACT-1887: Inserting the same new variable at the same time, from 2 different threads, using 2 modified commands that use a barrier for starting and a barrier for completing the
      * command, so they each insert a new variable guaranteed.
      */
+    @Test
     public void testDuplicateVariableInsertOnTask() throws Exception {
         String processDefinitionId = deployOneTaskTestProcess();
         final ProcessInstance processInstance = runtimeService.startProcessInstanceById(processDefinitionId);

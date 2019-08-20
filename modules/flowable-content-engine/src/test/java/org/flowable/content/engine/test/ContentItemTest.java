@@ -15,7 +15,6 @@ package org.flowable.content.engine.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -26,7 +25,6 @@ import java.io.InputStream;
 import org.apache.commons.io.IOUtils;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.content.api.ContentItem;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class ContentItemTest extends AbstractFlowableContentTest {
@@ -287,7 +285,7 @@ public class ContentItemTest extends AbstractFlowableContentTest {
         ContentItem storedContentItem = contentService.createContentItemQuery().id(initialContentItem.getId()).singleResult();
         assertNotNull(storedContentItem);
         assertEquals(initialContentItem.getId(), storedContentItem.getId());
-        assertTrue(initialContentItem.getLastModified().getTime() == storedContentItem.getLastModified().getTime());
+        assertEquals(initialContentItem.getLastModified().getTime(), storedContentItem.getLastModified().getTime());
 
         long storeTS = System.currentTimeMillis();
         contentService.saveContentItem(storedContentItem, this.getClass().getClassLoader().getResourceAsStream("test.txt"));

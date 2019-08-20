@@ -13,6 +13,13 @@
 
 package org.flowable.cmmn.rest.service.api;
 
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.entity.ContentType;
 import org.flowable.cmmn.api.history.HistoricCaseInstance;
@@ -42,6 +49,7 @@ import org.flowable.cmmn.rest.service.api.repository.FormDefinitionResponse;
 import org.flowable.cmmn.rest.service.api.runtime.caze.CaseInstanceResponse;
 import org.flowable.cmmn.rest.service.api.runtime.planitem.PlanItemInstanceResponse;
 import org.flowable.cmmn.rest.service.api.runtime.task.TaskResponse;
+import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.api.FlowableIllegalArgumentException;
 import org.flowable.common.engine.api.scope.ScopeTypes;
 import org.flowable.common.rest.resolver.ContentTypeResolver;
@@ -63,12 +71,7 @@ import org.flowable.task.api.Task;
 import org.flowable.task.api.history.HistoricTaskInstance;
 import org.flowable.variable.api.history.HistoricVariableInstance;
 
-import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.stream.Collectors;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Default implementation of a {@link CmmnRestResponseFactory}.
@@ -93,9 +96,11 @@ public class CmmnRestResponseFactory {
     public static final String BYTE_ARRAY_VARIABLE_TYPE = "binary";
     public static final String SERIALIZABLE_VARIABLE_TYPE = "serializable";
 
+    protected ObjectMapper objectMapper;
     protected List<RestVariableConverter> variableConverters = new ArrayList<>();
 
-    public CmmnRestResponseFactory() {
+    public CmmnRestResponseFactory(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
         initializeVariableConverters();
     }
 
@@ -219,6 +224,7 @@ public class CmmnRestResponseFactory {
         response.setName(caseDefinition.getName());
         response.setDescription(caseDefinition.getDescription());
         response.setGraphicalNotationDefined(caseDefinition.hasGraphicalNotation());
+        response.setStartFormDefined(caseDefinition.hasStartFormKey());
         response.setTenantId(caseDefinition.getTenantId());
 
         // Links to other resources
@@ -229,6 +235,14 @@ public class CmmnRestResponseFactory {
             response.setDiagramResource(urlBuilder.buildUrl(CmmnRestUrls.URL_DEPLOYMENT_RESOURCE, caseDefinition.getDeploymentId(), caseDefinition.getDiagramResourceName()));
         }
         return response;
+    }
+    
+    public String getFormModelString(FormModelResponse formModelResponse) {
+        try {
+            return objectMapper.writeValueAsString(formModelResponse);
+        } catch (Exception e) {
+            throw new FlowableException("Error writing form model response", e);
+        }
     }
 
     public List<RestVariable> createRestVariables(Map<String, Object> variables, String id, int variableType) {
@@ -436,10 +450,20 @@ public class CmmnRestResponseFactory {
         result.setBusinessKey(caseInstance.getBusinessKey());
         result.setId(caseInstance.getId());
         result.setName(caseInstance.getName());
+        result.setStartTime(caseInstance.getStartTime());
+        result.setStartUserId(caseInstance.getStartUserId());
+        result.setState(caseInstance.getState());
         result.setCaseDefinitionId(caseInstance.getCaseDefinitionId());
         result.setCaseDefinitionUrl(urlBuilder.buildUrl(CmmnRestUrls.URL_CASE_DEFINITION, caseInstance.getCaseDefinitionId()));
         result.setUrl(urlBuilder.buildUrl(CmmnRestUrls.URL_CASE_INSTANCE, caseInstance.getId()));
+        result.setParentId(caseInstance.getParentId());
+        result.setCallbackId(caseInstance.getCallbackId());
+        result.setCallbackType(caseInstance.getCallbackType());
         result.setTenantId(caseInstance.getTenantId());
+
+        for (String name : caseInstance.getCaseVariables().keySet()) {
+            result.addVariable(createRestVariable(name, caseInstance.getCaseVariables().get(name), RestVariableScope.LOCAL, caseInstance.getId(), VARIABLE_CASE, false, urlBuilder));
+        }
 
         return result;
     }
@@ -450,9 +474,16 @@ public class CmmnRestResponseFactory {
         CaseInstanceResponse result = new CaseInstanceResponse();
         result.setBusinessKey(caseInstance.getBusinessKey());
         result.setId(caseInstance.getId());
+        result.setName(caseInstance.getName());
+        result.setStartTime(caseInstance.getStartTime());
+        result.setStartUserId(caseInstance.getStartUserId());
+        result.setState(caseInstance.getState());
         result.setCaseDefinitionId(caseInstance.getCaseDefinitionId());
         result.setCaseDefinitionUrl(urlBuilder.buildUrl(CmmnRestUrls.URL_CASE_DEFINITION, caseInstance.getCaseDefinitionId()));
         result.setUrl(urlBuilder.buildUrl(CmmnRestUrls.URL_CASE_INSTANCE, caseInstance.getId()));
+        result.setParentId(caseInstance.getParentId());
+        result.setCallbackId(caseInstance.getCallbackId());
+        result.setCallbackType(caseInstance.getCallbackType());
         result.setTenantId(caseInstance.getTenantId());
         result.setCompleted(false);
 
@@ -494,7 +525,7 @@ public class CmmnRestResponseFactory {
         result.setElementId(planItemInstance.getElementId());
         result.setReferenceId(planItemInstance.getReferenceId());
         result.setReferenceType(planItemInstance.getReferenceType());
-        result.setStartTime(planItemInstance.getStartTime());
+        result.setCreateTime(planItemInstance.getCreateTime());
         result.setStartUserId(planItemInstance.getStartUserId());
         result.setStage(planItemInstance.isStage());
         result.setCompleteable(planItemInstance.isCompleteable());
@@ -519,6 +550,7 @@ public class CmmnRestResponseFactory {
     public HistoricCaseInstanceResponse createHistoricCaseInstanceResponse(HistoricCaseInstance caseInstance, RestUrlBuilder urlBuilder) {
         HistoricCaseInstanceResponse result = new HistoricCaseInstanceResponse();
         result.setBusinessKey(caseInstance.getBusinessKey());
+        result.setName(caseInstance.getName());
         result.setEndTime(caseInstance.getEndTime());
         result.setId(caseInstance.getId());
         result.setCaseDefinitionId(caseInstance.getCaseDefinitionId());
@@ -526,6 +558,12 @@ public class CmmnRestResponseFactory {
         result.setStartTime(caseInstance.getStartTime());
         result.setStartUserId(caseInstance.getStartUserId());
         result.setUrl(urlBuilder.buildUrl(CmmnRestUrls.URL_HISTORIC_CASE_INSTANCE, caseInstance.getId()));
+        if (caseInstance.getCaseVariables() != null) {
+            Map<String, Object> variableMap = caseInstance.getCaseVariables();
+            for (String name : variableMap.keySet()) {
+                result.addVariable(createRestVariable(name, variableMap.get(name), RestVariableScope.LOCAL, caseInstance.getId(), VARIABLE_HISTORY_CASE, false, urlBuilder));
+            }
+        }
         result.setTenantId(caseInstance.getTenantId());
         return result;
     }
@@ -693,7 +731,7 @@ public class CmmnRestResponseFactory {
         result.setElementId(historicPlanItemInstance.getElementId());
         result.setPlanItemDefinitionId(historicPlanItemInstance.getPlanItemDefinitionId());
         result.setPlanItemDefinitionType(historicPlanItemInstance.getPlanItemDefinitionType());
-        result.setCreatedTime(historicPlanItemInstance.getCreatedTime());
+        result.setCreateTime(historicPlanItemInstance.getCreateTime());
         result.setLastAvailableTime(historicPlanItemInstance.getLastAvailableTime());
         result.setLastEnabledTime(historicPlanItemInstance.getLastEnabledTime());
         result.setLastDisabledTime(historicPlanItemInstance.getLastDisabledTime());

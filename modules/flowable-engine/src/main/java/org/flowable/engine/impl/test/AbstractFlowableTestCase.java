@@ -13,11 +13,13 @@
 
 package org.flowable.engine.impl.test;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -26,18 +28,16 @@ import org.flowable.bpmn.model.EndEvent;
 import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.UserTask;
-import org.flowable.common.engine.impl.db.DbSchemaManager;
 import org.flowable.common.engine.impl.history.HistoryLevel;
-import org.flowable.common.engine.impl.interceptor.Command;
-import org.flowable.common.engine.impl.interceptor.CommandConfig;
-import org.flowable.common.engine.impl.interceptor.CommandContext;
-import org.flowable.common.engine.impl.interceptor.CommandExecutor;
+import org.flowable.common.engine.impl.test.EnsureCleanDb;
 import org.flowable.engine.DynamicBpmnService;
 import org.flowable.engine.FormService;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.IdentityService;
 import org.flowable.engine.ManagementService;
 import org.flowable.engine.ProcessEngine;
+import org.flowable.engine.ProcessEngineConfiguration;
+import org.flowable.engine.ProcessMigrationService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
@@ -47,35 +47,32 @@ import org.flowable.engine.impl.ProcessEngineImpl;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.impl.history.DefaultHistoryManager;
 import org.flowable.engine.impl.history.HistoryManager;
-import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.ProcessDefinition;
+import org.flowable.engine.runtime.ActivityInstance;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.job.api.HistoryJob;
+import org.flowable.job.api.Job;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.history.HistoricTaskInstance;
-import org.junit.Assert;
+import org.junit.jupiter.api.BeforeEach;
 
-import junit.framework.AssertionFailedError;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * @author Tom Baeyens
  * @author Joram Barrez
+ * @author Filip Hrisafov
  */
+@EnsureCleanDb(excludeTables = {
+    "ACT_GE_PROPERTY",
+    "ACT_ID_PROPERTY"
+})
 public abstract class AbstractFlowableTestCase extends AbstractTestCase {
-
-    protected static final List<String> TABLENAMES_EXCLUDED_FROM_DB_CLEAN_CHECK = new ArrayList<>();
-
-    static {
-        TABLENAMES_EXCLUDED_FROM_DB_CLEAN_CHECK.add("ACT_GE_PROPERTY");
-        TABLENAMES_EXCLUDED_FROM_DB_CLEAN_CHECK.add("ACT_ID_PROPERTY");
-    }
 
     protected ProcessEngine processEngine;
 
-    protected String deploymentIdFromDeploymentAnnotation;
-    protected List<String> deploymentIdsForAutoCleanup = new ArrayList<>();
-    protected Throwable exception;
+    protected static List<String> deploymentIdsForAutoCleanup = new ArrayList<>();
 
     protected ProcessEngineConfigurationImpl processEngineConfiguration;
     protected RepositoryService repositoryService;
@@ -86,111 +83,40 @@ public abstract class AbstractFlowableTestCase extends AbstractTestCase {
     protected IdentityService identityService;
     protected ManagementService managementService;
     protected DynamicBpmnService dynamicBpmnService;
+    protected ProcessMigrationService processMigrationService;
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
-
-        // Always reset authenticated user to avoid any mistakes
-        identityService.setAuthenticatedUserId(null);
+    @BeforeEach
+    public final void initializeServices(ProcessEngine processEngine) {
+        processEngineConfiguration = ((ProcessEngineImpl) processEngine).getProcessEngineConfiguration();
+        this.processEngine = processEngine;
+        repositoryService = processEngine.getRepositoryService();
+        runtimeService = processEngine.getRuntimeService();
+        taskService = processEngine.getTaskService();
+        formService = processEngine.getFormService();
+        historyService = processEngine.getHistoryService();
+        identityService = processEngine.getIdentityService();
+        managementService = processEngine.getManagementService();
+        dynamicBpmnService = processEngine.getDynamicBpmnService();
+        processMigrationService = processEngine.getProcessMigrationService();
     }
 
-    protected abstract void initializeProcessEngine();
-
-    // Default: do nothing
-    protected void closeDownProcessEngine() {
-    }
-
-    protected void nullifyServices() {
-        processEngineConfiguration = null;
-        repositoryService = null;
-        runtimeService = null;
-        taskService = null;
-        formService = null;
-        historyService = null;
-        identityService = null;
-        managementService = null;
-        dynamicBpmnService = null;
-    }
-
-    @Override
-    public void runBare() throws Throwable {
-        initializeProcessEngine();
-        initializeServices();
-
-        try {
-
-            deploymentIdFromDeploymentAnnotation = TestHelper.annotationDeploymentSetUp(processEngine, getClass(), getName());
-
-            super.runBare();
-
-            validateHistoryData();
-
-        } catch (AssertionFailedError e) {
-            LOGGER.error(EMPTY_LINE);
-            LOGGER.error("ASSERTION FAILED: {}", e, e);
-            exception = e;
-            throw e;
-
-        } catch (Throwable e) {
-            LOGGER.error(EMPTY_LINE);
-            LOGGER.error("EXCEPTION: {}", e, e);
-            exception = e;
-            throw e;
-
-        } finally {
-            
-            boolean isAsyncHistoryEnabled = processEngineConfiguration.isAsyncHistoryEnabled();
-            
-            if (isAsyncHistoryEnabled) {
-                List<HistoryJob> jobs = managementService.createHistoryJobQuery().list();
-                for (HistoryJob job : jobs) {
-                    managementService.deleteHistoryJob(job.getId());
-                }
-            }
-            
-            HistoryManager asyncHistoryManager = null;
-            try {
-                if (isAsyncHistoryEnabled) {
-                    processEngineConfiguration.setAsyncHistoryEnabled(false);
-                    asyncHistoryManager = processEngineConfiguration.getHistoryManager();
-                    processEngineConfiguration.setHistoryManager(new DefaultHistoryManager(processEngineConfiguration, processEngineConfiguration.getHistoryLevel()));
-                }
-    
-                if (deploymentIdFromDeploymentAnnotation != null) {
-                    TestHelper.annotationDeploymentTearDown(processEngine, deploymentIdFromDeploymentAnnotation, getClass(), getName());
-                    deploymentIdFromDeploymentAnnotation = null;
-                }
-    
-                for (String autoDeletedDeploymentId : deploymentIdsForAutoCleanup) {
-                    repositoryService.deleteDeployment(autoDeletedDeploymentId, true);
-                }
-                deploymentIdsForAutoCleanup.clear();
-    
-                assertAndEnsureCleanDb();
-                
-            } finally {
-            
-                if (isAsyncHistoryEnabled) {
-                    processEngineConfiguration.setAsyncHistoryEnabled(true);
-                    processEngineConfiguration.setHistoryManager(asyncHistoryManager);
-                }
-                
-                processEngineConfiguration.getClock().reset();
-            }
-
-            // Can't do this in the teardown, as the teardown will be called as part of the super.runBare
-            closeDownProcessEngine();
+    protected static void cleanDeployments(ProcessEngine processEngine) {
+        ProcessEngineConfiguration processEngineConfiguration = processEngine.getProcessEngineConfiguration();
+        for (String autoDeletedDeploymentId : deploymentIdsForAutoCleanup) {
+            processEngineConfiguration.getRepositoryService().deleteDeployment(autoDeletedDeploymentId, true);
         }
+        deploymentIdsForAutoCleanup.clear();
     }
 
-    protected void validateHistoryData() {
+    protected static void validateHistoryData(ProcessEngine processEngine) {
+        ProcessEngineConfiguration processEngineConfiguration = processEngine.getProcessEngineConfiguration();
+        HistoryService historyService = processEngine.getHistoryService();
         if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.AUDIT)) {
 
             List<HistoricProcessInstance> historicProcessInstances = historyService.createHistoricProcessInstanceQuery().finished().list();
 
             for (HistoricProcessInstance historicProcessInstance : historicProcessInstances) {
-
+                
                 assertNotNull("Historic process instance has no process definition id", historicProcessInstance.getProcessDefinitionId());
                 assertNotNull("Historic process instance has no process definition key", historicProcessInstance.getProcessDefinitionKey());
                 assertNotNull("Historic process instance has no process definition version", historicProcessInstance.getProcessDefinitionVersion());
@@ -235,6 +161,11 @@ public abstract class AbstractFlowableTestCase extends AbstractTestCase {
                         assertNotNull("Historic activity instance " + historicActivityInstance.getId() + " / " + historicActivityInstance.getActivityId() + " has no execution id", historicActivityInstance.getExecutionId());
                         assertNotNull("Historic activity instance " + historicActivityInstance.getId() + " / " + historicActivityInstance.getActivityId() + " has no start time", historicActivityInstance.getStartTime());
                         assertNotNull("Historic activity instance " + historicActivityInstance.getId() + " / " + historicActivityInstance.getActivityId() + " has no end time", historicActivityInstance.getEndTime());
+                        if (historicProcessInstance.getEndTime() == null) {
+                            assertActivityInstancesAreSame(historicActivityInstance,
+                                processEngine.getRuntimeService().createActivityInstanceQuery().activityInstanceId(historicActivityInstance.getId()).singleResult()
+                            );
+                        }
                     }
                 }
             }
@@ -242,64 +173,6 @@ public abstract class AbstractFlowableTestCase extends AbstractTestCase {
         }
     }
 
-    /**
-     * Each test is assumed to clean up all DB content it entered. After a test method executed, this method scans all tables to see if the DB is completely clean. It throws AssertionFailed in case
-     * the DB is not clean. If the DB is not clean, it is cleaned by performing a create a drop.
-     */
-    protected void assertAndEnsureCleanDb() throws Throwable {
-        LOGGER.debug("verifying that db is clean after test");
-        Map<String, Long> tableCounts = managementService.getTableCount();
-        StringBuilder outputMessage = new StringBuilder();
-        for (String tableName : tableCounts.keySet()) {
-            String tableNameWithoutPrefix = tableName.replace(processEngineConfiguration.getDatabaseTablePrefix(), "");
-            if (!TABLENAMES_EXCLUDED_FROM_DB_CLEAN_CHECK.contains(tableNameWithoutPrefix)) {
-                Long count = tableCounts.get(tableName);
-                if (count != 0L) {
-                    outputMessage.append("  ").append(tableName).append(": ").append(count).append(" record(s) ");
-                }
-            }
-        }
-        if (outputMessage.length() > 0) {
-            outputMessage.insert(0, "DB NOT CLEAN: \n");
-            LOGGER.error(EMPTY_LINE);
-            LOGGER.error(outputMessage.toString());
-
-            LOGGER.info("dropping and recreating db");
-
-            CommandExecutor commandExecutor = processEngineConfiguration.getCommandExecutor();
-            CommandConfig config = new CommandConfig().transactionNotSupported();
-            commandExecutor.execute(config, new Command<Object>() {
-                @Override
-                public Object execute(CommandContext commandContext) {
-                    DbSchemaManager dbSchemaManager = CommandContextUtil.getProcessEngineConfiguration(commandContext).getDbSchemaManager();
-                    dbSchemaManager.dbSchemaDrop();
-                    dbSchemaManager.dbSchemaCreate();
-                    return null;
-                }
-            });
-
-            if (exception != null) {
-                throw exception;
-            } else {
-                Assert.fail(outputMessage.toString());
-            }
-        } else {
-            LOGGER.info("database was clean");
-        }
-    }
-
-    protected void initializeServices() {
-        processEngineConfiguration = ((ProcessEngineImpl) processEngine).getProcessEngineConfiguration();
-        repositoryService = processEngine.getRepositoryService();
-        runtimeService = processEngine.getRuntimeService();
-        taskService = processEngine.getTaskService();
-        formService = processEngine.getFormService();
-        historyService = processEngine.getHistoryService();
-        identityService = processEngine.getIdentityService();
-        managementService = processEngine.getManagementService();
-        dynamicBpmnService = processEngine.getDynamicBpmnService();
-    }
-    
     public void assertProcessEnded(final String processInstanceId) {
         assertProcessEnded(processInstanceId, 10000);
     }
@@ -308,7 +181,7 @@ public abstract class AbstractFlowableTestCase extends AbstractTestCase {
         ProcessInstance processInstance = processEngine.getRuntimeService().createProcessInstanceQuery().processInstanceId(processInstanceId).singleResult();
 
         if (processInstance != null) {
-            throw new AssertionFailedError("Expected finished process instance '" + processInstanceId + "' but it was still in the db");
+            throw new AssertionError("Expected finished process instance '" + processInstanceId + "' but it was still in the db");
         }
 
         // Verify historical data if end times are correctly set
@@ -343,6 +216,28 @@ public abstract class AbstractFlowableTestCase extends AbstractTestCase {
                 }
             }
         }
+
+        // runtime activities
+        assertEquals(0L, runtimeService.createActivityInstanceQuery().processInstanceId(processInstanceId).count());
+    }
+
+    public static void assertActivityInstancesAreSame(HistoricActivityInstance historicActInst, ActivityInstance activityInstance) {
+        assertTrue(Objects.equals(historicActInst.getId(), activityInstance.getId()));
+        assertTrue(Objects.equals(historicActInst.getActivityId(), activityInstance.getActivityId()));
+        assertTrue(Objects.equals(historicActInst.getEndTime(), activityInstance.getEndTime()));
+        assertTrue(Objects.equals(historicActInst.getProcessDefinitionId(), activityInstance.getProcessDefinitionId()));
+        assertTrue(Objects.equals(historicActInst.getStartTime(), activityInstance.getStartTime()));
+        assertTrue(Objects.equals(historicActInst.getExecutionId(), activityInstance.getExecutionId()));
+        assertTrue(Objects.equals(historicActInst.getActivityType(), activityInstance.getActivityType()));
+        assertTrue(Objects.equals(historicActInst.getProcessInstanceId(), activityInstance.getProcessInstanceId()));
+        assertTrue(Objects.equals(historicActInst.getAssignee(), activityInstance.getAssignee()));
+        assertTrue(Objects.equals(historicActInst.getDurationInMillis(), activityInstance.getDurationInMillis()));
+        assertTrue(Objects.equals(historicActInst.getTenantId(), activityInstance.getTenantId()));
+        assertTrue(Objects.equals(historicActInst.getDeleteReason(), activityInstance.getDeleteReason()));
+        assertTrue(Objects.equals(historicActInst.getActivityName(), activityInstance.getActivityName()));
+        assertTrue(Objects.equals(historicActInst.getCalledProcessInstanceId(), activityInstance.getCalledProcessInstanceId()));
+        assertTrue(Objects.equals(historicActInst.getTaskId(), activityInstance.getTaskId()));
+        assertTrue(Objects.equals(historicActInst.getTime(), activityInstance.getTime()));
     }
 
     public void waitForJobExecutorToProcessAllJobs(long maxMillisToWait, long intervalMillis) {
@@ -375,8 +270,23 @@ public abstract class AbstractFlowableTestCase extends AbstractTestCase {
      */
     public BpmnModel createOneTaskTestProcess() {
         BpmnModel model = new BpmnModel();
-        org.flowable.bpmn.model.Process process = new org.flowable.bpmn.model.Process();
+        org.flowable.bpmn.model.Process process = createOneTaskProcess();
         model.addProcess(process);
+
+        return model;
+    }
+    
+    public BpmnModel createOneTaskTestProcessWithCandidateStarterGroup() {
+        BpmnModel model = new BpmnModel();
+        org.flowable.bpmn.model.Process process = createOneTaskProcess();
+        process.getCandidateStarterGroups().add("testGroup");
+        model.addProcess(process);
+
+        return model;
+    }
+    
+    protected org.flowable.bpmn.model.Process createOneTaskProcess() {
+        org.flowable.bpmn.model.Process process = new org.flowable.bpmn.model.Process();
         process.setId("oneTaskProcess");
         process.setName("The one task process");
 
@@ -398,8 +308,8 @@ public abstract class AbstractFlowableTestCase extends AbstractTestCase {
 
         process.addFlowElement(new SequenceFlow("start", "theTask"));
         process.addFlowElement(new SequenceFlow("theTask", "theEnd"));
-
-        return model;
+        
+        return process;
     }
 
     public BpmnModel createTwoTasksTestProcess() {
@@ -451,6 +361,16 @@ public abstract class AbstractFlowableTestCase extends AbstractTestCase {
         ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery().deploymentId(deployment.getId()).singleResult();
         return processDefinition.getId();
     }
+    
+    public String deployOneTaskTestProcessWithCandidateStarterGroup() {
+        BpmnModel bpmnModel = createOneTaskTestProcessWithCandidateStarterGroup();
+        Deployment deployment = repositoryService.createDeployment().addBpmnModel("oneTasktest.bpmn20.xml", bpmnModel).deploy();
+
+        deploymentIdsForAutoCleanup.add(deployment.getId()); // For auto-cleanup
+
+        ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery().deploymentId(deployment.getId()).singleResult();
+        return processDefinition.getId();
+    }
 
     public String deployTwoTasksTestProcess() {
         BpmnModel bpmnModel = createTwoTasksTestProcess();
@@ -472,7 +392,8 @@ public abstract class AbstractFlowableTestCase extends AbstractTestCase {
         if (isAsyncHistoryEnabled) {
             processEngineConfiguration.setAsyncHistoryEnabled(false);
             asyncHistoryManager = processEngineConfiguration.getHistoryManager();
-            processEngineConfiguration.setHistoryManager(new DefaultHistoryManager(processEngineConfiguration, processEngineConfiguration.getHistoryLevel()));
+            processEngineConfiguration.setHistoryManager(new DefaultHistoryManager(processEngineConfiguration, 
+                    processEngineConfiguration.getHistoryLevel(), processEngineConfiguration.isUsePrefixId()));
         }
         
         for (org.flowable.engine.repository.Deployment deployment : repositoryService.createDeploymentQuery().list()) {
@@ -491,7 +412,8 @@ public abstract class AbstractFlowableTestCase extends AbstractTestCase {
         if (isAsyncHistoryEnabled) {
             processEngineConfiguration.setAsyncHistoryEnabled(false);
             asyncHistoryManager = processEngineConfiguration.getHistoryManager();
-            processEngineConfiguration.setHistoryManager(new DefaultHistoryManager(processEngineConfiguration, processEngineConfiguration.getHistoryLevel()));
+            processEngineConfiguration.setHistoryManager(new DefaultHistoryManager(processEngineConfiguration, 
+                    processEngineConfiguration.getHistoryLevel(), processEngineConfiguration.isUsePrefixId()));
         }
         
         repositoryService.deleteDeployment(deploymentId, true);
@@ -546,5 +468,41 @@ public abstract class AbstractFlowableTestCase extends AbstractTestCase {
         Objects.requireNonNull(list1);
         Objects.requireNonNull(list2);
         return Stream.concat(list1.stream(), list2.stream()).collect(Collectors.toList());
+    }
+
+    protected static<T> Map<String, List<T>> groupListContentBy(List<T> source, Function<T, String> classifier) {
+        return source.stream().collect(Collectors.groupingBy(classifier));
+    }
+
+    protected String getJobActivityId(Job job) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            Map<String, Object> jobConfigurationMap = objectMapper.readValue(job.getJobHandlerConfiguration(), new TypeReference<Map<String, Object>>() {
+
+            });
+            return (String) jobConfigurationMap.get("activityId");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    protected ProcessDefinition deployProcessDefinition(String name, String path) {
+        Deployment deployment = repositoryService.createDeployment()
+            .name(name)
+            .addClasspathResource(path)
+            .deploy();
+        
+        ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
+            .deploymentId(deployment.getId()).singleResult();
+
+        return processDefinition;
+    }
+
+    protected void completeProcessInstanceTasks(String processInstanceId) {
+        List<Task> tasks;
+        do {
+            tasks = taskService.createTaskQuery().processInstanceId(processInstanceId).list();
+            tasks.forEach(this::completeTask);
+        } while (!tasks.isEmpty());
     }
 }

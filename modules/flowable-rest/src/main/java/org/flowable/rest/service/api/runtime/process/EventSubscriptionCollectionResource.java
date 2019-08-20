@@ -13,6 +13,8 @@
 
 package org.flowable.rest.service.api.runtime.process;
 
+import static org.flowable.common.rest.api.PaginateListUtil.paginateList;
+
 import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
@@ -20,7 +22,7 @@ import javax.servlet.http.HttpServletRequest;
 import org.flowable.common.rest.api.DataResponse;
 import org.flowable.common.rest.api.RequestUtil;
 import org.flowable.engine.RuntimeService;
-import org.flowable.engine.runtime.EventSubscriptionQuery;
+import org.flowable.eventsubscription.api.EventSubscriptionQuery;
 import org.flowable.rest.service.api.BpmnRestApiInterceptor;
 import org.flowable.rest.service.api.RestResponseFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -110,6 +112,7 @@ public class EventSubscriptionCollectionResource {
             restApiInterceptor.accessEventSubscriptionInfoWithQuery(query);
         }
 
-        return new EventSubscriptionPaginateList(restResponseFactory).paginateList(allRequestParams, query, "id", EventSubscriptionQueryProperties.PROPERTIES);
+        return paginateList(allRequestParams, query, "id", EventSubscriptionQueryProperties.PROPERTIES,
+            restResponseFactory::createEventSubscriptionResponseList);
     }
 }

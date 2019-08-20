@@ -86,13 +86,14 @@ public class ParallelGatewayActivityBehavior extends GatewayActivityBehavior {
         // Fork
 
         // Is needed to set the endTime for all historic activity joins
-        CommandContextUtil.getHistoryManager().recordActivityEnd((ExecutionEntity) execution, null);
+        CommandContextUtil.getActivityInstanceEntityManager().recordActivityEnd((ExecutionEntity) execution, null);
 
         if (nbrOfExecutionsCurrentlyJoined == nbrOfExecutionsToJoin) {
 
             // Fork
             if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("parallel gateway '{}' activates: {} of {} joined", execution.getCurrentActivityId(), nbrOfExecutionsCurrentlyJoined, nbrOfExecutionsToJoin);
+                LOGGER.debug("parallel gateway '{}' ({}) activates: {} of {} joined", execution.getCurrentActivityId(), 
+                        execution.getId(), nbrOfExecutionsCurrentlyJoined, nbrOfExecutionsToJoin);
             }
 
             if (parallelGateway.getIncomingFlows().size() > 1) {
@@ -113,7 +114,8 @@ public class ParallelGatewayActivityBehavior extends GatewayActivityBehavior {
             CommandContextUtil.getAgenda().planTakeOutgoingSequenceFlowsOperation((ExecutionEntity) execution, false); // false -> ignoring conditions on parallel gw
 
         } else if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("parallel gateway '{}' does not activate: {} of {} joined", execution.getCurrentActivityId(), nbrOfExecutionsCurrentlyJoined, nbrOfExecutionsToJoin);
+            LOGGER.debug("parallel gateway '{}' ({}) does not activate: {} of {} joined", execution.getCurrentActivityId(), 
+                    execution.getId(), nbrOfExecutionsCurrentlyJoined, nbrOfExecutionsToJoin);
         }
 
     }

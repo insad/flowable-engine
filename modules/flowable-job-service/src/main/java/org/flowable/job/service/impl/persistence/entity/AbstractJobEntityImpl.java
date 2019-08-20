@@ -18,7 +18,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
-import org.flowable.common.engine.impl.persistence.entity.AbstractEntity;
 import org.flowable.job.api.JobInfo;
 import org.flowable.job.service.JobServiceConfiguration;
 
@@ -27,7 +26,7 @@ import org.flowable.job.service.JobServiceConfiguration;
  *
  * @author Tijs Rademakers
  */
-public abstract class AbstractJobEntityImpl extends AbstractEntity implements AbstractRuntimeJobEntity, Serializable {
+public abstract class AbstractJobEntityImpl extends AbstractJobServiceEntity implements AbstractRuntimeJobEntity, Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -37,6 +36,9 @@ public abstract class AbstractJobEntityImpl extends AbstractEntity implements Ab
     protected String executionId;
     protected String processInstanceId;
     protected String processDefinitionId;
+    
+    protected String elementId;
+    protected String elementName;
     
     protected String scopeId;
     protected String subScopeId;
@@ -70,7 +72,9 @@ public abstract class AbstractJobEntityImpl extends AbstractEntity implements Ab
         persistentState.put("exceptionMessage", exceptionMessage);
         persistentState.put("jobHandlerType", jobHandlerType);
         persistentState.put("processDefinitionId", processDefinitionId);
-
+        persistentState.put("elementId", elementId);
+        persistentState.put("elementName", elementName);
+        
         if (customValuesByteArrayRef != null) {
             persistentState.put("customValuesByteArrayRef", customValuesByteArrayRef);
         }
@@ -154,6 +158,26 @@ public abstract class AbstractJobEntityImpl extends AbstractEntity implements Ab
         this.processDefinitionId = processDefinitionId;
     }
     
+    @Override
+    public String getElementId() {
+        return elementId;
+    }
+
+    @Override
+    public void setElementId(String elementId) {
+        this.elementId = elementId;
+    }
+
+    @Override
+    public String getElementName() {
+        return elementName;
+    }
+
+    @Override
+    public void setElementName(String elementName) {
+        this.elementName = elementName;
+    }
+
     @Override
     public String getScopeId() {
         return scopeId;
@@ -292,6 +316,7 @@ public abstract class AbstractJobEntityImpl extends AbstractEntity implements Ab
         if (exceptionByteArrayRef == null) {
             exceptionByteArrayRef = new JobByteArrayRef();
         }
+
         exceptionByteArrayRef.setValue("stacktrace", exception);
     }
 

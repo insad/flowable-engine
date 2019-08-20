@@ -24,9 +24,11 @@ import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.common.engine.impl.el.ExpressionManager;
 import org.flowable.dmn.api.DecisionExecutionAuditContainer;
 import org.flowable.dmn.api.DmnRuleService;
+import org.flowable.dmn.api.ExecuteDecisionBuilder;
 import org.flowable.engine.DynamicBpmnConstants;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.DelegateHelper;
+import org.flowable.engine.impl.bpmn.helper.DynamicPropertyUtil;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.impl.context.BpmnOverrideContext;
 import org.flowable.engine.impl.util.CommandContextUtil;
@@ -45,6 +47,7 @@ public class DmnActivityBehavior extends TaskActivityBehavior {
 
     protected static final String EXPRESSION_DECISION_TABLE_REFERENCE_KEY = "decisionTableReferenceKey";
     protected static final String EXPRESSION_DECISION_TABLE_THROW_ERROR_FLAG = "decisionTaskThrowErrorOnNoHits";
+    protected static final String EXPRESSION_DECISION_TABLE_FALLBACK_TO_DEFAULT_TENANT = "fallbackToDefaultTenant";
 
     protected Task task;
 
@@ -74,7 +77,7 @@ public class DmnActivityBehavior extends TaskActivityBehavior {
 
         if (processEngineConfiguration.isEnableProcessDefinitionInfoCache()) {
             ObjectNode taskElementProperties = BpmnOverrideContext.getBpmnOverrideElementProperties(task.getId(), execution.getProcessDefinitionId());
-            activeDecisionTableKey = getActiveValue(activeDecisionTableKey, DynamicBpmnConstants.DMN_TASK_DECISION_TABLE_KEY, taskElementProperties);
+            activeDecisionTableKey = DynamicPropertyUtil.getActiveValue(activeDecisionTableKey, DynamicBpmnConstants.DMN_TASK_DECISION_TABLE_KEY, taskElementProperties);
         }
 
         String finaldecisionTableKeyValue = null;
@@ -96,16 +99,19 @@ public class DmnActivityBehavior extends TaskActivityBehavior {
 
         DmnRuleService ruleService = CommandContextUtil.getDmnRuleService();
 
-        DecisionExecutionAuditContainer decisionExecutionAuditContainer = ruleService.createExecuteDecisionBuilder()
-                .decisionKey(finaldecisionTableKeyValue)
-                .parentDeploymentId(deployment.getParentDeploymentId())
-                .instanceId(execution.getProcessInstanceId())
-                .executionId(execution.getId())
-                .activityId(task.getId())
-                .variables(execution.getVariables())
-                .tenantId(execution.getTenantId())
-                .executeWithAuditTrail();
-        
+        ExecuteDecisionBuilder executeDecisionBuilder = ruleService.createExecuteDecisionBuilder()
+            .decisionKey(finaldecisionTableKeyValue)
+            .parentDeploymentId(deployment.getParentDeploymentId())
+            .instanceId(execution.getProcessInstanceId())
+            .executionId(execution.getId())
+            .activityId(task.getId())
+            .variables(execution.getVariables())
+            .tenantId(execution.getTenantId());
+
+        applyFallbackToDefaultTenant(execution, executeDecisionBuilder);
+
+        DecisionExecutionAuditContainer decisionExecutionAuditContainer = executeDecisionBuilder.executeWithAuditTrail();
+
         if (decisionExecutionAuditContainer.isFailed()) {
             throw new FlowableException("DMN decision table with key " + finaldecisionTableKeyValue + " execution failed. Cause: " + decisionExecutionAuditContainer.getExceptionMessage());
         }
@@ -129,16 +135,33 @@ public class DmnActivityBehavior extends TaskActivityBehavior {
                     Expression expression = expressionManager.createExpression(throwErrorString);
                     Object expressionValue = expression.getValue(execution);
                     
-                    if (expressionValue != null && expressionValue instanceof Boolean && ((Boolean) expressionValue)) {
+                    if (expressionValue instanceof Boolean && ((Boolean) expressionValue)) {
                         throw new FlowableException("DMN decision table with key " + finaldecisionTableKeyValue + " did not hit any rules for the provided input.");
                     }
                 }
             }
         }
 
-        setVariablesOnExecution(decisionExecutionAuditContainer.getDecisionResult(), finaldecisionTableKeyValue, execution, processEngineConfiguration.getObjectMapper());
+        if (processEngineConfiguration.getDecisionTableVariableManager() != null) {
+            processEngineConfiguration.getDecisionTableVariableManager().setVariablesOnExecution(decisionExecutionAuditContainer.getDecisionResult(), 
+                            finaldecisionTableKeyValue, execution, processEngineConfiguration.getObjectMapper());
+            
+        } else {
+            setVariablesOnExecution(decisionExecutionAuditContainer.getDecisionResult(), finaldecisionTableKeyValue, 
+                            execution, processEngineConfiguration.getObjectMapper());
+        }
 
         leave(execution);
+    }
+
+    protected void applyFallbackToDefaultTenant(DelegateExecution execution, ExecuteDecisionBuilder executeDecisionBuilder) {
+        FieldExtension fallbackfieldExtension = DelegateHelper.getFlowElementField(execution, EXPRESSION_DECISION_TABLE_FALLBACK_TO_DEFAULT_TENANT);
+        if (fallbackfieldExtension != null && ((fallbackfieldExtension.getStringValue() != null && fallbackfieldExtension.getStringValue().length() != 0))) {
+            String fallbackToDefaultTenant = fallbackfieldExtension.getStringValue();
+            if (StringUtils.isNotEmpty(fallbackToDefaultTenant) && Boolean.parseBoolean(fallbackToDefaultTenant)) {
+                executeDecisionBuilder.fallbackToDefaultTenant();
+            }
+        }
     }
 
     protected void setVariablesOnExecution(List<Map<String, Object>> executionResult, String decisionKey, DelegateExecution execution, ObjectMapper objectMapper) {

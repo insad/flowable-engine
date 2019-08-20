@@ -12,6 +12,8 @@
  */
 package org.flowable.app.rest.service.api.repository;
 
+import static org.flowable.common.rest.api.PaginateListUtil.paginateList;
+
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.Collections;
@@ -28,6 +30,7 @@ import org.flowable.app.api.repository.AppDeployment;
 import org.flowable.app.api.repository.AppDeploymentBuilder;
 import org.flowable.app.api.repository.AppDeploymentQuery;
 import org.flowable.app.engine.impl.repository.AppDeploymentQueryProperty;
+import org.flowable.app.rest.AppRestApiInterceptor;
 import org.flowable.app.rest.AppRestResponseFactory;
 import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.api.FlowableIllegalArgumentException;
@@ -72,13 +75,16 @@ public class AppDeploymentCollectionResource {
 
     @Autowired
     protected AppRepositoryService appRepositoryService;
+    
+    @Autowired(required=false)
+    protected AppRestApiInterceptor restApiInterceptor;
 
     @ApiOperation(value = "List of App Deployments", nickname = "listAppDeployments", tags = { "Form Deployments" })
     @ApiImplicitParams({
             @ApiImplicitParam(name = "name", dataType = "string", value = "Only return app deployments with the given name.", paramType = "query"),
             @ApiImplicitParam(name = "nameLike", dataType = "string", value = "Only return app deployments with a name like the given name.", paramType = "query"),
             @ApiImplicitParam(name = "category", dataType = "string", value = "Only return app deployments with the given category.", paramType = "query"),
-            @ApiImplicitParam(name = "categoryNotEquals", dataType = "string", value = "Only return app deployments which don’t have the given category.", paramType = "query"),
+            @ApiImplicitParam(name = "categoryNotEquals", dataType = "string", value = "Only return app deployments which do not have the given category.", paramType = "query"),
             @ApiImplicitParam(name = "tenantId", dataType = "string", value = "Only return app deployments with the given tenantId.", paramType = "query"),
             @ApiImplicitParam(name = "tenantIdLike", dataType = "string", value = "Only return app deployments with a tenantId like the given value.", paramType = "query"),
             @ApiImplicitParam(name = "withoutTenantId", dataType = "boolean", value = "If true, only returns app deployments without a tenantId set. If false, the withoutTenantId parameter is ignored.", paramType = "query"),
@@ -116,8 +122,12 @@ public class AppDeploymentCollectionResource {
                 deploymentQuery.deploymentWithoutTenantId();
             }
         }
+        
+        if (restApiInterceptor != null) {
+            restApiInterceptor.accessDeploymentsWithQuery(deploymentQuery);
+        }
 
-        return new AppDeploymentsPaginateList(appRestResponseFactory).paginateList(allRequestParams, deploymentQuery, "id", allowedSortProperties);
+        return paginateList(allRequestParams, deploymentQuery, "id", allowedSortProperties, appRestResponseFactory::createAppDeploymentResponseList);
     }
 
     @ApiOperation(value = "Create a new app deployment", tags = {
@@ -132,6 +142,10 @@ public class AppDeploymentCollectionResource {
     @PostMapping(value = "/app-repository/deployments", produces = "application/json", consumes = "multipart/form-data")
     public AppDeploymentResponse uploadDeployment(@ApiParam(name = "tenantId") @RequestParam(value = "tenantId", required = false) String tenantId, HttpServletRequest request, HttpServletResponse response) {
 
+        if (restApiInterceptor != null) {
+            restApiInterceptor.executeNewDeploymentForTenantId(tenantId);
+        }
+        
         if (!(request instanceof MultipartHttpServletRequest)) {
             throw new FlowableIllegalArgumentException("Multipart request is required");
         }
@@ -186,6 +200,10 @@ public class AppDeploymentCollectionResource {
 
             if (tenantId != null) {
                 deploymentBuilder.tenantId(tenantId);
+            }
+
+            if (restApiInterceptor != null) {
+                restApiInterceptor.enhanceDeployment(deploymentBuilder);
             }
 
             AppDeployment deployment = deploymentBuilder.deploy();

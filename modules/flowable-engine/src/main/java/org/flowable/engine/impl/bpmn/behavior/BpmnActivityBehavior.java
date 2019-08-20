@@ -18,13 +18,12 @@ import java.util.List;
 
 import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEventDispatcher;
 import org.flowable.engine.delegate.event.impl.FlowableEventBuilder;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
 import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.job.service.impl.persistence.entity.JobEntity;
 import org.flowable.job.service.impl.persistence.entity.TimerJobEntity;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Helper class for implementing BPMN 2.0 activities, offering convenience methods specific to BPMN 2.0.
@@ -36,8 +35,6 @@ import org.slf4j.LoggerFactory;
 public class BpmnActivityBehavior implements Serializable {
 
     private static final long serialVersionUID = 1L;
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(BpmnActivityBehavior.class);
 
     /**
      * Performs the default outgoing BPMN 2.0 behavior, which is having parallel paths of executions for the outgoing sequence flow.
@@ -57,16 +54,15 @@ public class BpmnActivityBehavior implements Serializable {
     protected void dispatchJobCanceledEvents(ExecutionEntity activityExecution) {
         if (activityExecution != null) {
             List<JobEntity> jobs = activityExecution.getJobs();
-            for (JobEntity job : jobs) {
-                if (CommandContextUtil.getProcessEngineConfiguration().getEventDispatcher().isEnabled()) {
-                    CommandContextUtil.getProcessEngineConfiguration().getEventDispatcher().dispatchEvent(FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.JOB_CANCELED, job));
+            FlowableEventDispatcher eventDispatcher = CommandContextUtil.getProcessEngineConfiguration().getEventDispatcher();
+            if (eventDispatcher != null && eventDispatcher.isEnabled()) {
+                for (JobEntity job : jobs) {
+                    eventDispatcher.dispatchEvent(FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.JOB_CANCELED, job));
                 }
-            }
 
-            List<TimerJobEntity> timerJobs = activityExecution.getTimerJobs();
-            for (TimerJobEntity job : timerJobs) {
-                if (CommandContextUtil.getProcessEngineConfiguration().getEventDispatcher().isEnabled()) {
-                    CommandContextUtil.getProcessEngineConfiguration().getEventDispatcher().dispatchEvent(FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.JOB_CANCELED, job));
+                List<TimerJobEntity> timerJobs = activityExecution.getTimerJobs();
+                for (TimerJobEntity job : timerJobs) {
+                    eventDispatcher.dispatchEvent(FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.JOB_CANCELED, job));
                 }
             }
         }

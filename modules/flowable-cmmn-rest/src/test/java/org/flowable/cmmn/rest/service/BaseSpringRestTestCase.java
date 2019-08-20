@@ -13,6 +13,7 @@
 package org.flowable.cmmn.rest.service;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.text.DateFormat;
@@ -42,6 +43,7 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicHeader;
+import org.assertj.core.api.Assertions;
 import org.eclipse.jetty.server.Server;
 import org.flowable.cmmn.api.CmmnHistoryService;
 import org.flowable.cmmn.api.CmmnManagementService;
@@ -57,8 +59,10 @@ import org.flowable.cmmn.rest.conf.ApplicationConfiguration;
 import org.flowable.cmmn.rest.service.api.RestUrlBuilder;
 import org.flowable.cmmn.rest.util.TestServerUtil;
 import org.flowable.cmmn.rest.util.TestServerUtil.TestServer;
-import org.flowable.common.engine.impl.db.DbSchemaManager;
+import org.flowable.common.engine.impl.db.SchemaManager;
+import org.flowable.common.engine.impl.identity.Authentication;
 import org.flowable.common.engine.impl.interceptor.CommandExecutor;
+import org.flowable.form.api.FormRepositoryService;
 import org.flowable.idm.api.Group;
 import org.flowable.idm.api.IdmIdentityService;
 import org.flowable.idm.api.User;
@@ -74,7 +78,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import junit.framework.AssertionFailedError;
 import junit.framework.TestCase;
 
 public abstract class BaseSpringRestTestCase extends TestCase {
@@ -105,6 +108,8 @@ public abstract class BaseSpringRestTestCase extends TestCase {
     protected static CmmnHistoryService historyService;
     protected static CmmnManagementService managementService;
     protected static IdmIdentityService identityService;
+    protected static FormRepositoryService formRepositoryService;
+    protected static org.flowable.form.api.FormService formEngineFormService;
 
     protected static CloseableHttpClient client;
     protected static LinkedList<CloseableHttpResponse> httpResponses = new LinkedList<>();
@@ -128,6 +133,8 @@ public abstract class BaseSpringRestTestCase extends TestCase {
         historyService = appContext.getBean(CmmnHistoryService.class);
         managementService = appContext.getBean(CmmnManagementService.class);
         identityService = appContext.getBean(IdmIdentityService.class);
+        formRepositoryService = appContext.getBean(FormRepositoryService.class);
+        formEngineFormService = appContext.getBean(org.flowable.form.api.FormService.class);
 
         // Create http client for all tests
         CredentialsProvider provider = new BasicCredentialsProvider();
@@ -171,7 +178,7 @@ public abstract class BaseSpringRestTestCase extends TestCase {
 
             super.runTest();
 
-        } catch (AssertionFailedError e) {
+        } catch (AssertionError e) {
             LOGGER.error(EMPTY_LINE);
             LOGGER.error("ASSERTION FAILED: {}", e, e);
             throw e;
@@ -196,7 +203,7 @@ public abstract class BaseSpringRestTestCase extends TestCase {
 
             super.runBare();
 
-        } catch (AssertionFailedError e) {
+        } catch (AssertionError e) {
             LOGGER.error(EMPTY_LINE);
             LOGGER.error("ASSERTION FAILED: {}", e, e);
             exception = e;
@@ -209,6 +216,7 @@ public abstract class BaseSpringRestTestCase extends TestCase {
             throw e;
 
         } finally {
+            Authentication.setAuthenticatedUserId(null);
             CmmnTestHelper.annotationDeploymentTearDown(cmmnEngine, deploymentId, getClass(), getName());
             dropUsers();
             assertAndEnsureCleanDb();
@@ -267,9 +275,8 @@ public abstract class BaseSpringRestTestCase extends TestCase {
             return response;
 
         } catch (IOException e) {
-            Assert.fail(e.getMessage());
+            throw new UncheckedIOException(e);
         }
-        return null;
     }
 
     public void closeResponse(CloseableHttpResponse response) {
@@ -277,7 +284,7 @@ public abstract class BaseSpringRestTestCase extends TestCase {
             try {
                 response.close();
             } catch (IOException e) {
-                fail("Could not close http connection");
+                throw new AssertionError("Could not close http connection", e);
             }
         }
     }
@@ -300,7 +307,7 @@ public abstract class BaseSpringRestTestCase extends TestCase {
             if (!TABLENAMES_EXCLUDED_FROM_DB_CLEAN_CHECK.contains(tableNameWithoutPrefix)) {
                 Long count = tableCounts.get(tableName);
                 if (count != 0L) {
-                    outputMessage.append("  ").append(tableName).append(": ").append(count.toString()).append(" record(s) ");
+                    outputMessage.append("  ").append(tableName).append(": ").append(count).append(" record(s) ");
                 }
             }
         }
@@ -313,9 +320,9 @@ public abstract class BaseSpringRestTestCase extends TestCase {
 
             CommandExecutor commandExecutor = cmmnEngine.getCmmnEngineConfiguration().getCommandExecutor();
             commandExecutor.execute(commandContext -> {
-                DbSchemaManager dbSchemaManager = CommandContextUtil.getCmmnEngineConfiguration(commandContext).getDbSchemaManager();
-                dbSchemaManager.dbSchemaDrop();
-                dbSchemaManager.dbSchemaCreate();
+                SchemaManager schemaManager = CommandContextUtil.getCmmnEngineConfiguration(commandContext).getSchemaManager();
+                schemaManager.schemaDrop();
+                schemaManager.schemaCreate();
                 return null;
             });
 
@@ -357,7 +364,7 @@ public abstract class BaseSpringRestTestCase extends TestCase {
         CaseInstance caseInstance = cmmnEngine.getCmmnRuntimeService().createCaseInstanceQuery().caseInstanceId(caseInstanceId).singleResult();
 
         if (caseInstance != null) {
-            throw new AssertionFailedError("Expected finished case instance '" + caseInstanceId + "' but it was still in the db");
+            throw new AssertionError("Expected finished case instance '" + caseInstanceId + "' but it was still in the db");
         }
     }
 
@@ -382,6 +389,22 @@ public abstract class BaseSpringRestTestCase extends TestCase {
             toBeFound.remove(id);
         }
         assertTrue("Not all expected ids have been found in result, missing: " + StringUtils.join(toBeFound, ", "), toBeFound.isEmpty());
+    }
+
+    /**
+     * Checks if the returned "data" array (child-node of root-json node returned by invoking a GET on the given url) contains entries with the given ID's.
+     */
+    protected void assertResultsExactlyPresentInDataResponse(String url, String... expectedResourceIds) throws IOException {
+        // Do the actual call
+        CloseableHttpResponse response = executeRequest(new HttpGet(SERVER_URL_PREFIX + url), HttpStatus.SC_OK);
+
+        // Check status and size
+        JsonNode dataNode = objectMapper.readTree(response.getEntity().getContent()).get("data");
+        closeResponse(response);
+        Assertions.assertThat(dataNode)
+            .extracting(node -> node.get("id").textValue())
+            .as("Expected result ids")
+            .containsExactly(expectedResourceIds);
     }
 
     protected void assertEmptyResultsPresentInDataResponse(String url) throws IOException {

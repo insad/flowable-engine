@@ -13,6 +13,11 @@
 
 package org.flowable.rest.service.api.runtime;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -39,8 +44,6 @@ import org.junit.Test;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-
-import static org.junit.Assert.*;
 
 /**
  * Test for all REST-operations related to Task variables.
@@ -247,7 +250,7 @@ public class TaskVariablesCollectionResourceTest extends BaseSpringRestTestCase 
             assertTrue(responseNode.get("value").isNull());
             assertEquals("local", responseNode.get("scope").asText());
             assertEquals("binary", responseNode.get("type").asText());
-            assertNotNull(responseNode.get("valueUrl").isNull());
+            assertNotNull(responseNode.get("valueUrl"));
             assertTrue(responseNode.get("valueUrl").asText().endsWith(RestUrls.createRelativeResourceUrl(RestUrls.URL_TASK_VARIABLE_DATA, task.getId(), "binaryVariable")));
 
             // Check actual value of variable in engine
@@ -302,7 +305,7 @@ public class TaskVariablesCollectionResourceTest extends BaseSpringRestTestCase 
             assertTrue(responseNode.get("value").isNull());
             assertEquals("local", responseNode.get("scope").asText());
             assertEquals("serializable", responseNode.get("type").asText());
-            assertNotNull(responseNode.get("valueUrl").isNull());
+            assertNotNull(responseNode.get("valueUrl"));
             assertTrue(responseNode.get("valueUrl").asText().endsWith(RestUrls.createRelativeResourceUrl(RestUrls.URL_TASK_VARIABLE_DATA, task.getId(), "serializableVariable")));
 
             // Check actual value of variable in engine

@@ -56,7 +56,7 @@ public class MybatisHistoricActivityInstanceDataManager extends AbstractProcessD
         params.put("activityId", activityId);
         return getList("selectUnfinishedHistoricActivityInstanceExecutionIdAndActivityId", params, unfinishedHistoricActivityInstanceMatcher, true);
     }
-    
+
     @Override
     public List<HistoricActivityInstanceEntity> findHistoricActivityInstancesByExecutionIdAndActivityId(final String executionId, final String activityId) {
         Map<String, Object> params = new HashMap<>();
@@ -69,7 +69,7 @@ public class MybatisHistoricActivityInstanceDataManager extends AbstractProcessD
     public List<HistoricActivityInstanceEntity> findUnfinishedHistoricActivityInstancesByProcessInstanceId(final String processInstanceId) {
         Map<String, Object> params = new HashMap<>();
         params.put("processInstanceId", processInstanceId);
-        return getList("selectUnfinishedHistoricActivityInstanceExecutionIdAndActivityId", params, unfinishedHistoricActivityInstanceMatcher, true);
+        return getList("selectUnfinishedHistoricActivityInstanceByProcessInstanceId", params, unfinishedHistoricActivityInstanceMatcher, true);
     }
 
     @Override
@@ -97,6 +97,16 @@ public class MybatisHistoricActivityInstanceDataManager extends AbstractProcessD
     @Override
     public long findHistoricActivityInstanceCountByNativeQuery(Map<String, Object> parameterMap) {
         return (Long) getDbSqlSession().selectOne("selectHistoricActivityInstanceCountByNativeQuery", parameterMap);
+    }
+
+    @Override
+    public void deleteHistoricActivityInstances(HistoricActivityInstanceQueryImpl historicActivityInstanceQuery) {
+        getDbSqlSession().delete("bulkDeleteHistoricActivityInstances", historicActivityInstanceQuery, HistoricActivityInstanceEntityImpl.class);
+    }
+    
+    @Override
+    public void deleteHistoricActivityInstancesForNonExistingProcessInstances() {
+        getDbSqlSession().delete("bulkDeleteHistoricActivityInstancesForNonExistingProcessInstances", null, HistoricActivityInstanceEntityImpl.class);
     }
 
 }

@@ -13,6 +13,8 @@
 
 package org.flowable.rest.service.api.runtime.task;
 
+import static org.flowable.common.rest.api.PaginateListUtil.paginateList;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -184,6 +186,9 @@ public class TaskBaseResource {
         if (request.getProcessInstanceId() != null) {
             taskQuery.processInstanceId(request.getProcessInstanceId());
         }
+        if (request.getProcessInstanceIdWithChildren() != null) {
+            taskQuery.processInstanceIdWithChildren(request.getProcessInstanceIdWithChildren());
+        }
         if (request.getProcessInstanceBusinessKey() != null) {
             taskQuery.processInstanceBusinessKey(request.getProcessInstanceBusinessKey());
         }
@@ -275,6 +280,18 @@ public class TaskBaseResource {
         if (request.getProcessInstanceVariables() != null) {
             addProcessvariables(taskQuery, request.getProcessInstanceVariables());
         }
+        
+        if (request.getScopeDefinitionId() != null) {
+            taskQuery.scopeDefinitionId(request.getScopeDefinitionId());
+        }
+        
+        if (request.getScopeId() != null) {
+            taskQuery.scopeId(request.getScopeId());
+        }
+        
+        if (request.getScopeType() != null) {
+            taskQuery.scopeType(request.getScopeType());
+        }
 
         if (request.getTenantId() != null) {
             taskQuery.taskTenantId(request.getTenantId());
@@ -297,10 +314,10 @@ public class TaskBaseResource {
         }
         
         if (restApiInterceptor != null) {
-            restApiInterceptor.accessTaskInfoWithQuery(taskQuery);
+            restApiInterceptor.accessTaskInfoWithQuery(taskQuery, request);
         }
 
-        return new TaskPaginateList(restResponseFactory).paginateList(requestParams, request, taskQuery, "id", properties);
+        return paginateList(requestParams, request, taskQuery, "id", properties, restResponseFactory::createTaskResponseList);
     }
 
     protected void addTaskvariables(TaskQuery taskQuery, List<QueryVariable> variables) {
@@ -460,7 +477,7 @@ public class TaskBaseResource {
     }
 
     /**
-     * Get valid task from request. Throws exception if task doesn't exist or if task id is not provided.
+     * Get valid task from request. Throws exception if task does not exist or if task id is not provided.
      */
     protected Task getTaskFromRequest(String taskId) {
         Task task = taskService.createTaskQuery().taskId(taskId).singleResult();
@@ -476,7 +493,7 @@ public class TaskBaseResource {
     }
 
     /**
-     * Get valid history task from request. Throws exception if task doesn't exist or if task id is not provided.
+     * Get valid history task from request. Throws exception if task does not exist or if task id is not provided.
      */
     protected HistoricTaskInstance getHistoricTaskFromRequest(String taskId) {
         HistoricTaskInstance task = historyService.createHistoricTaskInstanceQuery().taskId(taskId).singleResult();

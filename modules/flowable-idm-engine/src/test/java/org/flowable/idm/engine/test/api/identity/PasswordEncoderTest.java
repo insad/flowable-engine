@@ -12,6 +12,10 @@
  */
 package org.flowable.idm.engine.test.api.identity;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.flowable.idm.api.PasswordEncoder;
 import org.flowable.idm.api.PasswordSalt;
 import org.flowable.idm.api.User;
@@ -22,6 +26,7 @@ import org.flowable.idm.engine.test.PluggableFlowableIdmTestCase;
 import org.flowable.idm.engine.test.api.identity.authentication.JasyptPasswordEncryptor;
 import org.flowable.idm.engine.test.api.identity.authentication.jBCryptHashing;
 import org.jasypt.util.password.StrongPasswordEncryptor;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,9 +43,9 @@ public class PasswordEncoderTest extends PluggableFlowableIdmTestCase {
         idmIdentityService.saveUser(user);
 
         User johndoe = idmIdentityService.createUserQuery().userId("johndoe").list().get(0);
-        LOGGER.info("Hash Password = {} ", johndoe.getPassword());
+        LOGGER.info("Hash Password = {}", johndoe.getPassword());
 
-        assertFalse("xxx".equals(johndoe.getPassword()));
+        assertNotEquals("xxx", johndoe.getPassword());
         assertTrue(idmIdentityService.checkPassword("johndoe", "xxx"));
         assertFalse(idmIdentityService.checkPassword("johndoe", "invalid pwd"));
 
@@ -48,6 +53,7 @@ public class PasswordEncoderTest extends PluggableFlowableIdmTestCase {
 
     }
 
+    @Test
     public void testApacheDigesterdEncoderInstance() {
         PasswordEncoder passwordEncoder = idmEngineConfiguration.getPasswordEncoder();
 
@@ -60,6 +66,7 @@ public class PasswordEncoderTest extends PluggableFlowableIdmTestCase {
         idmEngineConfiguration.setPasswordEncoder(passwordEncoder);
     }
 
+    @Test
     public void testJasptEncoderInstance() {
         PasswordEncoder passwordEncoder = idmEngineConfiguration.getPasswordEncoder();
         idmEngineConfiguration.setPasswordEncoder(new JasyptPasswordEncryptor(new StrongPasswordEncryptor()));
@@ -68,6 +75,7 @@ public class PasswordEncoderTest extends PluggableFlowableIdmTestCase {
         idmEngineConfiguration.setPasswordEncoder(passwordEncoder);
     }
 
+    @Test
     public void testjBCrytpEncoderInstance() {
         PasswordEncoder passwordEncoder = idmEngineConfiguration.getPasswordEncoder();
         idmEngineConfiguration.setPasswordEncoder(new jBCryptHashing());
@@ -76,6 +84,7 @@ public class PasswordEncoderTest extends PluggableFlowableIdmTestCase {
         idmEngineConfiguration.setPasswordEncoder(passwordEncoder);
     }
 
+    @Test
     public void testSaltPasswordEncoderInstance() {
         PasswordEncoder passwordEncoder = idmEngineConfiguration.getPasswordEncoder();
         idmEngineConfiguration.setPasswordEncoder(new ApacheDigester(Digester.MD5));
@@ -96,13 +105,13 @@ public class PasswordEncoderTest extends PluggableFlowableIdmTestCase {
         String salt = idmIdentityService.createUserQuery().userId("johndoe1").list().get(0).getPassword();
         assertTrue(idmIdentityService.checkPassword("johndoe1", "xxx"));
 
-        assertFalse(noSalt.equals(salt));
+        assertNotEquals(noSalt, salt);
         idmIdentityService.deleteUser("johndoe1");
 
         idmEngineConfiguration.setPasswordEncoder(passwordEncoder);
     }
 
-
+    @Test
     public void testValidatePasswordEncoderInstance() {
         PasswordEncoder passwordEncoder = idmEngineConfiguration.getPasswordEncoder();
         idmEngineConfiguration.setPasswordEncoder(new CustomPasswordEncoder());

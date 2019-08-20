@@ -27,10 +27,13 @@ import org.flowable.cmmn.engine.impl.persistence.entity.SentryPartInstanceEntity
 import org.flowable.common.engine.impl.context.Context;
 import org.flowable.common.engine.impl.db.DbSqlSession;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.entitylink.service.impl.persistence.entity.EntityLinkEntityManager;
+import org.flowable.entitylink.service.impl.persistence.entity.HistoricEntityLinkEntityManager;
 import org.flowable.identitylink.service.impl.persistence.entity.HistoricIdentityLinkEntityManager;
 import org.flowable.identitylink.service.impl.persistence.entity.IdentityLinkEntityManager;
 import org.flowable.task.service.impl.persistence.entity.HistoricTaskInstanceEntityManager;
 import org.flowable.task.service.impl.persistence.entity.TaskEntityManager;
+import org.flowable.task.service.impl.persistence.entity.HistoricTaskLogEntryEntityManager;
 import org.flowable.variable.service.impl.persistence.entity.HistoricVariableInstanceEntityManager;
 import org.flowable.variable.service.impl.persistence.entity.VariableInstanceEntityManager;
 
@@ -113,10 +116,22 @@ public abstract class AbstractCmmnManager {
         return cmmnEngineConfiguration.getIdentityLinkServiceConfiguration().getHistoricIdentityLinkEntityManager();
     }
     
+    protected EntityLinkEntityManager getEntityLinkEntityManager() {
+        return cmmnEngineConfiguration.getEntityLinkServiceConfiguration().getEntityLinkEntityManager();
+    }
+    
+    protected HistoricEntityLinkEntityManager getHistoricEntityLinkEntityManager() {
+        return cmmnEngineConfiguration.getEntityLinkServiceConfiguration().getHistoricEntityLinkEntityManager();
+    }
+    
     protected TaskEntityManager getTaskEntityManager() {
         return cmmnEngineConfiguration.getTaskServiceConfiguration().getTaskEntityManager();
     }
-    
+
+    protected HistoricTaskLogEntryEntityManager getHistoricTaskLogEntryEntityManager() {
+        return cmmnEngineConfiguration.getTaskServiceConfiguration().getHistoricTaskLogEntryEntityManager();
+    }
+
     protected HistoricTaskInstanceEntityManager getHistoricTaskInstanceEntityManager() {
         return cmmnEngineConfiguration.getTaskServiceConfiguration().getHistoricTaskInstanceEntityManager();
     }

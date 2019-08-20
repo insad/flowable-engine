@@ -28,7 +28,7 @@ import org.flowable.form.api.FormInstanceInfo;
 import org.flowable.form.model.Option;
 import org.flowable.form.model.OptionFormField;
 import org.flowable.form.model.SimpleFormModel;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class OptionFormFieldTest extends AbstractFlowableFormTest {
 
@@ -76,7 +76,7 @@ public class OptionFormFieldTest extends AbstractFlowableFormTest {
         // get clean form model
         formInfo = repositoryService.getFormModelByKey("optionsForm");
         formModel = (SimpleFormModel) formInfo.getFormModel();
-        FormInstance formInstance = formService.saveFormInstance(variables, formInfo, taskId, null, null);
+        FormInstance formInstance = formService.saveFormInstance(variables, formInfo, taskId, null, null, null, null);
         FormInstanceInfo formInstanceInfo = formService.getFormInstanceModelById(formInstance.getId(), variables);
         SimpleFormModel formInstanceModel = (SimpleFormModel) formInstanceInfo.getFormModel(); 
         optionFormField = (OptionFormField) formInstanceModel.getFields().get(0);
@@ -92,7 +92,7 @@ public class OptionFormFieldTest extends AbstractFlowableFormTest {
         // get clean form model
         formInfo = repositoryService.getFormModelByKey("optionsForm");
         formModel = (SimpleFormModel) formInfo.getFormModel();
-        formInstance = formService.saveFormInstance(variables, formInfo, taskId, null, null);
+        formInstance = formService.saveFormInstance(variables, formInfo, taskId, null, null, null, null);
         formInstanceInfo = formService.getFormInstanceModelById(formInstance.getId(), variables);
         formInstanceModel = (SimpleFormModel) formInstanceInfo.getFormModel(); 
         
@@ -112,7 +112,7 @@ public class OptionFormFieldTest extends AbstractFlowableFormTest {
         variables.clear();
         try {
             formInfo = repositoryService.getFormModelByKey("optionsForm");
-            formInstance = formService.saveFormInstance(variables, formInfo, taskId, null, null);
+            formInstance = formService.saveFormInstance(variables, formInfo, taskId, null, null, null, null);
         } catch (FlowableException e) {
         }
 
