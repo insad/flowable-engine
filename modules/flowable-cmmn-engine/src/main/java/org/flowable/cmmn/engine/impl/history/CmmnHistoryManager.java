@@ -14,6 +14,7 @@ package org.flowable.cmmn.engine.impl.history;
 
 import java.util.Date;
 
+import org.flowable.cmmn.api.repository.CaseDefinition;
 import org.flowable.cmmn.engine.impl.persistence.entity.CaseInstanceEntity;
 import org.flowable.cmmn.engine.impl.persistence.entity.MilestoneInstanceEntity;
 import org.flowable.cmmn.engine.impl.persistence.entity.PlanItemInstanceEntity;
@@ -31,6 +32,8 @@ public interface CmmnHistoryManager {
     void recordCaseInstanceStart(CaseInstanceEntity caseInstanceEntity);
 
     void recordCaseInstanceEnd(CaseInstanceEntity caseInstanceEntity, String state, Date endTime);
+
+    void recordHistoricCaseInstanceReactivated(CaseInstanceEntity caseInstanceEntity);
     
     void recordUpdateCaseInstanceName(CaseInstanceEntity caseInstanceEntity, String name);
 
@@ -38,7 +41,7 @@ public interface CmmnHistoryManager {
 
     void recordMilestoneReached(MilestoneInstanceEntity milestoneInstanceEntity);
 
-    void recordHistoricCaseInstanceDeleted(String caseInstanceId);
+    void recordHistoricCaseInstanceDeleted(String caseInstanceId, String tenantId);
 
     void recordIdentityLinkCreated(IdentityLinkEntity identityLink);
 
@@ -62,7 +65,13 @@ public interface CmmnHistoryManager {
 
     void recordPlanItemInstanceCreated(PlanItemInstanceEntity planItemInstanceEntity);
 
+    void recordPlanItemInstanceReactivated(PlanItemInstanceEntity planItemInstanceEntity);
+
+    void recordPlanItemInstanceUpdated(PlanItemInstanceEntity planItemInstanceEntity);
+
     void recordPlanItemInstanceAvailable(PlanItemInstanceEntity planItemInstanceEntity);
+
+    void recordPlanItemInstanceUnavailable(PlanItemInstanceEntity planItemInstanceEntity);
 
     void recordPlanItemInstanceEnabled(PlanItemInstanceEntity planItemInstanceEntity);
 
@@ -79,6 +88,8 @@ public interface CmmnHistoryManager {
     void recordPlanItemInstanceTerminated(PlanItemInstanceEntity planItemInstanceEntity);
 
     void recordPlanItemInstanceExit(PlanItemInstanceEntity planItemInstanceEntity);
+    
+    void updateCaseDefinitionIdInHistory(CaseDefinition caseDefinition, CaseInstanceEntity caseInstance);
 
     /**
      * Record historic user task log entry

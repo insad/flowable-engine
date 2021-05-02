@@ -5,11 +5,10 @@
 <mapper namespace="org.flowable.cmmn.engine.impl.persistence.entity.HistoricCaseInstanceEntityImpl">
 
     <insert id="insertHistoricCaseInstance" parameterType="org.flowable.cmmn.engine.impl.persistence.entity.HistoricCaseInstanceEntityImpl">
-        insert into ${prefix}ACT_CMMN_HI_CASE_INST (ID_, REV_, NAME_, PARENT_ID_, CASE_DEF_ID_, BUSINESS_KEY_, STATE_, START_TIME_, END_TIME_, START_USER_ID_, CALLBACK_ID_, CALLBACK_TYPE_, TENANT_ID_)
+        insert into ${prefix}ACT_CMMN_HI_CASE_INST (ID_, REV_, NAME_, PARENT_ID_, CASE_DEF_ID_, BUSINESS_KEY_, STATE_, START_TIME_, END_TIME_, START_USER_ID_, LAST_REACTIVATION_TIME_, LAST_REACTIVATION_USER_ID_, CALLBACK_ID_, CALLBACK_TYPE_, REFERENCE_ID_, REFERENCE_TYPE_, TENANT_ID_)
         values (
             #{id ,jdbcType=VARCHAR},
-            1,
-            #{name ,jdbcType=VARCHAR},
+            1, #{name ,jdbcType=VARCHAR},
             #{parentId ,jdbcType=VARCHAR},
             #{caseDefinitionId ,jdbcType=VARCHAR},
             #{businessKey ,jdbcType=VARCHAR},
@@ -17,20 +16,23 @@
             #{startTime ,jdbcType=TIMESTAMP},
             #{endTime ,jdbcType=TIMESTAMP},
             #{startUserId ,jdbcType=VARCHAR},
+            #{lastReactivationTime ,jdbcType=TIMESTAMP},
+            #{lastReactivationUserId ,jdbcType=VARCHAR},
             #{callbackId, jdbcType=VARCHAR},
             #{callbackType, jdbcType=VARCHAR},
+            #{referenceId, jdbcType=VARCHAR},
+            #{referenceType, jdbcType=VARCHAR},
             #{tenantId ,jdbcType=VARCHAR}
         )
     </insert>
 
     <insert id="bulkInsertHistoricCaseInstance" parameterType="java.util.List">
-        insert into ${prefix}ACT_CMMN_HI_CASE_INST (ID_, REV_, NAME_, PARENT_ID_, CASE_DEF_ID_, BUSINESS_KEY_, STATE_, START_TIME_, END_TIME_, START_USER_ID_, CALLBACK_ID_, CALLBACK_TYPE_, TENANT_ID_)
+        insert into ${prefix}ACT_CMMN_HI_CASE_INST (ID_, REV_, NAME_, PARENT_ID_, CASE_DEF_ID_, BUSINESS_KEY_, STATE_, START_TIME_, END_TIME_, START_USER_ID_, LAST_REACTIVATION_TIME_, LAST_REACTIVATION_USER_ID_, CALLBACK_ID_, CALLBACK_TYPE_, REFERENCE_ID_, REFERENCE_TYPE_, TENANT_ID_)
         values
         <foreach collection="list" item="historicCaseInstance" index="index" separator=",">
             (
                 #{historicCaseInstance.id ,jdbcType=VARCHAR},
-                1,
-                #{historicCaseInstance.name ,jdbcType=VARCHAR},
+                1, #{historicCaseInstance.name ,jdbcType=VARCHAR},
                 #{historicCaseInstance.parentId ,jdbcType=VARCHAR},
                 #{historicCaseInstance.caseDefinitionId ,jdbcType=VARCHAR},
                 #{historicCaseInstance.businessKey ,jdbcType=VARCHAR},
@@ -38,8 +40,12 @@
                 #{historicCaseInstance.startTime ,jdbcType=TIMESTAMP},
                 #{historicCaseInstance.endTime ,jdbcType=TIMESTAMP},
                 #{historicCaseInstance.startUserId ,jdbcType=VARCHAR},
+                #{historicCaseInstance.lastReactivationTime ,jdbcType=TIMESTAMP},
+                #{historicCaseInstance.lastReactivationUserId ,jdbcType=VARCHAR},
                 #{historicCaseInstance.callbackId, jdbcType=VARCHAR},
                 #{historicCaseInstance.callbackType, jdbcType=VARCHAR},
+                #{historicCaseInstance.referenceId, jdbcType=VARCHAR},
+                #{historicCaseInstance.referenceType, jdbcType=VARCHAR},
                 #{historicCaseInstance.tenantId ,jdbcType=VARCHAR}
             )
         </foreach>
@@ -48,11 +54,10 @@
     <insert id="bulkInsertHistoricCaseInstance" databaseId="oracle" parameterType="java.util.List">
         INSERT ALL
         <foreach collection="list" item="historicCaseInstance" index="index">
-            into ${prefix}ACT_CMMN_HI_CASE_INST (ID_, REV_, NAME_, PARENT_ID_, CASE_DEF_ID_, BUSINESS_KEY_, STATE_, START_TIME_, END_TIME_, START_USER_ID_, CALLBACK_ID_, CALLBACK_TYPE_, TENANT_ID_) VALUES
+            into ${prefix}ACT_CMMN_HI_CASE_INST (ID_, REV_, NAME_, PARENT_ID_, CASE_DEF_ID_, BUSINESS_KEY_, STATE_, START_TIME_, END_TIME_, START_USER_ID_, LAST_REACTIVATION_TIME_, LAST_REACTIVATION_USER_ID_, CALLBACK_ID_, CALLBACK_TYPE_, REFERENCE_ID_, REFERENCE_TYPE_, TENANT_ID_) VALUES
             (
                 #{historicCaseInstance.id ,jdbcType=VARCHAR},
-                1,
-                #{historicCaseInstance.name ,jdbcType=VARCHAR},
+                1, #{historicCaseInstance.name ,jdbcType=VARCHAR},
                 #{historicCaseInstance.parentId ,jdbcType=VARCHAR},
                 #{historicCaseInstance.caseDefinitionId ,jdbcType=VARCHAR},
                 #{historicCaseInstance.businessKey ,jdbcType=VARCHAR},
@@ -60,8 +65,12 @@
                 #{historicCaseInstance.startTime ,jdbcType=TIMESTAMP},
                 #{historicCaseInstance.endTime ,jdbcType=TIMESTAMP},
                 #{historicCaseInstance.startUserId ,jdbcType=VARCHAR},
+                #{historicCaseInstance.lastReactivationTime ,jdbcType=TIMESTAMP},
+                #{historicCaseInstance.lastReactivationUserId ,jdbcType=VARCHAR},
                 #{historicCaseInstance.callbackId, jdbcType=VARCHAR},
                 #{historicCaseInstance.callbackType, jdbcType=VARCHAR},
+                #{historicCaseInstance.referenceId, jdbcType=VARCHAR},
+                #{historicCaseInstance.referenceType, jdbcType=VARCHAR},
                 #{historicCaseInstance.tenantId ,jdbcType=VARCHAR}
             )
         </foreach>
@@ -96,14 +105,26 @@
             <if test="originalPersistentState.startUserId != startUserId">
                 START_USER_ID_ = #{startUserId, jdbcType=VARCHAR},
             </if>
+            <if test="originalPersistentState.lastReactivationTime != lastReactivationTime">
+                LAST_REACTIVATION_TIME_ = #{lastReactivationTime, jdbcType=TIMESTAMP},
+            </if>
+            <if test="originalPersistentState.lastReactivationUserId != lastReactivationUserId">
+                LAST_REACTIVATION_USER_ID_ = #{lastReactivationUserId, jdbcType=VARCHAR},
+            </if>
             <if test="originalPersistentState.callbackId != callbackId">
                 CALLBACK_ID_ = #{callbackId, jdbcType=VARCHAR},
             </if>
             <if test="originalPersistentState.callbackType != callbackType">
                 CALLBACK_TYPE_ = #{callbackType, jdbcType=VARCHAR},
             </if>
+            <if test="originalPersistentState.referenceId != referenceId">
+                REFERENCE_ID_ = #{referenceId, jdbcType=VARCHAR},
+            </if>
+            <if test="originalPersistentState.referenceType != referenceType">
+                REFERENCE_TYPE_ = #{referenceType, jdbcType=VARCHAR},
+            </if>
             <if test="originalPersistentState.tenantId != tenantId">
-                TENANT_ID_ = #{tenantId, jdbcType=VARCHAR}
+                TENANT_ID_ = #{tenantId, jdbcType=VARCHAR},
             </if>
         </set>
         where ID_ = #{id, jdbcType=VARCHAR}
@@ -128,9 +149,18 @@
         <result property="startTime" column="START_TIME_" jdbcType="TIMESTAMP" />
         <result property="endTime" column="END_TIME_" jdbcType="TIMESTAMP" />
         <result property="startUserId" column="START_USER_ID_" jdbcType="VARCHAR" />
+        <result property="lastReactivationTime" column="LAST_REACTIVATION_TIME_" jdbcType="TIMESTAMP" />
+        <result property="lastReactivationUserId" column="LAST_REACTIVATION_USER_ID_" jdbcType="VARCHAR" />
         <result property="callbackId" column="CALLBACK_ID_" jdbcType="VARCHAR" />
         <result property="callbackType" column="CALLBACK_TYPE_" jdbcType="VARCHAR" />
+        <result property="referenceId" column="REFERENCE_ID_" jdbcType="VARCHAR" />
+        <result property="referenceType" column="REFERENCE_TYPE_" jdbcType="VARCHAR" />
         <result property="tenantId" column="TENANT_ID_" jdbcType="VARCHAR" />
+
+        <result property="caseDefinitionKey" column="CaseDefinitionKey" jdbcType="VARCHAR" />
+        <result property="caseDefinitionName" column="CaseDefinitionName" jdbcType="VARCHAR" />
+        <result property="caseDefinitionVersion" column="CaseDefinitionVersion" jdbcType="INTEGER" />
+        <result property="caseDefinitionDeploymentId" column="CaseDefinitionDeploymentId" jdbcType="VARCHAR" />
     </resultMap>
 
     <resultMap id="historicCaseInstanceResultMapWithVariables"
@@ -158,18 +188,26 @@
     </resultMap>
 
     <select id="selectHistoricCaseInstance" parameterType="string" resultMap="historicCaseInstanceResultMap">
-        select * from ${prefix}ACT_CMMN_HI_CASE_INST where ID_ = #{id, jdbcType=VARCHAR}
+        select RES.* ,
+            CASE_DEF.KEY_ as CaseDefinitionKey,
+            CASE_DEF.NAME_ as CaseDefinitionName,
+            CASE_DEF.VERSION_ as CaseDefinitionVersion,
+            CASE_DEF.DEPLOYMENT_ID_ as CaseDefinitionDeploymentId
+        from ${prefix}ACT_CMMN_HI_CASE_INST RES
+        left outer join ${prefix}ACT_CMMN_CASEDEF CASE_DEF on RES.CASE_DEF_ID_ = CASE_DEF.ID_
+        where RES.ID_ = #{id, jdbcType=VARCHAR}
     </select>
 
     <select id="selectHistoricCaseInstancesByQueryCriteria" parameterType="org.flowable.cmmn.engine.impl.history.HistoricCaseInstanceQueryImpl" resultMap="historicCaseInstanceResultMap">
-        <if test="firstResult != null and firstResult &gt;= 0">${limitBefore}</if>
-        select distinct RES.* <if test="firstResult != null and firstResult &gt;= 0">${limitBetween}</if>
-        <if test="caseDefinitionKey != null or caseDefinitionKeys != null or caseDefinitionCategory != null or caseDefinitionName != null or deploymentId != null or deploymentIds != null">
-          , CASE_DEF.KEY_ as CaseDefinitionKey, CASE_DEF.ID_ as CaseDefinitionId, CASE_DEF.NAME_ as CaseDefinitionName, CASE_DEF.VERSION_ as CaseDefinitionVersion, CASE_DEF.DEPLOYMENT_ID_ as DeploymentId
-        </if>
+        <if test="needsPaging">${limitBefore}</if>
+        select RES.* <if test="needsPaging">${limitBetween}</if>,
+            CASE_DEF.KEY_ as CaseDefinitionKey,
+            CASE_DEF.NAME_ as CaseDefinitionName,
+            CASE_DEF.VERSION_ as CaseDefinitionVersion,
+            CASE_DEF.DEPLOYMENT_ID_ as CaseDefinitionDeploymentId
         <include refid="selectHistoricCaseInstancesByQueryCriteriaSql" />
         ${orderBy}
-        <if test="firstResult != null and firstResult &gt;= 0">${limitAfter}</if>
+        <if test="needsPaging">${limitAfter}</if>
     </select>
 
     <select id="selectHistoricCaseInstanceCountByQueryCriteria" parameterType="org.flowable.cmmn.engine.impl.history.HistoricCaseInstanceQueryImpl" resultType="long">
@@ -180,16 +218,8 @@
     <select id="selectHistoricCaseInstancesWithVariablesByQueryCriteria"
             parameterType="org.flowable.cmmn.engine.impl.history.HistoricCaseInstanceQueryImpl"
             resultMap="historicCaseInstanceResultMapWithVariables">
-        <include refid="selectHistoricCaseInstancesWithVariablesByQueryCriteriaColumns"/>
-        <include refid="selectHistoricCaseInstancesWithVariablesByQueryCriteriaSql"/>
-        ${orderBy}
-        <if test="firstResult != null and firstResult &gt;= 0">${limitAfter}</if>
-    </select>
-
-    <sql id="selectHistoricCaseInstancesWithVariablesByQueryCriteriaColumns">
-        <if test="firstResult != null and firstResult &gt;= 0">${limitBefore}</if>
-        <if test="_databaseId != 'db2' and _databaseId != 'mssql'">
-            select distinct RES.*,
+        select RES.*
+        <if test="includeCaseVariables">,
             VAR.ID_ as VAR_ID_,
             VAR.NAME_ as VAR_NAME_,
             VAR.VAR_TYPE_ as VAR_TYPE_,
@@ -206,89 +236,43 @@
             VAR.TEXT2_ as VAR_TEXT2_,
             VAR.LAST_UPDATED_TIME_ as VAR_LAST_UPDATED_TIME_,
             VAR.LONG_ as VAR_LONG_
-            <if test="firstResult != null and firstResult &gt;= 0">${limitBetween}</if>
         </if>
-        <if test="_databaseId == 'db2' || _databaseId == 'mssql'">
-            select distinct
-            TEMPRES_ID_ as ID_,
-            TEMPRES_REV_ as REV_,
-            TEMPRES_PARENT_ID_ as PARENT_ID_,
-            TEMPRES_CASE_DEF_ID_ as CASE_DEF_ID_,
-            TEMPRES_BUSINESS_KEY_ as BUSINESS_KEY_,
-            TEMPRES_NAME_ as NAME_,
-            TEMPRES_STATE_ as STATE_,
-            TEMPRES_START_TIME_ as START_TIME_,
-            TEMPRES_END_TIME_ as END_TIME_,
-            TEMPRES_START_USER_ID_ as START_USER_ID_,
-            TEMPRES_CALLBACK_ID_ as CALLBACK_ID_,
-            TEMPRES_CALLBACK_TYPE_ as CALLBACK_TYPE_,
-            TEMPRES_TENANT_ID_ as TENANT_ID_,
-            TEMPVAR_ID_ as VAR_ID_,
-            TEMPVAR_NAME_ as VAR_NAME_,
-            TEMPVAR_TYPE_ as VAR_TYPE_,
-            TEMPVAR_REV_ as VAR_REV_,
-            TEMPVAR_PROC_INST_ID_ as VAR_PROC_INST_ID_,
-            TEMPVAR_EXECUTION_ID_ as VAR_EXECUTION_ID_,
-            TEMPVAR_TASK_ID_ as VAR_TASK_ID_,
-            TEMPVAR_SCOPE_ID_ as VAR_SCOPE_ID_,
-            TEMPVAR_SUB_SCOPE_ID_ as VAR_SUB_SCOPE_ID_,
-            TEMPVAR_SCOPE_TYPE_ as VAR_SCOPE_TYPE_,
-            TEMPVAR_BYTEARRAY_ID_ as VAR_BYTEARRAY_ID_,
-            TEMPVAR_DOUBLE_ as VAR_DOUBLE_,
-            TEMPVAR_TEXT_ as VAR_TEXT_,
-            TEMPVAR_TEXT2_ as VAR_TEXT2_,
-            TEMPVAR_LAST_UPDATED_TIME_ as VAR_LAST_UPDATED_TIME_,
-            TEMPVAR_LONG_ as VAR_LONG_
-            <if test="firstResult != null and firstResult &gt;= 0">${limitOuterJoinBetween}</if>
-            RES.ID_ as TEMPRES_ID_,
-            RES.REV_ as TEMPRES_REV_,
-            RES.PARENT_ID_ as TEMPRES_PARENT_ID_,
-            RES.CASE_DEF_ID_ as TEMPRES_CASE_DEF_ID_,
-            RES.BUSINESS_KEY_ as TEMPRES_BUSINESS_KEY_,
-            RES.NAME_ as TEMPRES_NAME_,
-            RES.STATE_ as TEMPRES_STATE_,
-            RES.START_TIME_ as TEMPRES_START_TIME_,
-            RES.END_TIME_ as TEMPRES_END_TIME_,
-            RES.START_USER_ID_ as TEMPRES_START_USER_ID_,
-            RES.CALLBACK_ID_ as TEMPRES_CALLBACK_ID_,
-            RES.CALLBACK_TYPE_ as TEMPRES_CALLBACK_TYPE_,
-            RES.TENANT_ID_ as TEMPRES_TENANT_ID_,
-            VAR.ID_ as TEMPVAR_ID_,
-            VAR.NAME_ as TEMPVAR_NAME_,
-            VAR.VAR_TYPE_ as TEMPVAR_TYPE_,
-            VAR.REV_ as TEMPVAR_REV_,
-            VAR.PROC_INST_ID_ as TEMPVAR_PROC_INST_ID_,
-            VAR.EXECUTION_ID_ as TEMPVAR_EXECUTION_ID_,
-            VAR.TASK_ID_ as TEMPVAR_TASK_ID_,
-            VAR.SCOPE_ID_ as TEMPVAR_SCOPE_ID_,
-            VAR.SUB_SCOPE_ID_ as TEMPVAR_SUB_SCOPE_ID_,
-            VAR.SCOPE_TYPE_ as TEMPVAR_SCOPE_TYPE_,
-            VAR.BYTEARRAY_ID_ as TEMPVAR_BYTEARRAY_ID_,
-            VAR.DOUBLE_ as TEMPVAR_DOUBLE_,
-            VAR.TEXT_ as TEMPVAR_TEXT_,
-            VAR.TEXT2_ as TEMPVAR_TEXT2_,
-            VAR.LAST_UPDATED_TIME_ as TEMPVAR_LAST_UPDATED_TIME_,
-            VAR.LONG_ as TEMPVAR_LONG_
+        FROM (
+            <!-- top 100 percent is only needed when doing order by in a subselect -->
+            <if test="needsPaging">${limitBefore}</if>
+            select <if test="_databaseId == 'mssql'">top 100 percent</if> RES.* <if test="needsPaging">${limitBetween}</if>,
+            CASE_DEF.KEY_ as CaseDefinitionKey,
+            CASE_DEF.NAME_ as CaseDefinitionName,
+            CASE_DEF.VERSION_ as CaseDefinitionVersion,
+            CASE_DEF.DEPLOYMENT_ID_ as CaseDefinitionDeploymentId
+            <include refid="selectHistoricCaseInstancesWithVariablesByQueryCriteriaSql"/>
+            ${orderBy}
+            <if test="needsPaging">${limitAfter}</if>
+        ) RES
+        left outer join ${prefix}ACT_HI_VARINST VAR ON VAR.PROC_INST_ID_ is null and RES.ID_ = VAR.SCOPE_ID_ and VAR.SCOPE_TYPE_ = 'cmmn' and VAR.SUB_SCOPE_ID_ is null
+        <if test="needsCaseDefinitionOuterJoin">
+            left outer join ${prefix}ACT_CMMN_CASEDEF CASE_DEF on RES.CASE_DEF_ID_ = CASE_DEF.ID_
         </if>
-    </sql>
+        ${outerJoinOrderBy}
+    </select>
 
     <sql id="selectHistoricCaseInstancesWithVariablesByQueryCriteriaSql">
         from ${prefix}ACT_CMMN_HI_CASE_INST RES
-        <if test="caseDefinitionKey != null or caseDefinitionKeys != null or caseDefinitionCategory != null or caseDefinitionName != null or deploymentId != null or deploymentIds != null">
-            inner join ${prefix}ACT_CMMN_CASEDEF CASE_DEF on RES.CASE_DEF_ID_ = CASE_DEF.ID_
-        </if>
-        <if test="includeCaseVariables">
-            left outer join ${prefix}ACT_HI_VARINST VAR ON VAR.PROC_INST_ID_ is null and
-            RES.ID_ = VAR.SCOPE_ID_ and VAR.SCOPE_TYPE_ = 'cmmn' and VAR.SUB_SCOPE_ID_ is null
-        </if>
+        <!--
+            Doing a join on the definition table is OK, since it is a 1:1 relationship.
+            This has to be an outer join because historic data might exists, but definitions might have been deleted
+        -->
+        left outer join ${prefix}ACT_CMMN_CASEDEF CASE_DEF on RES.CASE_DEF_ID_ = CASE_DEF.ID_
         <include refid="commonSelectHistoricCaseInstancesByQueryCriteriaSql"/>
     </sql>
 
     <sql id="selectHistoricCaseInstancesByQueryCriteriaSql">
         from ${prefix}ACT_CMMN_HI_CASE_INST RES
-        <if test="caseDefinitionKey != null or caseDefinitionKeys != null or caseDefinitionCategory != null or caseDefinitionName != null or deploymentId != null or deploymentIds != null">
-            inner join ${prefix}ACT_CMMN_CASEDEF CASE_DEF on RES.CASE_DEF_ID_ = CASE_DEF.ID_
-        </if>
+        <!--
+            Doing a join on the definition table is OK, since it is a 1:1 relationship.
+            This has to be an outer join because historic data might exists, but definitions might have been deleted
+        -->
+        left outer join ${prefix}ACT_CMMN_CASEDEF CASE_DEF on RES.CASE_DEF_ID_ = CASE_DEF.ID_
         <include refid="commonSelectHistoricCaseInstancesByQueryCriteriaSql"/>
     </sql>
     
@@ -310,26 +294,6 @@
     </delete>
 
     <sql id="commonSelectHistoricCaseInstancesByQueryCriteriaSql">
-        <foreach collection="queryVariableValues" index="index" item="queryVariableValue">
-            <if test="!queryVariableValue.operator.equals('EXISTS') &amp;&amp; !queryVariableValue.operator.equals('NOT_EXISTS')">
-                inner join ${prefix}ACT_HI_VARINST A${index} on RES.ID_ = A${index}.SCOPE_ID_ and A${index}.SUB_SCOPE_ID_ is null and A${index}.SCOPE_TYPE_ = 'cmmn'
-            </if>
-        </foreach>
-        <foreach collection="orQueryObjects" index="orIndex" item="orQueryObject">
-            <if test="orQueryObject.caseDefinitionKey != null || (orQueryObject.caseDefinitionKeys != null &amp;&amp; orQueryObject.caseDefinitionKeys.size() &gt; 0) || orQueryObject.caseDefinitionCategory != null || orQueryObject.caseDefinitionName != null || orQueryObject.caseDefinitionVersion != null">
-                inner join ${prefix}ACT_CMMN_CASEDEF CASE_DEF_OR${orIndex} on RES.CASE_DEF_ID_ = CASE_DEF_OR${orIndex}.ID_
-            </if>
-            <if test="orQueryObject.deploymentId != null || (orQueryObject.deploymentIds != null &amp;&amp; orQueryObject.deploymentIds.size() &gt; 0)">
-                left outer join ${prefix}ACT_CMMN_CASEDEF DEPLOY_CASE_OR${orIndex} ON RES.CASE_DEF_ID_ = DEPLOY_CASE_OR${orIndex}.ID_
-            </if>
-            <if test="orQueryObject.queryVariableValues != null &amp;&amp; orQueryObject.queryVariableValues.size() &gt; 0">
-                <if test="orQueryObject.hasValueComparisonQueryVariables()">
-                    left outer join ${prefix}ACT_HI_VARINST A_OR${orIndex} on (RES.ID_ = A_OR${orIndex}.SCOPE_ID_ and
-                    A_OR${orIndex}.SUB_SCOPE_ID_ is null and A_OR${orIndex}.SCOPE_TYPE_ = 'cmmn'
-                    )
-                </if>
-            </if>
-        </foreach>
         <where>
             <include refid="commonCaseInstanceQuerySql">
                 <property name="queryTablePrefix" value="RES."/>
@@ -368,64 +332,85 @@
                       and NOT EXISTS (select ID_ from ${prefix}ACT_HI_VARINST where NAME_ = #{queryVariableValue.name} and RES.ID_ = SCOPE_ID_ and SUB_SCOPE_ID_ is null and SCOPE_TYPE_ = 'cmmn')
                     </when>
                     <otherwise>
-                        <if test="queryVariableValue.name != null">
-                          <!-- Match-all variable-names when name is null -->
-                          and A${index}.NAME_= #{queryVariableValue.name}
-                        </if>
-                        <if test="!queryVariableValue.type.equals('null')">
-                        <!-- When operator is not-equals or type of value is null, type doesn't matter! -->
-                          and A${index}.VAR_TYPE_ = #{queryVariableValue.type}
-                        </if>
-                        <if test="queryVariableValue.textValue != null &amp;&amp; queryVariableValue.longValue == null &amp;&amp; queryVariableValue.doubleValue == null">
-                          <choose>
-                            <when test="queryVariableValue.operator.equals('EQUALS_IGNORE_CASE') || queryVariableValue.operator.equals('NOT_EQUALS_IGNORE_CASE') || queryVariableValue.operator.equals('LIKE_IGNORE_CASE')">
-                              and lower(A${index}.TEXT_)
-                            </when>
-                            <otherwise>
-                              and A${index}.TEXT_
-                            </otherwise>
-                          </choose>
-                          <choose>
-                            <when test="queryVariableValue.operator.equals('LIKE') || queryVariableValue.operator.equals('LIKE_IGNORE_CASE')">LIKE</when>
-                            <otherwise><include refid="variableOperator" /></otherwise>
-                          </choose>
-                          #{queryVariableValue.textValue}
-                          <choose>
-                            <when test="queryVariableValue.operator.equals('LIKE') || queryVariableValue.operator.equals('LIKE_IGNORE_CASE')">${wildcardEscapeClause}</when>
-                          </choose>
-                        </if>
-                        <if test="queryVariableValue.textValue2 != null">
-                        and A${index}.TEXT2_
-                        <choose>
-                          <when test="queryVariableValue.operator.equals('LIKE')">LIKE</when>
-                          <otherwise><include refid="variableOperator" /></otherwise>
-                        </choose>
-                          #{queryVariableValue.textValue2}
-                          <choose>
-                            <when test="queryVariableValue.operator.equals('LIKE')">${wildcardEscapeClause}</when>
-                          </choose>
-                        </if>
-                        <if test="queryVariableValue.longValue != null">
-                            and A${index}.LONG_
-                            <include refid="variableOperator" />
-                            #{queryVariableValue.longValue}
-                        </if>
-                        <if test="queryVariableValue.doubleValue != null">
-                            and A${index}.DOUBLE_
-                            <include refid="variableOperator" />
-                            #{queryVariableValue.doubleValue}
-                        </if>
-                        <!-- Null variable type -->
-                        <if test="queryVariableValue.textValue == null &amp;&amp; queryVariableValue.textValue2 == null &amp;&amp; queryVariableValue.longValue == null &amp;&amp; queryVariableValue.doubleValue == null">
-                          <choose>
-                            <when test="queryVariableValue.operator.equals('NOT_EQUALS')">
-                                and (A${index}.TEXT_ is not null or A${index}.TEXT2_ is not null or A${index}.LONG_ is not null or A${index}.DOUBLE_ is not null or A${index}.BYTEARRAY_ID_ is not null)
-                            </when>
-                            <otherwise>
-                                and A${index}.TEXT_ is null and A${index}.TEXT2_ is null and A${index}.LONG_ is null and A${index}.DOUBLE_ is null and A${index}.BYTEARRAY_ID_ is null
-                            </otherwise>
-                          </choose>
-                        </if>
+                        and exists (
+                            select 1
+                            from ${prefix}ACT_HI_VARINST V
+                            <where>
+                                RES.ID_ = V.SCOPE_ID_
+                                and V.SUB_SCOPE_ID_ is null
+                                and V.SCOPE_TYPE_ = 'cmmn'
+
+                                <if test="queryVariableValue.name != null">
+                                    <!-- Match-all variable-names when name is null -->
+                                    and V.NAME_= #{queryVariableValue.name}
+                                </if>
+                                <if test="queryVariableValue.needsTypeCheck()">
+                                    and V.VAR_TYPE_ = #{queryVariableValue.type}
+                                </if>
+                                <if test="queryVariableValue.textValue != null &amp;&amp; queryVariableValue.longValue == null &amp;&amp; queryVariableValue.doubleValue == null">
+                                    <choose>
+                                        <when test="queryVariableValue.operator.equals('EQUALS_IGNORE_CASE') || queryVariableValue.operator.equals('NOT_EQUALS_IGNORE_CASE') || queryVariableValue.operator.equals('LIKE_IGNORE_CASE')">
+                                            and (lower(V.TEXT_)
+                                        </when>
+                                        <otherwise>
+                                            and (V.TEXT_
+                                        </otherwise>
+                                    </choose>
+                                    <choose>
+                                        <when test="queryVariableValue.operator.equals('LIKE') || queryVariableValue.operator.equals('LIKE_IGNORE_CASE')">LIKE</when>
+                                        <otherwise><include refid="variableOperator" /></otherwise>
+                                    </choose>
+                                    #{queryVariableValue.textValue}
+                                    <choose>
+                                        <when test="queryVariableValue.operator.equals('LIKE') || queryVariableValue.operator.equals('LIKE_IGNORE_CASE')">${wildcardEscapeClause}</when>
+                                    </choose>
+                                    <if test="queryVariableValue.operator.equals('NOT_EQUALS') || queryVariableValue.operator.equals('NOT_EQUALS_IGNORE_CASE')">
+                                        or V.TEXT_ is null
+                                    </if>
+                                    )
+                                </if>
+                                <if test="queryVariableValue.textValue2 != null">
+                                    and V.TEXT2_
+                                    <choose>
+                                        <when test="queryVariableValue.operator.equals('LIKE')">LIKE</when>
+                                        <otherwise><include refid="variableOperator" /></otherwise>
+                                    </choose>
+                                    #{queryVariableValue.textValue2}
+                                    <choose>
+                                        <when test="queryVariableValue.operator.equals('LIKE')">${wildcardEscapeClause}</when>
+                                    </choose>
+                                </if>
+                                <if test="queryVariableValue.longValue != null">
+                                    and (V.LONG_
+                                    <include refid="variableOperator" />
+                                    #{queryVariableValue.longValue}
+                                    <if test="queryVariableValue.operator.equals('NOT_EQUALS') || queryVariableValue.operator.equals('NOT_EQUALS_IGNORE_CASE')">
+                                        or V.LONG_ is null
+                                    </if>
+                                    )
+                                </if>
+                                <if test="queryVariableValue.doubleValue != null">
+                                    and (V.DOUBLE_
+                                    <include refid="variableOperator" />
+                                    #{queryVariableValue.doubleValue}
+                                    <if test="queryVariableValue.operator.equals('NOT_EQUALS') || queryVariableValue.operator.equals('NOT_EQUALS_IGNORE_CASE')">
+                                        or V.DOUBLE_ is null
+                                    </if>
+                                    )
+                                </if>
+                                <!-- Null variable type -->
+                                <if test="queryVariableValue.textValue == null &amp;&amp; queryVariableValue.textValue2 == null &amp;&amp; queryVariableValue.longValue == null &amp;&amp; queryVariableValue.doubleValue == null">
+                                    <choose>
+                                        <when test="queryVariableValue.operator.equals('NOT_EQUALS')">
+                                            and (V.TEXT_ is not null or V.TEXT2_ is not null or V.LONG_ is not null or V.DOUBLE_ is not null or V.BYTEARRAY_ID_ is not null)
+                                        </when>
+                                        <otherwise>
+                                            and V.TEXT_ is null and V.TEXT2_ is null and V.LONG_ is null and V.DOUBLE_ is null and V.BYTEARRAY_ID_ is null
+                                        </otherwise>
+                                    </choose>
+                                </if>
+                            </where>
+                        )
                     </otherwise>
                 </choose>
             </foreach>
@@ -438,28 +423,28 @@
                         <property name="queryTablePrefix" value="RES."/>
                     </include>
                     <if test="orQueryObject.caseDefinitionKey != null">
-                        or CASE_DEF_OR${orIndex}.KEY_ = #{orQueryObject.caseDefinitionKey}
+                        or CASE_DEF.KEY_ = #{orQueryObject.caseDefinitionKey}
                     </if>
                     <if test="orQueryObject.caseDefinitionKeys != null &amp;&amp; orQueryObject.caseDefinitionKeys.size() &gt; 0">
-                        or CASE_DEF_OR${orIndex}.KEY_ IN
+                        or CASE_DEF.KEY_ IN
                         <foreach item="caseDefinitionKey" index="index" collection="orQueryObject.caseDefinitionKeys" open="(" separator="," close=")">
                             #{caseDefinitionKey}
                         </foreach>
                     </if>
                     <if test="orQueryObject.caseDefinitionCategory != null">
-                        or CASE_DEF_OR${orIndex}.CATEGORY_ = #{orQueryObject.caseDefinitionCategory}
+                        or CASE_DEF.CATEGORY_ = #{orQueryObject.caseDefinitionCategory}
                     </if>
                     <if test="orQueryObject.caseDefinitionName != null">
-                        or CASE_DEF_OR${orIndex}.NAME_ = #{orQueryObject.caseDefinitionName}
+                        or CASE_DEF.NAME_ = #{orQueryObject.caseDefinitionName}
                     </if>
                     <if test="orQueryObject.caseDefinitionVersion != null">
-                        or CASE_DEF_OR${orIndex}.VERSION_ = #{orQueryObject.caseDefinitionVersion}
+                        or CASE_DEF.VERSION_ = #{orQueryObject.caseDefinitionVersion}
                     </if>
                     <if test="orQueryObject.deploymentId != null">
-                        or CASE_DEF_OR${orIndex}.DEPLOYMENT_ID_ = #{orQueryObject.deploymentId}
+                        or CASE_DEF.DEPLOYMENT_ID_ = #{orQueryObject.deploymentId}
                     </if>
                     <if test="orQueryObject.deploymentIds != null &amp;&amp; orQueryObject.deploymentIds.size() &gt; 0">
-                        or CASE_DEF_OR${orIndex}.DEPLOYMENT_ID_ IN
+                        or CASE_DEF.DEPLOYMENT_ID_ IN
                         <foreach item="deploymentId" index="index" collection="orQueryObject.deploymentIds"
                                  open="(" separator="," close=")">
                             #{deploymentId}
@@ -478,66 +463,86 @@
                                 SUB_SCOPE_ID_ is null and SCOPE_TYPE_ = 'cmmn')
                             </when>
                             <otherwise>
-                                <if test="queryVariableValue.name != null">
-                                    <!-- Match-all variable-names when name is null -->
-                                    and A_OR${orIndex}.NAME_= #{queryVariableValue.name}
-                                </if>
-                                <if test="!queryVariableValue.type.equals('null')">
-                                    <!-- When operator is not-equals or type of value is null, type doesn't matter! -->
-                                    and A_OR${orIndex}.VAR_TYPE_ = #{queryVariableValue.type}
-                                </if>
-                                <if test="queryVariableValue.textValue != null &amp;&amp; queryVariableValue.longValue == null &amp;&amp; queryVariableValue.doubleValue == null">
-                                    <choose>
-                                        <when test="queryVariableValue.operator.equals('EQUALS_IGNORE_CASE') || queryVariableValue.operator.equals('NOT_EQUALS_IGNORE_CASE') || queryVariableValue.operator.equals('LIKE_IGNORE_CASE')">
-                                            and lower(A_OR${orIndex}.TEXT_)
-                                        </when>
-                                        <otherwise>
-                                            and A_OR${orIndex}.TEXT_
-                                        </otherwise>
-                                    </choose>
-                                    <choose>
-                                        <when test="queryVariableValue.operator.equals('LIKE') || queryVariableValue.operator.equals('LIKE_IGNORE_CASE')">LIKE</when>
-                                        <otherwise>
-                                            <include refid="variableOperator"/>
-                                        </otherwise>
-                                    </choose>
-                                    #{queryVariableValue.textValue}
-                                    <choose>
-                                        <when test="queryVariableValue.operator.equals('LIKE') || queryVariableValue.operator.equals('LIKE_IGNORE_CASE')">${wildcardEscapeClause}</when>
-                                    </choose>
-                                </if>
-                                <if test="queryVariableValue.textValue2 != null">
-                                    and A_OR${orIndex}.TEXT2_
-                                    <choose>
-                                        <when test="queryVariableValue.operator.equals('LIKE')">LIKE</when>
-                                        <otherwise><include refid="variableOperator" /></otherwise>
-                                    </choose>
-                                    #{queryVariableValue.textValue2}
-                                    <choose>
-                                        <when test="queryVariableValue.operator.equals('LIKE')">${wildcardEscapeClause}</when>
-                                    </choose>
-                                </if>
-                                <if test="queryVariableValue.longValue != null">
-                                    and A_OR${orIndex}.LONG_
-                                    <include refid="variableOperator" />
-                                    #{queryVariableValue.longValue}
-                                </if>
-                                <if test="queryVariableValue.doubleValue != null">
-                                    and A_OR${index}.DOUBLE_
-                                    <include refid="variableOperator" />
-                                    #{queryVariableValue.doubleValue}
-                                </if>
-                                <!-- Null variable type -->
-                                <if test="queryVariableValue.textValue == null &amp;&amp; queryVariableValue.textValue2 == null &amp;&amp; queryVariableValue.longValue == null &amp;&amp; queryVariableValue.doubleValue == null">
-                                    <choose>
-                                        <when test="queryVariableValue.operator.equals('NOT_EQUALS')">
-                                            and (A_OR${orIndex}.TEXT_ is not null or A_OR${orIndex}.TEXT2_ is not null or A_OR${orIndex}.LONG_ is not null or A_OR${orIndex}.DOUBLE_ is not null or A_OR${orIndex}.BYTEARRAY_ID_ is not null)
-                                        </when>
-                                        <otherwise>
-                                            and A_OR${orIndex}.TEXT_ is null and A_OR${orIndex}.TEXT2_ is null and A_OR${orIndex}.LONG_ is null and A_OR${orIndex}.DOUBLE_ is null and A_OR${orIndex}.BYTEARRAY_ID_ is null
-                                        </otherwise>
-                                    </choose>
-                                </if>
+                                and exists (
+                                    select 1
+                                    from ${prefix}ACT_HI_VARINST V
+                                    <where>
+                                         RES.ID_ = V.SCOPE_ID_
+                                         and V.SUB_SCOPE_ID_ is null
+                                         and V.SCOPE_TYPE_ = 'cmmn'
+                                        <if test="queryVariableValue.name != null">
+                                            <!-- Match-all variable-names when name is null -->
+                                            and V.NAME_= #{queryVariableValue.name}
+                                        </if>
+                                        <if test="queryVariableValue.needsTypeCheck()">
+                                            and V.VAR_TYPE_ = #{queryVariableValue.type}
+                                        </if>
+                                        <if test="queryVariableValue.textValue != null &amp;&amp; queryVariableValue.longValue == null &amp;&amp; queryVariableValue.doubleValue == null">
+                                            <choose>
+                                                <when test="queryVariableValue.operator.equals('EQUALS_IGNORE_CASE') || queryVariableValue.operator.equals('NOT_EQUALS_IGNORE_CASE') || queryVariableValue.operator.equals('LIKE_IGNORE_CASE')">
+                                                    and (lower(V.TEXT_)
+                                                </when>
+                                                <otherwise>
+                                                    and (V.TEXT_
+                                                </otherwise>
+                                            </choose>
+                                            <choose>
+                                                <when test="queryVariableValue.operator.equals('LIKE') || queryVariableValue.operator.equals('LIKE_IGNORE_CASE')">LIKE</when>
+                                                <otherwise>
+                                                    <include refid="variableOperator"/>
+                                                </otherwise>
+                                            </choose>
+                                            #{queryVariableValue.textValue}
+                                            <choose>
+                                                <when test="queryVariableValue.operator.equals('LIKE') || queryVariableValue.operator.equals('LIKE_IGNORE_CASE')">${wildcardEscapeClause}</when>
+                                            </choose>
+                                            <if test="queryVariableValue.operator.equals('NOT_EQUALS') || queryVariableValue.operator.equals('NOT_EQUALS_IGNORE_CASE')">
+                                                or V.TEXT_ is null
+                                            </if>
+                                            )
+                                        </if>
+                                        <if test="queryVariableValue.textValue2 != null">
+                                            and V.TEXT2_
+                                            <choose>
+                                                <when test="queryVariableValue.operator.equals('LIKE')">LIKE</when>
+                                                <otherwise><include refid="variableOperator" /></otherwise>
+                                            </choose>
+                                            #{queryVariableValue.textValue2}
+                                            <choose>
+                                                <when test="queryVariableValue.operator.equals('LIKE')">${wildcardEscapeClause}</when>
+                                            </choose>
+                                        </if>
+                                        <if test="queryVariableValue.longValue != null">
+                                            and (V.LONG_
+                                            <include refid="variableOperator" />
+                                            #{queryVariableValue.longValue}
+                                            <if test="queryVariableValue.operator.equals('NOT_EQUALS') || queryVariableValue.operator.equals('NOT_EQUALS_IGNORE_CASE')">
+                                                or V.LONG_ is null
+                                            </if>
+                                            )
+                                        </if>
+                                        <if test="queryVariableValue.doubleValue != null">
+                                            and (V.DOUBLE_
+                                            <include refid="variableOperator" />
+                                            #{queryVariableValue.doubleValue}
+                                            <if test="queryVariableValue.operator.equals('NOT_EQUALS') || queryVariableValue.operator.equals('NOT_EQUALS_IGNORE_CASE')">
+                                                or V.DOUBLE_ is null
+                                            </if>
+                                            )
+                                        </if>
+                                        <!-- Null variable type -->
+                                        <if test="queryVariableValue.textValue == null &amp;&amp; queryVariableValue.textValue2 == null &amp;&amp; queryVariableValue.longValue == null &amp;&amp; queryVariableValue.doubleValue == null">
+                                            <choose>
+                                                <when test="queryVariableValue.operator.equals('NOT_EQUALS')">
+                                                    and (V.TEXT_ is not null or V.TEXT2_ is not null or V.LONG_ is not null or V.DOUBLE_ is not null or V.BYTEARRAY_ID_ is not null)
+                                                </when>
+                                                <otherwise>
+                                                    and V.TEXT_ is null and V.TEXT2_ is null and V.LONG_ is null and V.DOUBLE_ is null and V.BYTEARRAY_ID_ is null
+                                                </otherwise>
+                                            </choose>
+                                        </if>
+                                    </where>
+                                )
                             </otherwise>
                         </choose>
                         </trim>
@@ -598,11 +603,26 @@
         <if test="startedBy != null">
             and ${queryTablePrefix}START_USER_ID_ = #{startedBy}
         </if>
+        <if test="lastReactivatedBefore != null">
+            and ${queryTablePrefix}LAST_REACTIVATION_TIME_ &lt;= #{lastReactivatedBefore}
+        </if>
+        <if test="lastReactivatedAfter != null">
+            and ${queryTablePrefix}LAST_REACTIVATION_TIME_ &gt;= #{lastReactivatedAfter}
+        </if>
+        <if test="lastReactivatedBy != null">
+            and ${queryTablePrefix}LAST_REACTIVATION_USER_ID_ = #{lastReactivatedBy}
+        </if>
         <if test="callbackId != null">
             and ${queryTablePrefix}CALLBACK_ID_ = #{callbackId}
         </if>
         <if test="callbackType != null">
             and ${queryTablePrefix}CALLBACK_TYPE_ = #{callbackType}
+        </if>
+        <if test="referenceId != null">
+            and ${queryTablePrefix}REFERENCE_ID_ = #{referenceId}
+        </if>
+        <if test="referenceType != null">
+            and ${queryTablePrefix}REFERENCE_TYPE_ = #{referenceType}
         </if>
         <if test="tenantId != null">
             and ${queryTablePrefix}TENANT_ID_ = #{tenantId}
@@ -610,9 +630,22 @@
         <if test="withoutTenantId">
             and (${queryTablePrefix}TENANT_ID_ is null or ${queryTablePrefix}TENANT_ID_ = '')
         </if>
+        <if test="activePlanItemDefinitionId != null">
+            and EXISTS(select ID_ from ${prefix}ACT_CMMN_HI_PLAN_ITEM_INST P where P.CASE_INST_ID_ = ${queryTablePrefix}ID_ and P.ITEM_DEFINITION_ID_ = #{activePlanItemDefinitionId} and P.STATE_ = 'active')
+        </if>
+        <if test="activePlanItemDefinitionIds != null">
+            and EXISTS(select ID_ from ${prefix}ACT_CMMN_HI_PLAN_ITEM_INST P where P.CASE_INST_ID_ = ${queryTablePrefix}ID_ and P.ITEM_DEFINITION_ID_ in
+            <foreach item="activePlanItemDefinitionId" index="index" collection="activePlanItemDefinitionIds" open="(" separator="," close=")">
+                #{activePlanItemDefinitionId}
+            </foreach>
+            and P.STATE_ = 'active')
+        </if>
         <if test="involvedUser != null">
-            and EXISTS(select ID_ from ${prefix}ACT_HI_IDENTITYLINK I where I.SCOPE_ID_ = ${queryTablePrefix}ID_ and I.SCOPE_TYPE_ = 'cmmn' and I.USER_ID_ =
-            #{involvedUser})
+            and EXISTS(select ID_ from ${prefix}ACT_HI_IDENTITYLINK I where I.SCOPE_ID_ = ${queryTablePrefix}ID_ and I.SCOPE_TYPE_ = 'cmmn' and I.USER_ID_ = #{involvedUser})
+        </if>
+        <if test="involvedUserIdentityLink != null">
+            and EXISTS(select ID_ from ${prefix}ACT_HI_IDENTITYLINK I where I.SCOPE_ID_ = ${queryTablePrefix}ID_ and I.SCOPE_TYPE_ = 'cmmn' and 
+            I.USER_ID_ = #{involvedUserIdentityLink.userId} and I.TYPE_ = #{involvedUserIdentityLink.type})
         </if>
         <if test="involvedGroups != null">
             and EXISTS(
@@ -621,6 +654,10 @@
                     #{involvedGroup}
                 </foreach>
             )
+        </if>
+        <if test="involvedGroupIdentityLink != null">
+            and EXISTS(select ID_ from ${prefix}ACT_HI_IDENTITYLINK I where I.SCOPE_ID_ = ${queryTablePrefix}ID_ and I.SCOPE_TYPE_ = 'cmmn' and 
+            I.GROUP_ID_ = #{involvedGroupIdentityLink.groupId} and I.TYPE_ = #{involvedGroupIdentityLink.type})
         </if>
     </sql>
     
@@ -671,11 +708,26 @@
         <if test="orQueryObject.startedBy != null">
             or ${queryTablePrefix}START_USER_ID_ = #{orQueryObject.startedBy}
         </if>
+        <if test="orQueryObject.lastReactivatedBefore != null">
+            or ${queryTablePrefix}LAST_REACTIVATED_TIME_ &lt;= #{lastReactivatedBefore}
+        </if>
+        <if test="orQueryObject.lastReactivatedAfter != null">
+            or ${queryTablePrefix}LAST_REACTIVATED_TIME_ &gt;= #{lastReactivatedAfter}
+        </if>
+        <if test="orQueryObject.lastReactivatedBy != null">
+            or ${queryTablePrefix}LAST_REACTIVATED_USER_ID_ = #{lastReactivatedBy}
+        </if>
         <if test="orQueryObject.callbackId != null">
             or ${queryTablePrefix}CALLBACK_ID_ = #{orQueryObject.callbackId}
         </if>
         <if test="orQueryObject.callbackType != null">
             or ${queryTablePrefix}CALLBACK_TYPE_ = #{orQueryObject.callbackType}
+        </if>
+        <if test="orQueryObject.referenceId != null">
+            or ${queryTablePrefix}REFERENCE_ID_ = #{orQueryObject.referenceId}
+        </if>
+        <if test="orQueryObject.referenceType != null">
+            or ${queryTablePrefix}REFERENCE_TYPE_ = #{orQueryObject.referenceType}
         </if>
         <if test="orQueryObject.tenantId != null">
             or ${queryTablePrefix}TENANT_ID_ = #{orQueryObject.tenantId}
@@ -683,9 +735,23 @@
         <if test="orQueryObject.withoutTenantId">
             or (${queryTablePrefix}TENANT_ID_ is null or ${queryTablePrefix}TENANT_ID_ = '')
         </if>
+        <if test="activePlanItemDefinitionId != null">
+            or EXISTS(select ID_ from ${prefix}ACT_CMMN_HI_PLAN_ITEM_INST P where P.CASE_INST_ID_ = ${queryTablePrefix}ID_ and P.ITEM_DEFINITION_ID_ = #{activePlanItemDefinitionId} and P.STATE_ = 'active')
+        </if>
+        <if test="activePlanItemDefinitionIds != null">
+            or EXISTS(select ID_ from ${prefix}ACT_CMMN_HI_PLAN_ITEM_INST P where P.CASE_INST_ID_ = ${queryTablePrefix}ID_ and P.ITEM_DEFINITION_ID_ in
+            <foreach item="activePlanItemDefinitionId" index="index" collection="activePlanItemDefinitionIds" open="(" separator="," close=")">
+                #{activePlanItemDefinitionId}
+            </foreach>
+            and P.STATE_ = 'active')
+        </if>
         <if test="orQueryObject.involvedUser != null">
             or EXISTS(select ID_ from ${prefix}ACT_HI_IDENTITYLINK I where I.SCOPE_ID_ = ${queryTablePrefix}ID_ and I.SCOPE_TYPE_ = 'cmmn' and I.USER_ID_ =
             #{orQueryObject.involvedUser})
+        </if>
+        <if test="orQueryObject.involvedUserIdentityLink != null">
+            or EXISTS(select ID_ from ${prefix}ACT_HI_IDENTITYLINK I where I.SCOPE_ID_ = ${queryTablePrefix}ID_ and I.SCOPE_TYPE_ = 'cmmn' and 
+            I.USER_ID_ = #{orQueryObject.involvedUserIdentityLink.userId} and I.TYPE_ = #{orQueryObject.involvedUserIdentityLink.type})
         </if>
         <if test="orQueryObject.involvedGroups != null">
             or EXISTS(
@@ -694,6 +760,10 @@
                 #{involvedGroup}
             </foreach>
             )
+        </if>
+        <if test="orQueryObject.involvedGroupIdentityLink != null">
+            or EXISTS(select ID_ from ${prefix}ACT_HI_IDENTITYLINK I where I.SCOPE_ID_ = ${queryTablePrefix}ID_ and I.SCOPE_TYPE_ = 'cmmn' and 
+            I.GROUP_ID_ = #{orQueryObject.involvedGroupIdentityLink.groupId} and I.TYPE_ = #{orQueryObject.involvedGroupIdentityLink.type})
         </if>
     </sql>
 

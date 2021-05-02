@@ -12,6 +12,9 @@
  */
 package org.flowable.engine.test.api.repository;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import org.flowable.bpmn.exceptions.XMLException;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
@@ -38,29 +41,20 @@ public class DeployInvalidXmlTest extends PluggableFlowableTestCase {
 
     @Test
     public void testDeployNonSchemaConformantXml() {
-        try {
-            repositoryService.createDeployment().addClasspathResource("org/flowable/engine/test/api/repository/nonSchemaConformantXml.bpmn20.xml").deploy().getId();
-            fail();
-        } catch (XMLException e) {
-            // expected exception
-        }
-
+        assertThatThrownBy(() -> repositoryService.createDeployment().addClasspathResource("org/flowable/engine/test/api/repository/nonSchemaConformantXml.bpmn20.xml").deploy().getId())
+                .isInstanceOf(XMLException.class);
     }
 
     @Test
     public void testDeployWithMissingWaypointsForSequenceflowInDiagramInterchange() {
-        try {
-            repositoryService.createDeployment().addClasspathResource("org/flowable/engine/test/api/repository/noWayPointsForSequenceFlowInDiagramInterchange.bpmn20.xml").deploy().getId();
-            fail();
-        } catch (XMLException e) {
-            // expected exception
-        }
+        assertThatThrownBy(() -> repositoryService.createDeployment().addClasspathResource("org/flowable/engine/test/api/repository/noWayPointsForSequenceFlowInDiagramInterchange.bpmn20.xml").deploy().getId())
+                .isInstanceOf(XMLException.class);
     }
 
     // Need to put this in a String here, if we use a separate file, the cpu usage
     // of Eclipse skyrockets, regardless of the file is opened or not
 
-    private static String UNSAFE_XML = "<?xml version='1.0' encoding='UTF-8'?>" + "<!-- Billion Laugh attacks : http://portal.sliderocket.com/CJAKM/xml-attacks -->" + "<!DOCTYPE lols ["
+    private static final String UNSAFE_XML = "<?xml version='1.0' encoding='UTF-8'?>" + "<!-- Billion Laugh attacks : http://portal.sliderocket.com/CJAKM/xml-attacks -->" + "<!DOCTYPE lols ["
             + "<!ENTITY lol 'lol'>" + "<!ENTITY lol1 '&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;'>" + "<!ENTITY lol2 '&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;'>"
             + "<!ENTITY lol3 '&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;'>" + "<!ENTITY lol4 '&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;'>"
             + "<!ENTITY lol5 '&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;'>" + "<!ENTITY lol6 '&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;'>"
@@ -83,7 +77,7 @@ public class DeployInvalidXmlTest extends PluggableFlowableTestCase {
         long waitTime = 60000L;
         thread.join(waitTime);
 
-        assertTrue(runnable.finished);
+        assertThat(runnable.finished).isTrue();
 
     }
 
@@ -100,12 +94,14 @@ public class DeployInvalidXmlTest extends PluggableFlowableTestCase {
         @Override
         public void run() {
             try {
-                String deploymentId = repositoryService.createDeployment().addString("test.bpmn20.xml", UNSAFE_XML).deploy().getId();
-                assertEquals(1, repositoryService.createProcessDefinitionQuery().singleResult());
-                repositoryService.deleteDeployment(deploymentId, true);
-            } catch (Exception e) {
-                // Exception is expected
-            } finally {
+                assertThatThrownBy(() -> {
+                    String deploymentId = repositoryService.createDeployment().addString("test.bpmn20.xml", UNSAFE_XML).deploy().getId();
+                    assertThat(repositoryService.createProcessDefinitionQuery().singleResult()).isEqualTo(1);
+                    repositoryService.deleteDeployment(deploymentId, true);
+                })
+                        .isInstanceOf(Exception.class);
+            }
+            finally {
                 finished = true;
             }
         }
@@ -121,7 +117,7 @@ public class DeployInvalidXmlTest extends PluggableFlowableTestCase {
 
         try {
             ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery().singleResult();
-            assertEquals("Test 1 2 3 null", processDefinition.getDescription());
+            assertThat(processDefinition.getDescription()).isEqualTo("Test 1 2 3 null");
         } finally {
             repositoryService.deleteDeployment(deploymentId, true);
         }

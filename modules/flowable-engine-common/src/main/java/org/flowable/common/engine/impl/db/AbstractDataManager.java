@@ -17,7 +17,10 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
 
+import org.flowable.common.engine.impl.cfg.IdGenerator;
 import org.flowable.common.engine.impl.context.Context;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.common.engine.impl.persistence.cache.CachedEntity;
@@ -31,6 +34,8 @@ import org.flowable.common.engine.impl.persistence.entity.data.DataManager;
  * @author Tijs Rademakers
  */
 public abstract class AbstractDataManager<EntityImpl extends Entity> implements DataManager<EntityImpl> {
+
+    public static final int MAX_ENTRIES_IN_CLAUSE = 1000; // limitation from oracle (max 1000 elements in in() clause of where)
 
     public abstract Class<? extends EntityImpl> getManagedEntityClass();
 
@@ -72,7 +77,7 @@ public abstract class AbstractDataManager<EntityImpl extends Entity> implements 
 
     @Override
     public void insert(EntityImpl entity) {
-        getDbSqlSession().insert(entity);
+        getDbSqlSession().insert(entity, getIdGenerator());
     }
 
     @Override
@@ -142,9 +147,16 @@ public abstract class AbstractDataManager<EntityImpl extends Entity> implements 
         return getList(getDbSqlSession(), dbQueryName, parameter, cachedEntityMatcher, checkCache);
     }
     
-    @SuppressWarnings("unchecked")
+    
     protected List<EntityImpl> getList(DbSqlSession dbSqlSession, String dbQueryName, Object parameter,
             CachedEntityMatcher<EntityImpl> cachedEntityMatcher, boolean checkCache) {
+        
+        return getList(dbSqlSession, dbQueryName, parameter, cachedEntityMatcher, checkCache, false);
+    }
+    
+    @SuppressWarnings("unchecked")
+    protected List<EntityImpl> getList(DbSqlSession dbSqlSession, String dbQueryName, Object parameter,
+            CachedEntityMatcher<EntityImpl> cachedEntityMatcher, boolean checkCache, boolean includeDeleted) {
 
         Collection<EntityImpl> result = dbSqlSession.selectList(dbQueryName, parameter);
 
@@ -192,7 +204,7 @@ public abstract class AbstractDataManager<EntityImpl extends Entity> implements 
         }
 
         // Remove entries which are already deleted
-        if (result.size() > 0) {
+        if (!includeDeleted && result.size() > 0) {
             Iterator<EntityImpl> resultIterator = result.iterator();
             while (resultIterator.hasNext()) {
                 if (dbSqlSession.isEntityToBeDeleted(resultIterator.next())) {
@@ -286,10 +298,47 @@ public abstract class AbstractDataManager<EntityImpl extends Entity> implements 
             }
         }
     }
+
+    protected void executeChangeWithInClause(List<EntityImpl> entities, Consumer<Collection<EntityImpl>> consumer) {
+        if (entities.size() <= MAX_ENTRIES_IN_CLAUSE) {
+            consumer.accept(entities);
+
+        } else {
+
+            // need to split into different parts due to some dbs not supporting more than MAX_ENTRIES_IN_CLAUSE for in()
+
+            for (int startIndex = 0; startIndex < entities.size(); startIndex += MAX_ENTRIES_IN_CLAUSE) {
+
+                int endIndex = startIndex + MAX_ENTRIES_IN_CLAUSE;
+                if (endIndex > entities.size()) {
+                    endIndex = entities.size(); // endIndex in #subList is exclusive
+                }
+
+                List<EntityImpl> subList = entities.subList(startIndex, endIndex);
+                consumer.accept(subList);
+            }
+
+        }
+    }
+
+    protected void bulkDeleteEntities(String statement, List<EntityImpl> entities) {
+        executeChangeWithInClause(entities, entitiesParameter -> {
+            getDbSqlSession().delete(statement, entitiesParameter, getManagedEntityClass());
+        });
+    }
+
+    protected void bulkUpdateEntities(String statement, Map<String, Object> parameters, String collectionNameInSqlStatement, List<EntityImpl> entities) {
+        executeChangeWithInClause(entities, entitiesParameter -> {
+            Map<String, Object> copyParameters = new HashMap<>(parameters);
+            copyParameters.put(collectionNameInSqlStatement, entitiesParameter);
+            getDbSqlSession().update(statement, copyParameters);
+        });
+    }
     
     protected boolean isEntityInserted(DbSqlSession dbSqlSession, String entityLogicalName, String entityId) {
         Class<?> executionEntityClass = dbSqlSession.getDbSqlSessionFactory().getLogicalNameToClassMapping().get(entityLogicalName);
         return executionEntityClass != null && dbSqlSession.isEntityInserted(executionEntityClass, entityId);
     }
 
+    protected abstract IdGenerator getIdGenerator();
 }

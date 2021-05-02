@@ -12,14 +12,16 @@
  */
 package org.flowable.engine.test.jobexecutor;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.Date;
+import java.util.List;
 
 import org.flowable.common.engine.impl.interceptor.Command;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.common.engine.impl.interceptor.CommandExecutor;
 import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.job.api.Job;
-import org.flowable.job.service.impl.asyncexecutor.AcquiredTimerJobEntities;
 import org.flowable.job.service.impl.asyncexecutor.AsyncExecutor;
 import org.flowable.job.service.impl.cmd.AcquireTimerJobsCmd;
 import org.flowable.job.service.impl.cmd.ExecuteAsyncJobCmd;
@@ -41,21 +43,21 @@ public class JobExecutorCmdHappyTest extends JobExecutorTestCase {
             @Override
             public String execute(CommandContext commandContext) {
                 JobEntity message = createTweetMessage("i'm coding a test");
-                CommandContextUtil.getJobService(commandContext).scheduleAsyncJob(message);
+                CommandContextUtil.getProcessEngineConfiguration(commandContext).getJobServiceConfiguration().getJobService().scheduleAsyncJob(message);
                 return message.getId();
             }
         });
 
         Job job = managementService.createJobQuery().singleResult();
-        assertNotNull(job);
-        assertEquals(jobId, job.getId());
+        assertThat(job).isNotNull();
+        assertThat(job.getId()).isEqualTo(jobId);
 
-        assertEquals(0, tweetHandler.getMessages().size());
+        assertThat(tweetHandler.getMessages()).isEmpty();
 
         managementService.executeJob(job.getId());
 
-        assertEquals("i'm coding a test", tweetHandler.getMessages().get(0));
-        assertEquals(1, tweetHandler.getMessages().size());
+        assertThat(tweetHandler.getMessages())
+                .containsExactly("i'm coding a test");
     }
 
     static final long SOME_TIME = 928374923546L;
@@ -74,29 +76,29 @@ public class JobExecutorCmdHappyTest extends JobExecutorTestCase {
             @Override
             public String execute(CommandContext commandContext) {
                 TimerJobEntity timer = createTweetTimer("i'm coding a test", new Date(SOME_TIME + (10 * SECOND)));
-                CommandContextUtil.getTimerJobService(commandContext).scheduleTimerJob(timer);
+                CommandContextUtil.getProcessEngineConfiguration(commandContext).getJobServiceConfiguration().getTimerJobService().scheduleTimerJob(timer);
                 return timer.getId();
             }
         });
 
-        AcquiredTimerJobEntities acquiredJobs = commandExecutor.execute(new AcquireTimerJobsCmd(asyncExecutor));
-        assertEquals(0, acquiredJobs.size());
+        List<TimerJobEntity> acquiredJobs = commandExecutor.execute(new AcquireTimerJobsCmd(asyncExecutor));
+        assertThat(acquiredJobs.size()).isZero();
 
         processEngineConfiguration.getClock().setCurrentTime(new Date(SOME_TIME + (20 * SECOND)));
 
         acquiredJobs = commandExecutor.execute(new AcquireTimerJobsCmd(asyncExecutor));
-        assertEquals(1, acquiredJobs.size());
+        assertThat(acquiredJobs.size()).isEqualTo(1);
 
-        TimerJobEntity job = acquiredJobs.getJobs().iterator().next();
+        TimerJobEntity job = acquiredJobs.iterator().next();
 
-        assertEquals(jobId, job.getId());
+        assertThat(job.getId()).isEqualTo(jobId);
 
-        assertEquals(0, tweetHandler.getMessages().size());
+        assertThat(tweetHandler.getMessages()).isEmpty();
 
         Job executableJob = managementService.moveTimerToExecutableJob(jobId);
-        commandExecutor.execute(new ExecuteAsyncJobCmd(executableJob.getId()));
+        commandExecutor.execute(new ExecuteAsyncJobCmd(executableJob.getId(), processEngineConfiguration.getJobServiceConfiguration()));
 
-        assertEquals("i'm coding a test", tweetHandler.getMessages().get(0));
-        assertEquals(1, tweetHandler.getMessages().size());
+        assertThat(tweetHandler.getMessages().get(0)).isEqualTo("i'm coding a test");
+        assertThat(tweetHandler.getMessages()).hasSize(1);
     }
 }

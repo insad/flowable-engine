@@ -13,6 +13,7 @@
 
 package org.flowable.rest.service.api.runtime.task;
 
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
@@ -27,54 +28,57 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
  */
 public class TaskQueryRequest extends PaginateRequest {
 
-    private String name;
-    private String nameLike;
-    private String description;
-    private String descriptionLike;
-    private Integer priority;
-    private Integer minimumPriority;
-    private Integer maximumPriority;
-    private String assignee;
-    private String assigneeLike;
-    private String owner;
-    private String ownerLike;
-    private Boolean unassigned;
-    private String delegationState;
-    private String candidateUser;
-    private String candidateGroup;
-    private List<String> candidateGroupIn;
-    private String involvedUser;
-    private String processInstanceId;
-    private String processInstanceIdWithChildren;
-    private String processInstanceBusinessKey;
-    private String processInstanceBusinessKeyLike;
-    private String processDefinitionId;
-    private String processDefinitionKey;
-    private String processDefinitionName;
-    private String processDefinitionKeyLike;
-    private String processDefinitionNameLike;
-    private String executionId;
-    private Date createdOn;
-    private Date createdBefore;
-    private Date createdAfter;
-    private Boolean excludeSubTasks;
-    private String taskDefinitionKey;
-    private String taskDefinitionKeyLike;
-    private Date dueDate;
-    private Date dueBefore;
-    private Date dueAfter;
-    private Boolean withoutDueDate;
-    private Boolean active;
-    private Boolean includeTaskLocalVariables;
-    private Boolean includeProcessVariables;
-    private String scopeDefinitionId;
-    private String scopeId;
-    private String scopeType;
-    private String tenantId;
-    private String tenantIdLike;
-    private Boolean withoutTenantId;
-    private String candidateOrAssigned;
-    private String category;
+    protected String name;
+    protected String nameLike;
+    protected String description;
+    protected String descriptionLike;
+    protected Integer priority;
+    protected Integer minimumPriority;
+    protected Integer maximumPriority;
+    protected String assignee;
+    protected String assigneeLike;
+    protected String owner;
+    protected String ownerLike;
+    protected Boolean unassigned;
+    protected String delegationState;
+    protected String candidateUser;
+    protected String candidateGroup;
+    protected List<String> candidateGroupIn;
+    protected boolean ignoreAssignee;
+    protected String involvedUser;
+    protected String processInstanceId;
+    protected String processInstanceIdWithChildren;
+    protected String processInstanceBusinessKey;
+    protected String processInstanceBusinessKeyLike;
+    protected String processDefinitionId;
+    protected String processDefinitionKey;
+    protected String processDefinitionName;
+    protected String processDefinitionKeyLike;
+    protected String processDefinitionNameLike;
+    protected String executionId;
+    protected Date createdOn;
+    protected Date createdBefore;
+    protected Date createdAfter;
+    protected Boolean excludeSubTasks;
+    protected String taskDefinitionKey;
+    protected String taskDefinitionKeyLike;
+    protected Collection<String> taskDefinitionKeys;
+    protected Date dueDate;
+    protected Date dueBefore;
+    protected Date dueAfter;
+    protected Boolean withoutDueDate;
+    protected Boolean active;
+    protected Boolean includeTaskLocalVariables;
+    protected Boolean includeProcessVariables;
+    protected String scopeDefinitionId;
+    protected String scopeId;
+    protected String scopeType;
+    protected String propagatedStageInstanceId;
+    protected String tenantId;
+    protected String tenantIdLike;
+    protected Boolean withoutTenantId;
+    protected String candidateOrAssigned;
+    protected String category;
 
     private List<QueryVariable> taskVariables;
     private List<QueryVariable> processInstanceVariables;
@@ -207,6 +211,14 @@ public class TaskQueryRequest extends PaginateRequest {
         this.candidateGroupIn = candidateGroupIn;
     }
 
+    public boolean isIgnoreAssignee() {
+        return ignoreAssignee;
+    }
+
+    public void setIgnoreAssignee(boolean ignoreAssignee) {
+        this.ignoreAssignee = ignoreAssignee;
+    }
+
     public String getInvolvedUser() {
         return involvedUser;
     }
@@ -301,6 +313,14 @@ public class TaskQueryRequest extends PaginateRequest {
 
     public void setTaskDefinitionKeyLike(String taskDefinitionKeyLike) {
         this.taskDefinitionKeyLike = taskDefinitionKeyLike;
+    }
+
+    public Collection<String> getTaskDefinitionKeys() {
+        return taskDefinitionKeys;
+    }
+
+    public void setTaskDefinitionKeys(Collection<String> taskDefinitionKeys) {
+        this.taskDefinitionKeys = taskDefinitionKeys;
     }
 
     public Date getDueDate() {
@@ -439,6 +459,14 @@ public class TaskQueryRequest extends PaginateRequest {
 
     public void setScopeType(String scopeType) {
         this.scopeType = scopeType;
+    }
+
+    public String getPropagatedStageInstanceId() {
+        return propagatedStageInstanceId;
+    }
+
+    public void setPropagatedStageInstanceId(String propagatedStageInstanceId) {
+        this.propagatedStageInstanceId = propagatedStageInstanceId;
     }
 
     public void setTenantId(String tenantId) {

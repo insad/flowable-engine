@@ -25,6 +25,7 @@ public class PlanItem extends CaseElement implements HasEntryCriteria, HasExitCr
     
     protected String definitionRef;
     protected PlanItemDefinition planItemDefinition;
+    protected boolean instanceLifecycleEnabled = true;
     protected PlanItemControl itemControl;
     protected Set<String> criteriaRefs = new HashSet<>();
     protected List<Criterion> entryCriteria = new ArrayList<>();
@@ -72,8 +73,17 @@ public class PlanItem extends CaseElement implements HasEntryCriteria, HasExitCr
 
     public void setPlanItemDefinition(PlanItemDefinition planItemDefinition) {
         this.planItemDefinition = planItemDefinition;
+        setInstanceLifecycleEnabled(!(planItemDefinition instanceof PlanFragment) || (planItemDefinition instanceof Stage));
     }
-    
+
+    public boolean isInstanceLifecycleEnabled() {
+        return instanceLifecycleEnabled;
+    }
+
+    public void setInstanceLifecycleEnabled(boolean instanceLifecycleEnabled) {
+        this.instanceLifecycleEnabled = instanceLifecycleEnabled;
+    }
+
     public PlanItemControl getItemControl() {
         return itemControl;
     }
@@ -217,7 +227,20 @@ public class PlanItem extends CaseElement implements HasEntryCriteria, HasExitCr
 
     @Override
     public String toString() {
-        return "PlanItem " + id + (name != null ? (" " + name) : "");
+        StringBuilder stringBuilder = new StringBuilder("PlanItem ");
+        if (getName() != null) {
+            stringBuilder.append("'").append(getName()).append("'");
+        }
+
+        stringBuilder.append(" (id: ");
+        stringBuilder.append(getId());
+
+        if (getPlanItemDefinition() != null) {
+            stringBuilder.append(", definitionId: ").append(getPlanItemDefinition().getId());
+        }
+
+        stringBuilder.append(")");
+        return stringBuilder.toString();
     }
     
 }

@@ -17,6 +17,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
+import org.flowable.common.engine.api.query.DeleteQuery;
 import org.flowable.common.engine.api.query.Query;
 
 /**
@@ -26,7 +27,7 @@ import org.flowable.common.engine.api.query.Query;
  * @author Joram Barrez
  * @author Zheng Ji
  */
-public interface HistoricActivityInstanceQuery extends Query<HistoricActivityInstanceQuery, HistoricActivityInstance> {
+public interface HistoricActivityInstanceQuery extends Query<HistoricActivityInstanceQuery, HistoricActivityInstance>, DeleteQuery<HistoricActivityInstanceQuery, HistoricActivityInstance> {
 
     /**
      * Only select historic activity instances with the given id (primary key within history tables).
@@ -34,7 +35,7 @@ public interface HistoricActivityInstanceQuery extends Query<HistoricActivityIns
     HistoricActivityInstanceQuery activityInstanceId(String activityInstanceId);
 
     /**
-     * Only select historic activity instances with the given process instance. {@link ProcessInstance) ids and {@link HistoricProcessInstance} ids match.
+     * Only select historic activity instances with the given process instance. {@link org.flowable.engine.runtime.ProcessInstance} ids and {@link HistoricProcessInstance} ids match.
      */
     HistoricActivityInstanceQuery processInstanceId(String processInstanceId);
 

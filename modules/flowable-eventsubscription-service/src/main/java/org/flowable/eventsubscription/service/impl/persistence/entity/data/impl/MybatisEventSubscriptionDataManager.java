@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.flowable.common.engine.impl.cfg.IdGenerator;
 import org.flowable.common.engine.impl.db.DbSqlSession;
 import org.flowable.common.engine.impl.persistence.cache.CachedEntityMatcher;
 import org.flowable.eventsubscription.api.EventSubscription;
@@ -26,6 +27,8 @@ import org.flowable.eventsubscription.service.impl.persistence.entity.Compensate
 import org.flowable.eventsubscription.service.impl.persistence.entity.CompensateEventSubscriptionEntityImpl;
 import org.flowable.eventsubscription.service.impl.persistence.entity.EventSubscriptionEntity;
 import org.flowable.eventsubscription.service.impl.persistence.entity.EventSubscriptionEntityImpl;
+import org.flowable.eventsubscription.service.impl.persistence.entity.GenericEventSubscriptionEntity;
+import org.flowable.eventsubscription.service.impl.persistence.entity.GenericEventSubscriptionEntityImpl;
 import org.flowable.eventsubscription.service.impl.persistence.entity.MessageEventSubscriptionEntity;
 import org.flowable.eventsubscription.service.impl.persistence.entity.MessageEventSubscriptionEntityImpl;
 import org.flowable.eventsubscription.service.impl.persistence.entity.SignalEventSubscriptionEntity;
@@ -36,6 +39,10 @@ import org.flowable.eventsubscription.service.impl.persistence.entity.data.impl.
 import org.flowable.eventsubscription.service.impl.persistence.entity.data.impl.cachematcher.EventSubscriptionsByExecutionIdMatcher;
 import org.flowable.eventsubscription.service.impl.persistence.entity.data.impl.cachematcher.EventSubscriptionsByNameMatcher;
 import org.flowable.eventsubscription.service.impl.persistence.entity.data.impl.cachematcher.EventSubscriptionsByProcInstTypeAndActivityMatcher;
+import org.flowable.eventsubscription.service.impl.persistence.entity.data.impl.cachematcher.EventSubscriptionsByProcessInstanceAndTypeMatcher;
+import org.flowable.eventsubscription.service.impl.persistence.entity.data.impl.cachematcher.EventSubscriptionsByScopeDefinitionIdAndTypeAndNullScopeIdMatcher;
+import org.flowable.eventsubscription.service.impl.persistence.entity.data.impl.cachematcher.EventSubscriptionsByScopeDefinitionIdAndTypeMatcher;
+import org.flowable.eventsubscription.service.impl.persistence.entity.data.impl.cachematcher.EventSubscriptionsByScopeIdAndTypeMatcher;
 import org.flowable.eventsubscription.service.impl.persistence.entity.data.impl.cachematcher.EventSubscriptionsBySubScopeIdMatcher;
 import org.flowable.eventsubscription.service.impl.persistence.entity.data.impl.cachematcher.MessageEventSubscriptionsByProcInstAndEventNameMatcher;
 import org.flowable.eventsubscription.service.impl.persistence.entity.data.impl.cachematcher.SignalEventSubscriptionByEventNameMatcher;
@@ -55,6 +62,7 @@ public class MybatisEventSubscriptionDataManager extends AbstractEventSubscripti
         ENTITY_SUBCLASSES.add(MessageEventSubscriptionEntityImpl.class);
         ENTITY_SUBCLASSES.add(SignalEventSubscriptionEntityImpl.class);
         ENTITY_SUBCLASSES.add(CompensateEventSubscriptionEntityImpl.class);
+        ENTITY_SUBCLASSES.add(GenericEventSubscriptionEntityImpl.class);
     }
 
     protected CachedEntityMatcher<EventSubscriptionEntity> eventSubscriptionsByNameMatcher = new EventSubscriptionsByNameMatcher();
@@ -66,6 +74,14 @@ public class MybatisEventSubscriptionDataManager extends AbstractEventSubscripti
     protected CachedEntityMatcher<EventSubscriptionEntity> eventSubscriptionsByProcInstTypeAndActivityMatcher = new EventSubscriptionsByProcInstTypeAndActivityMatcher();
 
     protected CachedEntityMatcher<EventSubscriptionEntity> eventSubscriptionsByExecutionAndTypeMatcher = new EventSubscriptionsByExecutionAndTypeMatcher();
+    
+    protected CachedEntityMatcher<EventSubscriptionEntity> eventSubscriptionsByProcessInstanceAndTypeMatcher = new EventSubscriptionsByProcessInstanceAndTypeMatcher();
+
+    protected CachedEntityMatcher<EventSubscriptionEntity> eventSubscriptionsByScopeDefinitionIdAndTypeMatcher = new EventSubscriptionsByScopeDefinitionIdAndTypeMatcher();
+
+    protected CachedEntityMatcher<EventSubscriptionEntity> eventSubscriptionsByScopeDefinitionIdAndTypeAndNullScopeIdMatcher = new EventSubscriptionsByScopeDefinitionIdAndTypeAndNullScopeIdMatcher();
+    
+    protected CachedEntityMatcher<EventSubscriptionEntity> eventSubscriptionsByScopeIdAndTypeMatcher = new EventSubscriptionsByScopeIdAndTypeMatcher();
 
     protected CachedEntityMatcher<EventSubscriptionEntity> signalEventSubscriptionByNameAndExecutionMatcher = new SignalEventSubscriptionByNameAndExecutionMatcher();
 
@@ -101,17 +117,22 @@ public class MybatisEventSubscriptionDataManager extends AbstractEventSubscripti
 
     @Override
     public CompensateEventSubscriptionEntity createCompensateEventSubscription() {
-        return new CompensateEventSubscriptionEntityImpl();
+        return new CompensateEventSubscriptionEntityImpl(eventSubscriptionServiceConfiguration);
     }
 
     @Override
     public MessageEventSubscriptionEntity createMessageEventSubscription() {
-        return new MessageEventSubscriptionEntityImpl();
+        return new MessageEventSubscriptionEntityImpl(eventSubscriptionServiceConfiguration);
     }
 
     @Override
     public SignalEventSubscriptionEntity createSignalEventSubscription() {
-        return new SignalEventSubscriptionEntityImpl();
+        return new SignalEventSubscriptionEntityImpl(eventSubscriptionServiceConfiguration);
+    }
+
+    @Override
+    public GenericEventSubscriptionEntity createGenericEventSubscriptionEntity() {
+        return new GenericEventSubscriptionEntityImpl(eventSubscriptionServiceConfiguration);
     }
 
     @Override
@@ -124,7 +145,7 @@ public class MybatisEventSubscriptionDataManager extends AbstractEventSubscripti
     @SuppressWarnings("unchecked")
     public List<EventSubscription> findEventSubscriptionsByQueryCriteria(EventSubscriptionQueryImpl eventSubscriptionQueryImpl) {
         final String query = "selectEventSubscriptionByQueryCriteria";
-        return getDbSqlSession().selectList(query, eventSubscriptionQueryImpl);
+        return getDbSqlSession().selectList(query, eventSubscriptionQueryImpl, getManagedEntityClass());
     }
 
     @Override
@@ -184,7 +205,15 @@ public class MybatisEventSubscriptionDataManager extends AbstractEventSubscripti
         params.put("eventType", type);
         return getList("selectEventSubscriptionsByExecutionAndType", params, eventSubscriptionsByExecutionAndTypeMatcher, true);
     }
-
+    
+    @Override
+    public List<EventSubscriptionEntity> findEventSubscriptionsByProcessInstanceAndType(final String processInstanceId, final String type) {
+        Map<String, String> params = new HashMap<>();
+        params.put("processInstanceId", processInstanceId);
+        params.put("eventType", type);
+        return getList("selectEventSubscriptionsByProcessInstanceAndType", params, eventSubscriptionsByProcessInstanceAndTypeMatcher, true);
+    }
+    
     @Override
     public List<EventSubscriptionEntity> findEventSubscriptionsByProcessInstanceAndActivityId(final String processInstanceId, final String activityId, final String type) {
         Map<String, String> params = new HashMap<>();
@@ -231,6 +260,14 @@ public class MybatisEventSubscriptionDataManager extends AbstractEventSubscripti
             params.put("tenantId", tenantId);
         }
         return getDbSqlSession().selectList(query, params);
+    }
+    
+    @Override
+    public List<EventSubscriptionEntity> findEventSubscriptionsByScopeIdAndType(final String scopeId, final String type) {
+        Map<String, String> params = new HashMap<>();
+        params.put("scopeId", scopeId);
+        params.put("eventType", type);
+        return getList("selectEventSubscriptionsByScopeIdAndType", params, eventSubscriptionsByScopeIdAndTypeMatcher, true);
     }
 
     @Override
@@ -299,6 +336,23 @@ public class MybatisEventSubscriptionDataManager extends AbstractEventSubscripti
         bulkDelete("deleteEventSubscriptionsForScopeIdAndType", signalEventSubscriptionByScopeIdAndTypeMatcher, params);
     }
 
+    @Override
+    public void deleteEventSubscriptionsForScopeDefinitionIdAndType(String scopeDefinitionId, String scopeType) {
+        Map<String, String> params = new HashMap<>();
+        params.put("scopeDefinitionId", scopeDefinitionId);
+        params.put("scopeType", scopeType);
+        bulkDelete("deleteEventSubscriptionsForScopeDefinitionIdAndType", eventSubscriptionsByScopeDefinitionIdAndTypeMatcher, params);
+    }
+
+    @Override
+    public void deleteEventSubscriptionsForScopeDefinitionIdAndTypeAndNullScopeId(String scopeDefinitionId, String scopeType) {
+        Map<String, String> params = new HashMap<>();
+        params.put("scopeDefinitionId", scopeDefinitionId);
+        params.put("scopeType", scopeType);
+        bulkDelete("deleteEventSubscriptionsForScopeDefinitionIdAndTypeAndNullScopeId",
+            eventSubscriptionsByScopeDefinitionIdAndTypeAndNullScopeIdMatcher, params);
+    }
+
     protected List<SignalEventSubscriptionEntity> toSignalEventSubscriptionEntityList(List<EventSubscriptionEntity> result) {
         List<SignalEventSubscriptionEntity> signalEventSubscriptionEntities = new ArrayList<>(result.size());
         for (EventSubscriptionEntity eventSubscriptionEntity : result) {
@@ -315,4 +369,9 @@ public class MybatisEventSubscriptionDataManager extends AbstractEventSubscripti
         return messageEventSubscriptionEntities;
     }
 
+    @Override
+    protected IdGenerator getIdGenerator() {
+        return eventSubscriptionServiceConfiguration.getIdGenerator();
+    }
+    
 }

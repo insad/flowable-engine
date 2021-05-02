@@ -12,20 +12,26 @@
  */
 package org.flowable.engine.configurator.test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.flowable.app.api.repository.AppDeployment;
 import org.flowable.app.engine.test.FlowableAppTestCase;
+import org.flowable.cmmn.api.CmmnTaskService;
+import org.flowable.cmmn.api.runtime.PlanItemInstance;
+import org.flowable.cmmn.api.runtime.PlanItemInstanceState;
+import org.flowable.cmmn.engine.CmmnEngineConfiguration;
+import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.common.engine.impl.interceptor.EngineConfigurationConstants;
 import org.flowable.engine.ProcessEngineConfiguration;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
+import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.form.api.FormDefinition;
 import org.flowable.form.engine.FormEngineConfiguration;
@@ -51,35 +57,31 @@ public class ProcessTest extends FlowableAppTestCase {
         try {
             ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTask");
             Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
-            assertNotNull(task);
+            assertThat(task).isNotNull();
             
             runtimeService.addUserIdentityLink(processInstance.getId(), "anotherUser", IdentityLinkType.STARTER);
             taskService.addUserIdentityLink(task.getId(), "testUser", IdentityLinkType.PARTICIPANT);
             
-            assertEquals(2, runtimeService.getIdentityLinksForProcessInstance(processInstance.getId()).size());
-            assertEquals(1, taskService.getIdentityLinksForTask(task.getId()).size());
+            assertThat(runtimeService.getIdentityLinksForProcessInstance(processInstance.getId())).hasSize(2);
+            assertThat(taskService.getIdentityLinksForTask(task.getId())).hasSize(1);
             
             taskService.complete(task.getId());
-            
-            try {
-                assertEquals(0, runtimeService.getIdentityLinksForProcessInstance(processInstance.getId()).size());
-                fail("object not found expected");
-            } catch (FlowableObjectNotFoundException e) {
-                // expected
-            }
-            
-            try {
-                assertEquals(0, taskService.getIdentityLinksForTask(task.getId()).size());
-                fail("object not found expected");
-            } catch (FlowableObjectNotFoundException e) {
-                // expected
-            }
-            
-            assertEquals(0, runtimeService.createProcessInstanceQuery().processInstanceId(processInstance.getId()).count());
-            
-            
+
+            assertThatThrownBy(() -> runtimeService.getIdentityLinksForProcessInstance(processInstance.getId()))
+                    .isInstanceOf(FlowableObjectNotFoundException.class);
+
+            assertThatThrownBy(() -> taskService.getIdentityLinksForTask(task.getId()))
+                    .isInstanceOf(FlowableObjectNotFoundException.class);
+
+            assertThat(runtimeService.createProcessInstanceQuery().processInstanceId(processInstance.getId()).count()).isZero();
+
         } finally {
             appRepositoryService.deleteDeployment(deployment.getId(), true);
+            processEngineConfiguration.getRepositoryService()
+                    .createDeploymentQuery()
+                    .parentDeploymentId(deployment.getId())
+                    .list()
+                    .forEach(processDeployment -> processEngineConfiguration.getRepositoryService().deleteDeployment(processDeployment.getId(), true));
         }
     }
     
@@ -89,6 +91,8 @@ public class ProcessTest extends FlowableAppTestCase {
                         .get(EngineConfigurationConstants.KEY_PROCESS_ENGINE_CONFIG);
         RuntimeService runtimeService = processEngineConfiguration.getRuntimeService();
         TaskService taskService = processEngineConfiguration.getTaskService();
+        FormEngineConfiguration formEngineConfiguration = (FormEngineConfiguration) appEngineConfiguration.getEngineConfigurations()
+                .get(EngineConfigurationConstants.KEY_FORM_ENGINE_CONFIG);
         
         AppDeployment deployment = appRepositoryService.createDeployment()
             .addClasspathResource("org/flowable/engine/configurator/test/oneTaskWithFormProcess.bpmn20.xml")
@@ -97,42 +101,41 @@ public class ProcessTest extends FlowableAppTestCase {
         try {
             ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTask");
             Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
-            assertNotNull(task);
+            assertThat(task).isNotNull();
             
             runtimeService.addUserIdentityLink(processInstance.getId(), "anotherUser", IdentityLinkType.STARTER);
             taskService.addUserIdentityLink(task.getId(), "testUser", IdentityLinkType.PARTICIPANT);
             
-            assertEquals(2, runtimeService.getIdentityLinksForProcessInstance(processInstance.getId()).size());
-            assertEquals(1, taskService.getIdentityLinksForTask(task.getId()).size());
+            assertThat(runtimeService.getIdentityLinksForProcessInstance(processInstance.getId())).hasSize(2);
+            assertThat(taskService.getIdentityLinksForTask(task.getId())).hasSize(1);
             
-            FormEngineConfiguration formEngineConfiguration = (FormEngineConfiguration) appEngineConfiguration.getEngineConfigurations()
-                            .get(EngineConfigurationConstants.KEY_FORM_ENGINE_CONFIG);
             FormDefinition formDefinition = formEngineConfiguration.getFormRepositoryService().createFormDefinitionQuery().formDefinitionKey("form1").singleResult();
-            assertNotNull(formDefinition);
+            assertThat(formDefinition).isNotNull();
             
             Map<String, Object> variables = new HashMap<>();
             variables.put("input1", "test");
             taskService.completeTaskWithForm(task.getId(), formDefinition.getId(), null, variables);
-            
-            try {
-                assertEquals(0, runtimeService.getIdentityLinksForProcessInstance(processInstance.getId()).size());
-                fail("object not found expected");
-            } catch (FlowableObjectNotFoundException e) {
-                // expected
-            }
-            
-            try {
-                assertEquals(0, taskService.getIdentityLinksForTask(task.getId()).size());
-                fail("object not found expected");
-            } catch (FlowableObjectNotFoundException e) {
-                // expected
-            }
-            
-            assertEquals(0, runtimeService.createProcessInstanceQuery().processInstanceId(processInstance.getId()).count());
-            
-            
+
+            assertThatThrownBy(() -> runtimeService.getIdentityLinksForProcessInstance(processInstance.getId()))
+                    .isInstanceOf(FlowableObjectNotFoundException.class);
+
+            assertThatThrownBy(() -> taskService.getIdentityLinksForTask(task.getId()))
+                    .isInstanceOf(FlowableObjectNotFoundException.class);
+
+            assertThat(runtimeService.createProcessInstanceQuery().processInstanceId(processInstance.getId()).count()).isZero();
+
         } finally {
             appRepositoryService.deleteDeployment(deployment.getId(), true);
+            processEngineConfiguration.getRepositoryService()
+                    .createDeploymentQuery()
+                    .parentDeploymentId(deployment.getId())
+                    .list()
+                    .forEach(processDeployment -> processEngineConfiguration.getRepositoryService().deleteDeployment(processDeployment.getId(), true));
+            formEngineConfiguration.getFormRepositoryService()
+                    .createDeploymentQuery()
+                    .parentDeploymentId(deployment.getId())
+                    .list()
+                    .forEach(formDeployment -> formEngineConfiguration.getFormRepositoryService().deleteDeployment(formDeployment.getId(), true));
         }
     }
 
@@ -142,6 +145,8 @@ public class ProcessTest extends FlowableAppTestCase {
                         .get(EngineConfigurationConstants.KEY_PROCESS_ENGINE_CONFIG);
         RuntimeService runtimeService = processEngineConfiguration.getRuntimeService();
         TaskService taskService = processEngineConfiguration.getTaskService();
+        FormEngineConfiguration formEngineConfiguration = (FormEngineConfiguration) appEngineConfiguration.getEngineConfigurations()
+                .get(EngineConfigurationConstants.KEY_FORM_ENGINE_CONFIG);
 
         AppDeployment deployment = appRepositoryService.createDeployment()
             .addClasspathResource("org/flowable/engine/configurator/test/oneTaskWithFormProcess.bpmn20.xml")
@@ -151,28 +156,210 @@ public class ProcessTest extends FlowableAppTestCase {
         try {
             ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTask");
             Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
-            assertNotNull(task);
+            assertThat(task).isNotNull();
 
             runtimeService.addUserIdentityLink(processInstance.getId(), "anotherUser", IdentityLinkType.STARTER);
             taskService.addUserIdentityLink(task.getId(), "testUser", IdentityLinkType.PARTICIPANT);
 
-            assertEquals(2, runtimeService.getIdentityLinksForProcessInstance(processInstance.getId()).size());
-            assertEquals(1, taskService.getIdentityLinksForTask(task.getId()).size());
+            assertThat(runtimeService.getIdentityLinksForProcessInstance(processInstance.getId())).hasSize(2);
+            assertThat(taskService.getIdentityLinksForTask(task.getId())).hasSize(1);
 
-            FormEngineConfiguration formEngineConfiguration = (FormEngineConfiguration) appEngineConfiguration.getEngineConfigurations()
-                            .get(EngineConfigurationConstants.KEY_FORM_ENGINE_CONFIG);
             FormDefinition formDefinition = formEngineConfiguration.getFormRepositoryService().createFormDefinitionQuery().formDefinitionKey("anotherForm").singleResult();
-            assertNotNull(formDefinition);
+            assertThat(formDefinition).isNotNull();
 
             Map<String, Object> variables = new HashMap<>();
             variables.put("anotherInput", "test");
             taskService.completeTaskWithForm(task.getId(), formDefinition.getId(), null, variables);
 
-            assertEquals(0, runtimeService.createProcessInstanceQuery().processInstanceId(processInstance.getId()).count());
+            assertThat(runtimeService.createProcessInstanceQuery().processInstanceId(processInstance.getId()).count()).isZero();
 
 
         } finally {
             appRepositoryService.deleteDeployment(deployment.getId(), true);
+            processEngineConfiguration.getRepositoryService()
+                    .createDeploymentQuery()
+                    .parentDeploymentId(deployment.getId())
+                    .list()
+                    .forEach(processDeployment -> processEngineConfiguration.getRepositoryService().deleteDeployment(processDeployment.getId(), true));
+            formEngineConfiguration.getFormRepositoryService()
+                    .createDeploymentQuery()
+                    .parentDeploymentId(deployment.getId())
+                    .list()
+                    .forEach(formDeployment -> formEngineConfiguration.getFormRepositoryService().deleteDeployment(formDeployment.getId(), true));
+        }
+    }
+    
+    @Test
+    public void testCompleteProcessUserTaskWithCmmnEngine() throws Exception {
+        ProcessEngineConfiguration processEngineConfiguration = (ProcessEngineConfiguration) appEngineConfiguration.getEngineConfigurations()
+                        .get(EngineConfigurationConstants.KEY_PROCESS_ENGINE_CONFIG);
+        RuntimeService runtimeService = processEngineConfiguration.getRuntimeService();
+        TaskService taskService = processEngineConfiguration.getTaskService();
+        
+        CmmnEngineConfiguration cmmnEngineConfiguration = (CmmnEngineConfiguration) appEngineConfiguration.getEngineConfigurations()
+                .get(EngineConfigurationConstants.KEY_CMMN_ENGINE_CONFIG);
+        CmmnTaskService cmmnTaskService = cmmnEngineConfiguration.getCmmnTaskService();
+        
+        AppDeployment deployment = appRepositoryService.createDeployment()
+            .addClasspathResource("org/flowable/engine/configurator/test/oneTaskProcess.bpmn20.xml").deploy();
+        
+        try {
+            ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTask");
+            Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
+            assertThat(task).isNotNull();
+            
+            assertThatThrownBy(() -> cmmnTaskService.complete(task.getId())).isInstanceOf(FlowableException.class)
+                .hasMessageContaining("created by the process engine");
+            
+            assertThatThrownBy(() -> cmmnTaskService.completeTaskWithForm(task.getId(), null, null, null)).isInstanceOf(FlowableException.class)
+                .hasMessageContaining("created by the process engine");
+
+            assertThat(runtimeService.createProcessInstanceQuery().processInstanceId(processInstance.getId()).count()).isEqualTo(1);
+            
+            taskService.complete(task.getId());
+            
+            assertThat(runtimeService.createProcessInstanceQuery().processInstanceId(processInstance.getId()).count()).isZero();
+
+        } finally {
+            appRepositoryService.deleteDeployment(deployment.getId(), true);
+            processEngineConfiguration.getRepositoryService()
+                    .createDeploymentQuery()
+                    .parentDeploymentId(deployment.getId())
+                    .list()
+                    .forEach(processDeployment -> processEngineConfiguration.getRepositoryService().deleteDeployment(processDeployment.getId(), true));
+        }
+    }
+    
+    @Test
+    public void testProcessWithCaseTaskAndVariableListener() throws Exception {
+        ProcessEngineConfiguration processEngineConfiguration = (ProcessEngineConfiguration) appEngineConfiguration.getEngineConfigurations()
+                        .get(EngineConfigurationConstants.KEY_PROCESS_ENGINE_CONFIG);
+        RuntimeService runtimeService = processEngineConfiguration.getRuntimeService();
+        TaskService taskService = processEngineConfiguration.getTaskService();
+        
+        CmmnEngineConfiguration cmmnEngineConfiguration = (CmmnEngineConfiguration) appEngineConfiguration.getEngineConfigurations()
+                .get(EngineConfigurationConstants.KEY_CMMN_ENGINE_CONFIG);
+        
+        cmmnEngineConfiguration.getCmmnRepositoryService().createDeployment()
+                .addClasspathResource("org/flowable/engine/configurator/test/caseWithVariableListener.cmmn")
+                .deploy();
+        
+        processEngineConfiguration.getRepositoryService().createDeployment()
+                .addClasspathResource("org/flowable/engine/configurator/test/caseTaskProcess.bpmn20.xml")
+                .deploy();
+        
+        try {
+            ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("caseTaskProcess");
+            Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
+            taskService.complete(task.getId());
+            
+            List<PlanItemInstance> planItemInstances = cmmnEngineConfiguration.getCmmnRuntimeService()
+                    .createPlanItemInstanceQuery()
+                    .planItemInstanceState(PlanItemInstanceState.ACTIVE)
+                    .list();
+            assertThat(planItemInstances).hasSize(1);
+            String caseInstanceId = planItemInstances.iterator().next().getCaseInstanceId();
+            
+            cmmnEngineConfiguration.getCmmnRuntimeService().setVariable(caseInstanceId, "var1", "test");
+            
+            planItemInstances = cmmnEngineConfiguration.getCmmnRuntimeService()
+                    .createPlanItemInstanceQuery()
+                    .caseInstanceId(caseInstanceId)
+                    .planItemInstanceState(PlanItemInstanceState.ACTIVE)
+                    .list();
+            assertThat(planItemInstances).hasSize(2);
+            
+            for (PlanItemInstance planItemInstance : planItemInstances) {
+                cmmnEngineConfiguration.getCmmnRuntimeService().triggerPlanItemInstance(planItemInstance.getId());
+            }
+            
+            assertThat(cmmnEngineConfiguration.getCmmnRuntimeService().createCaseInstanceQuery().caseInstanceId(caseInstanceId).count()).isZero();
+            
+            task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
+            assertThat(task.getTaskDefinitionKey()).isEqualTo("secondTask");
+            taskService.complete(task.getId());
+            
+            assertThat(runtimeService.createProcessInstanceQuery().processInstanceId(processInstance.getId()).count()).isZero();
+
+        } finally {
+            processEngineConfiguration.getRepositoryService()
+                    .createDeploymentQuery()
+                    .list()
+                    .forEach(processDeployment -> processEngineConfiguration.getRepositoryService().deleteDeployment(processDeployment.getId(), true));
+            
+            cmmnEngineConfiguration.getCmmnRepositoryService()
+                    .createDeploymentQuery()
+                    .list()
+                    .forEach(caseDeployment -> cmmnEngineConfiguration.getCmmnRepositoryService().deleteDeployment(caseDeployment.getId(), true));
+        }
+    }
+    
+    @Test
+    public void testProcessWithCaseTaskAndMultipleVariableListeners() throws Exception {
+        ProcessEngineConfiguration processEngineConfiguration = (ProcessEngineConfiguration) appEngineConfiguration.getEngineConfigurations()
+                        .get(EngineConfigurationConstants.KEY_PROCESS_ENGINE_CONFIG);
+        RuntimeService runtimeService = processEngineConfiguration.getRuntimeService();
+        TaskService taskService = processEngineConfiguration.getTaskService();
+        
+        CmmnEngineConfiguration cmmnEngineConfiguration = (CmmnEngineConfiguration) appEngineConfiguration.getEngineConfigurations()
+                .get(EngineConfigurationConstants.KEY_CMMN_ENGINE_CONFIG);
+        
+        cmmnEngineConfiguration.getCmmnRepositoryService().createDeployment()
+                .addClasspathResource("org/flowable/engine/configurator/test/caseWithVariableListener.cmmn")
+                .deploy();
+        
+        processEngineConfiguration.getRepositoryService().createDeployment()
+                .addClasspathResource("org/flowable/engine/configurator/test/processWithVariableListener.bpmn20.xml")
+                .deploy();
+        
+        try {
+            ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("variableListenerProcess");
+            Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
+            assertThat(task.getTaskDefinitionKey()).isEqualTo("theTask");
+            
+            List<PlanItemInstance> planItemInstances = cmmnEngineConfiguration.getCmmnRuntimeService()
+                    .createPlanItemInstanceQuery()
+                    .planItemInstanceState(PlanItemInstanceState.ACTIVE)
+                    .list();
+            assertThat(planItemInstances).hasSize(1);
+            String caseInstanceId = planItemInstances.iterator().next().getCaseInstanceId();
+            
+            cmmnEngineConfiguration.getCmmnRuntimeService().setVariable(caseInstanceId, "var1", "test");
+            
+            planItemInstances = cmmnEngineConfiguration.getCmmnRuntimeService()
+                    .createPlanItemInstanceQuery()
+                    .caseInstanceId(caseInstanceId)
+                    .planItemInstanceState(PlanItemInstanceState.ACTIVE)
+                    .list();
+            assertThat(planItemInstances).hasSize(2);
+            
+            for (PlanItemInstance planItemInstance : planItemInstances) {
+                cmmnEngineConfiguration.getCmmnRuntimeService().triggerPlanItemInstance(planItemInstance.getId());
+            }
+            
+            assertThat(cmmnEngineConfiguration.getCmmnRuntimeService().createCaseInstanceQuery().caseInstanceId(caseInstanceId).count()).isZero();
+            
+            assertThat(taskService.createTaskQuery().processInstanceId(processInstance.getId()).count()).isEqualTo(1);
+            
+            runtimeService.setVariable(processInstance.getId(), "var1", "test");
+            
+            List<Execution> executions = runtimeService.createExecutionQuery().processInstanceId(processInstance.getId()).list();
+            for (Execution execution : executions) {
+                System.out.println("execution " + execution.getId() + " " + execution.getActivityId());
+            }
+            
+            assertThat(runtimeService.createProcessInstanceQuery().processInstanceId(processInstance.getId()).count()).isZero();
+
+        } finally {
+            processEngineConfiguration.getRepositoryService()
+                    .createDeploymentQuery()
+                    .list()
+                    .forEach(processDeployment -> processEngineConfiguration.getRepositoryService().deleteDeployment(processDeployment.getId(), true));
+            
+            cmmnEngineConfiguration.getCmmnRepositoryService()
+                    .createDeploymentQuery()
+                    .list()
+                    .forEach(caseDeployment -> cmmnEngineConfiguration.getCmmnRepositoryService().deleteDeployment(caseDeployment.getId(), true));
         }
     }
 }

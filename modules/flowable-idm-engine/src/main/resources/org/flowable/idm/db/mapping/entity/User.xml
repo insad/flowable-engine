@@ -10,8 +10,7 @@
     insert into ${prefix}ACT_ID_USER (ID_, REV_, FIRST_, LAST_, DISPLAY_NAME_, EMAIL_, TENANT_ID_, PWD_)
     values (
       #{id ,jdbcType=VARCHAR},
-      1,
-      #{firstName ,jdbcType=VARCHAR},
+      1, #{firstName ,jdbcType=VARCHAR},
       #{lastName ,jdbcType=VARCHAR},
       #{displayName ,jdbcType=VARCHAR},
       #{email ,jdbcType=VARCHAR},
@@ -24,8 +23,7 @@
     INSERT INTO ${prefix}ACT_ID_USER (ID_, REV_, FIRST_, LAST_, DISPLAY_NAME_, EMAIL_, TENANT_ID_, PWD_) VALUES
       <foreach collection="list" item="user" index="index" separator=",">
         (#{user.id ,jdbcType=VARCHAR},
-         1,
-         #{user.firstName ,jdbcType=VARCHAR},
+         1, #{user.firstName ,jdbcType=VARCHAR},
          #{user.lastName ,jdbcType=VARCHAR},
          #{user.displayName ,jdbcType=VARCHAR},
          #{user.email ,jdbcType=VARCHAR},
@@ -39,8 +37,7 @@
       <foreach collection="list" item="user" index="index">
         INTO ${prefix}ACT_ID_USER (ID_, REV_, FIRST_, LAST_, DISPLAY_NAME_, EMAIL_, TENANT_ID_, PWD_) VALUES
         (#{user.id ,jdbcType=VARCHAR},
-         1,
-         #{user.firstName ,jdbcType=VARCHAR},
+         1, #{user.firstName ,jdbcType=VARCHAR},
          #{user.lastName ,jdbcType=VARCHAR},
          #{user.displayName ,jdbcType=VARCHAR},
          #{user.email ,jdbcType=VARCHAR},
@@ -53,7 +50,8 @@
   <!-- USER UPDATE -->
 
   <update id="updateUser" parameterType="org.flowable.idm.engine.impl.persistence.entity.UserEntityImpl">
-    update ${prefix}ACT_ID_USER set
+    update ${prefix}ACT_ID_USER
+    <set>
       REV_ = #{revisionNext ,jdbcType=INTEGER},
       <if test="originalPersistentState.firstName != firstName">
         FIRST_ = #{firstName, jdbcType=VARCHAR},
@@ -74,6 +72,7 @@
         PWD_ = #{password ,jdbcType=VARCHAR},
       </if>
       PICTURE_ID_ = #{pictureByteArrayRef ,typeHandler=IdmByteArrayRefTypeHandler}
+    </set>
     where ID_ = #{id}
       and REV_ = #{revision}
   </update>
@@ -105,11 +104,11 @@
   </select>
 
   <select id="selectUserByQueryCriteria" parameterType="org.flowable.idm.engine.impl.UserQueryImpl" resultMap="userResultMap">
-  	<if test="firstResult != null and firstResult &gt;= 0">${limitBefore}</if>
-    select RES.* <if test="firstResult != null and firstResult &gt;= 0">${limitBetween}</if>
+    <if test="needsPaging">${limitBefore}</if>
+    SELECT RES.* <if test="needsPaging">${limitBetween}</if>
     <include refid="selectUserByQueryCriteriaSql" />
     ${orderBy}
-    <if test="firstResult != null and firstResult &gt;= 0">${limitAfter}</if>
+    <if test="needsPaging">${limitAfter}</if>
   </select>
 
   <select id="selectUserCountByQueryCriteria" parameterType="org.flowable.idm.engine.impl.UserQueryImpl" resultType="long">
@@ -186,7 +185,7 @@
   </sql>
 
   <select id="selectUserByNativeQuery" parameterType="java.util.Map" resultMap="userResultMap">
-    <include refid="org.flowable.idm.engine.db.common.selectByNativeQuery"/>
+    <include refid="org.flowable.common.engine.db.selectByNativeQuery"/>
   </select>
 
   <select id="selectUserCountByNativeQuery" parameterType="java.util.Map" resultType="long">

@@ -13,9 +13,11 @@
 package org.flowable.cmmn.engine.impl.agenda.operation;
 
 import org.flowable.cmmn.api.runtime.PlanItemInstanceState;
-import org.flowable.cmmn.engine.impl.listener.PlanItemLifeCycleListenerUtil;
+import org.flowable.cmmn.engine.impl.persistence.entity.CaseInstanceEntity;
 import org.flowable.cmmn.engine.impl.persistence.entity.PlanItemInstanceEntity;
+import org.flowable.cmmn.engine.impl.repository.CaseDefinitionUtil;
 import org.flowable.cmmn.engine.impl.util.CommandContextUtil;
+import org.flowable.cmmn.model.Case;
 import org.flowable.cmmn.model.Stage;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
 
@@ -35,14 +37,18 @@ public class InitStageInstanceOperation extends AbstractPlanItemInstanceOperatio
         String oldState = planItemInstanceEntity.getState();
         String newState = PlanItemInstanceState.ACTIVE;
         planItemInstanceEntity.setState(newState);
-        PlanItemLifeCycleListenerUtil.callLifecycleListeners(commandContext, planItemInstanceEntity, oldState, newState);
+        CommandContextUtil.getCmmnEngineConfiguration(commandContext).getListenerNotificationHelper()
+            .executeLifecycleListeners(commandContext, planItemInstanceEntity, oldState, newState);
 
         planItemInstanceEntity.setStage(true);
-        
-        createPlanItemInstancesForNewStage(commandContext,
-                stage.getPlanItems(), 
-                planItemInstanceEntity.getCaseDefinitionId(), 
-                null,
+
+        Case caseModel = CaseDefinitionUtil.getCase(planItemInstanceEntity.getCaseDefinitionId());
+        CaseInstanceEntity caseInstanceEntity = CommandContextUtil.getCmmnEngineConfiguration(commandContext).getCaseInstanceEntityManager()
+            .findById(planItemInstanceEntity.getCaseInstanceId());
+
+        createPlanItemInstancesForNewOrReactivatedStage(commandContext, caseModel,
+                stage.getPlanItems(),
+                caseInstanceEntity,
                 planItemInstanceEntity,
                 planItemInstanceEntity.getTenantId());
 

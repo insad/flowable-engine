@@ -25,12 +25,20 @@ public interface HistoricCaseInstance {
     String getParentId();
     String getBusinessKey();
     String getCaseDefinitionId();
+    String getCaseDefinitionKey();
+    String getCaseDefinitionName();
+    Integer getCaseDefinitionVersion();
+    String getCaseDefinitionDeploymentId();
     String getState();
     Date getStartTime();
     Date getEndTime();
     String getStartUserId();
+    Date getLastReactivationTime();
+    String getLastReactivationUserId();
     String getCallbackId();
     String getCallbackType();
+    String getReferenceId();
+    String getReferenceType();
     String getTenantId();
 
     Map<String, Object> getCaseVariables();

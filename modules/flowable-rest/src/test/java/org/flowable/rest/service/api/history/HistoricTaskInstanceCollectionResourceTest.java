@@ -13,8 +13,7 @@
 
 package org.flowable.rest.service.api.history;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -121,6 +120,10 @@ public class HistoricTaskInstanceCollectionResourceTest extends BaseSpringRestTe
 
         assertResultsPresentInDataResponse(url + "?taskInvolvedUser=test", 1, task.getId());
 
+        assertResultsPresentInDataResponse(url + "?taskDefinitionKey=processTask2", 1, task.getId());
+
+        assertResultsPresentInDataResponse(url + "?taskDefinitionKeys=processTask,processTask2", 3, task.getId(), task1.getId(), task2.getId());
+
         assertResultsPresentInDataResponse(url + "?dueDateAfter=" + dateFormat.format(new GregorianCalendar(2010, 0, 1).getTime()), 1, task.getId());
 
         assertResultsPresentInDataResponse(url + "?dueDateAfter=" + dateFormat.format(new GregorianCalendar(2013, 4, 1).getTime()), 0);
@@ -147,6 +150,23 @@ public class HistoricTaskInstanceCollectionResourceTest extends BaseSpringRestTe
         // Tenant id like
         assertResultsPresentInDataResponse(url + "?tenantIdLike=" + encode("%enant"), 1, task2.getId());
         assertResultsPresentInDataResponse(url + "?tenantIdLike=anotherTenant", 0);
+
+    }
+
+    @Test
+    @Deployment
+    public void testQueryTaskInstancesWithCandidateGroup() throws Exception {
+        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
+        Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
+
+        String url = RestUrls.createRelativeResourceUrl(RestUrls.URL_HISTORIC_TASK_INSTANCES);
+
+        assertResultsPresentInDataResponse(url + "?taskCandidateGroup=sales", 1, task.getId());
+        assertEmptyResultsPresentInDataResponse(url + "?taskCandidateGroup=notExisting");
+
+        taskService.claim(task.getId(), "johnDoe");
+        assertEmptyResultsPresentInDataResponse(url + "?taskCandidateGroup=sales");
+        assertResultsPresentInDataResponse(url + "?taskCandidateGroup=sales&ignoreTaskAssignee=true", 1, task.getId());
     }
 
     protected void assertResultsPresentInDataResponse(String url, int numberOfResultsExpected, String... expectedTaskIds) throws JsonProcessingException, IOException {
@@ -157,7 +177,7 @@ public class HistoricTaskInstanceCollectionResourceTest extends BaseSpringRestTe
         // Check status and size
         JsonNode dataNode = objectMapper.readTree(response.getEntity().getContent()).get("data");
         closeResponse(response);
-        assertEquals(numberOfResultsExpected, dataNode.size());
+        assertThat(dataNode).hasSize(numberOfResultsExpected);
 
         // Check presence of ID's
         if (expectedTaskIds != null) {
@@ -167,7 +187,7 @@ public class HistoricTaskInstanceCollectionResourceTest extends BaseSpringRestTe
                 String id = it.next().get("id").textValue();
                 toBeFound.remove(id);
             }
-            assertTrue("Not all entries have been found in result, missing: " + StringUtils.join(toBeFound, ", "), toBeFound.isEmpty());
+            assertThat(toBeFound).as("Not all entries have been found in result, missing: " + StringUtils.join(toBeFound, ", ")).isEmpty();
         }
     }
 }

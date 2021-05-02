@@ -13,7 +13,6 @@
 package org.flowable.engine.impl.persistence.entity.data.impl;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -123,7 +122,7 @@ public class MybatisExecutionDataManager extends AbstractProcessDataManager<Exec
             return true;
         }
         
-        // Fetches execution tree. This will store them in the cache and thus avoind extra database calls.
+        // Fetches execution tree. This will store them in the cache and thus avoids extra database calls.
         getList("selectExecutionsWithSameRootProcessInstanceId", executionId,
                 executionsWithSameRootProcessInstanceIdMatcher, true);
         
@@ -218,7 +217,7 @@ public class MybatisExecutionDataManager extends AbstractProcessDataManager<Exec
     @SuppressWarnings("unchecked")
     @Override
     public List<String> findProcessInstanceIdsByProcessDefinitionId(String processDefinitionId) {
-        return getDbSqlSession().selectListNoCacheCheck("selectProcessInstanceIdsByProcessDefinitionId", processDefinitionId);
+        return getDbSqlSession().selectListNoCacheLoadAndStore("selectProcessInstanceIdsByProcessDefinitionId", processDefinitionId);
     }
 
     @Override
@@ -232,9 +231,9 @@ public class MybatisExecutionDataManager extends AbstractProcessDataManager<Exec
         // False -> executions should not be cached if using executionTreeFetching
         boolean useCache = !performanceSettings.isEnableEagerExecutionTreeFetching();
         if (useCache) {
-            return getDbSqlSession().selectList("selectExecutionsByQueryCriteria", executionQuery);
+            return getDbSqlSession().selectList("selectExecutionsByQueryCriteria", executionQuery, getManagedEntityClass());
         } else {
-            return getDbSqlSession().selectListNoCacheCheck("selectExecutionsByQueryCriteria", executionQuery);
+            return getDbSqlSession().selectListNoCacheLoadAndStore("selectExecutionsByQueryCriteria", executionQuery);
         }
     }
 
@@ -249,45 +248,16 @@ public class MybatisExecutionDataManager extends AbstractProcessDataManager<Exec
         // False -> executions should not be cached if using executionTreeFetching
         boolean useCache = !performanceSettings.isEnableEagerExecutionTreeFetching();
         if (useCache) {
-            return getDbSqlSession().selectList("selectProcessInstanceByQueryCriteria", executionQuery);
+            return getDbSqlSession().selectList("selectProcessInstanceByQueryCriteria", executionQuery, getManagedEntityClass());
         } else {
-            return getDbSqlSession().selectListNoCacheCheck("selectProcessInstanceByQueryCriteria", executionQuery);
+            return getDbSqlSession().selectListNoCacheLoadAndStore("selectProcessInstanceByQueryCriteria", executionQuery, getManagedEntityClass());
         }
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public List<ProcessInstance> findProcessInstanceAndVariablesByQueryCriteria(ProcessInstanceQueryImpl executionQuery) {
-        // paging doesn't work for combining process instances and variables due
-        // to an outer join, so doing it in-memory
-
-        int firstResult = executionQuery.getFirstResult();
-        int maxResults = executionQuery.getMaxResults();
-
-        // setting max results, limit to 20000 results for performance reasons
-        if (executionQuery.getProcessInstanceVariablesLimit() != null) {
-            executionQuery.setMaxResults(executionQuery.getProcessInstanceVariablesLimit());
-        } else {
-            executionQuery.setMaxResults(getProcessEngineConfiguration().getExecutionQueryLimit());
-        }
-        executionQuery.setFirstResult(0);
-
-        List<ProcessInstance> instanceList = getDbSqlSession().selectListWithRawParameterNoCacheCheck("selectProcessInstanceWithVariablesByQueryCriteria", executionQuery);
-
-        if (instanceList != null && !instanceList.isEmpty()) {
-            if (firstResult > 0) {
-                if (firstResult <= instanceList.size()) {
-                    int toIndex = firstResult + Math.min(maxResults, instanceList.size() - firstResult);
-                    return instanceList.subList(firstResult, toIndex);
-                } else {
-                    return Collections.EMPTY_LIST;
-                }
-            } else {
-                int toIndex = maxResults > 0 ?  Math.min(maxResults, instanceList.size()) : instanceList.size();
-                return instanceList.subList(0, toIndex);
-            }
-        }
-        return Collections.EMPTY_LIST;
+        return getDbSqlSession().selectListNoCacheLoadAndStore("selectProcessInstanceWithVariablesByQueryCriteria", executionQuery, getManagedEntityClass());
     }
 
     @Override
@@ -316,11 +286,12 @@ public class MybatisExecutionDataManager extends AbstractProcessDataManager<Exec
     }
 
     @Override
-    public void updateProcessInstanceLockTime(String processInstanceId, Date lockDate, Date expirationTime) {
+    public void updateProcessInstanceLockTime(String processInstanceId, Date lockDate, String lockOwner, Date expirationTime) {
         HashMap<String, Object> params = new HashMap<>();
         params.put("id", processInstanceId);
         params.put("lockTime", lockDate);
         params.put("expirationTime", expirationTime);
+        params.put("lockOwner", lockOwner);
 
         int result = getDbSqlSession().update("updateProcessInstanceLockTime", params);
         if (result == 0) {
@@ -339,5 +310,12 @@ public class MybatisExecutionDataManager extends AbstractProcessDataManager<Exec
         params.put("id", processInstanceId);
         getDbSqlSession().update("clearProcessInstanceLockTime", params);
     }
-    
+
+    @Override
+    public void clearAllProcessInstanceLockTimes(String lockOwner) {
+        HashMap<String, Object> params = new HashMap<>();
+        params.put("lockOwner", lockOwner);
+        getDbSqlSession().update("clearAllProcessInstanceLockTimes", params);
+    }
+
 }

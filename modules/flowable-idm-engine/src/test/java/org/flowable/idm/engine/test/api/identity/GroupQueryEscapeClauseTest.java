@@ -12,7 +12,7 @@
  */
 package org.flowable.idm.engine.test.api.identity;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.flowable.idm.api.Group;
 import org.flowable.idm.api.GroupQuery;
@@ -41,15 +41,15 @@ public class GroupQueryEscapeClauseTest extends ResourceFlowableIdmTestCase {
 
     @Test
     public void testQueryByNameLike() {
-        GroupQuery query = idmIdentityService.createGroupQuery().groupNameLike("%\\%%");
-        assertEquals(1, query.list().size());
-        assertEquals(1, query.count());
-        assertEquals("muppets", query.singleResult().getId());
+        GroupQuery query = idmIdentityService.createGroupQuery().groupNameLike("%|%%");
+        assertThat(query.list()).hasSize(1);
+        assertThat(query.count()).isEqualTo(1);
+        assertThat(query.singleResult().getId()).isEqualTo("muppets");
 
-        query = idmIdentityService.createGroupQuery().groupNameLike("%\\_%");
-        assertEquals(1, query.list().size());
-        assertEquals(1, query.count());
-        assertEquals("frogs", query.singleResult().getId());
+        query = idmIdentityService.createGroupQuery().groupNameLike("%|_%");
+        assertThat(query.list()).hasSize(1);
+        assertThat(query.count()).isEqualTo(1);
+        assertThat(query.singleResult().getId()).isEqualTo("frogs");
     }
 
     private Group createGroup(String id, String name, String type) {

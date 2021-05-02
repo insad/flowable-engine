@@ -16,17 +16,22 @@ import java.util.Collection;
 import java.util.List;
 
 import org.flowable.common.engine.impl.persistence.entity.EntityManager;
+import org.flowable.identitylink.api.history.HistoricIdentityLink;
 
 /**
  * @author Joram Barrez
  */
 public interface IdentityLinkEntityManager extends EntityManager<IdentityLinkEntity> {
 
+    IdentityLinkEntity createIdentityLinkFromHistoricIdentityLink(HistoricIdentityLink historicIdentityLink);
+
     List<IdentityLinkEntity> findIdentityLinksByTaskId(String taskId);
 
     List<IdentityLinkEntity> findIdentityLinksByProcessInstanceId(String processInstanceId);
     
     List<IdentityLinkEntity> findIdentityLinksByScopeIdAndType(String scopeId, String scopeType);
+    
+    List<IdentityLinkEntity> findIdentityLinksBySubScopeIdAndType(String subScopeId, String scopeType);
 
     List<IdentityLinkEntity> findIdentityLinksByProcessDefinitionId(String processDefinitionId);
     
@@ -45,7 +50,10 @@ public interface IdentityLinkEntityManager extends EntityManager<IdentityLinkEnt
     IdentityLinkEntity addProcessInstanceIdentityLink(String processInstanceId, String userId, String groupId, String type);
     
     IdentityLinkEntity addScopeIdentityLink(String scopeDefinitionId, String scopeId, String scopeType, String userId, String groupId, String type);
-
+    
+    IdentityLinkEntity addSubScopeIdentityLink(String scopeDefinitionId, String scopeId, String subScopeId, String scopeType, 
+                    String userId, String groupId, String type);
+    
     IdentityLinkEntity addTaskIdentityLink(String taskId, String userId, String groupId, String type);
 
     IdentityLinkEntity addProcessDefinitionIdentityLink(String processDefinitionId, String userId, String groupId);

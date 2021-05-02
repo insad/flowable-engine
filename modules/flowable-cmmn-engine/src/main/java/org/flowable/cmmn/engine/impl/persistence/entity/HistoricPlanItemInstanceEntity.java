@@ -12,11 +12,11 @@
  */
 package org.flowable.cmmn.engine.impl.persistence.entity;
 
+import java.util.Date;
+
 import org.flowable.cmmn.api.history.HistoricPlanItemInstance;
 import org.flowable.common.engine.impl.db.HasRevision;
 import org.flowable.common.engine.impl.persistence.entity.Entity;
-
-import java.util.Date;
 
 /**
  * @author Dennis Federico
@@ -33,6 +33,8 @@ public interface HistoricPlanItemInstanceEntity extends Entity, HasRevision, His
 
     void setCaseDefinitionId(String caseDefinitionId);
 
+    void setDerivedCaseDefinitionId(String derivedCaseDefinitionId);
+
     void setCaseInstanceId(String caseInstanceId);
 
     void setStageInstanceId(String stageInstanceId);
@@ -48,6 +50,8 @@ public interface HistoricPlanItemInstanceEntity extends Entity, HasRevision, His
     void setCreateTime(Date createTime);
 
     void setLastAvailableTime(Date availableTime);
+
+    void setLastUnavailableTime(Date unavailableTime);
 
     void setLastEnabledTime(Date enabledTime);
 
@@ -78,6 +82,12 @@ public interface HistoricPlanItemInstanceEntity extends Entity, HasRevision, His
     void setEntryCriterionId(String entryCriterionId);
 
     void setExitCriterionId(String exitCriterionId);
+    
+    void setFormKey(String formKey);
+    
+    void setExtraValue(String extraValue);
+    
+    void setShowInOverview(boolean showInOverview);
 
     void setTenantId(String tenantId);
 

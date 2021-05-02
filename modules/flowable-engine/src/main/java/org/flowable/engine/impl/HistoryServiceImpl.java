@@ -16,7 +16,6 @@ package org.flowable.engine.impl;
 
 import java.util.List;
 
-import org.flowable.common.engine.impl.interceptor.CommandConfig;
 import org.flowable.common.engine.impl.service.CommonEngineServiceImpl;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.history.HistoricActivityInstanceQuery;
@@ -27,16 +26,14 @@ import org.flowable.engine.history.NativeHistoricDetailQuery;
 import org.flowable.engine.history.NativeHistoricProcessInstanceQuery;
 import org.flowable.engine.history.ProcessInstanceHistoryLogQuery;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
-import org.flowable.engine.impl.cmd.DeleteHistoricActivityInstancesCmd;
 import org.flowable.engine.impl.cmd.DeleteHistoricProcessInstanceCmd;
-import org.flowable.engine.impl.cmd.DeleteHistoricProcessInstancesCmd;
 import org.flowable.engine.impl.cmd.DeleteHistoricTaskInstanceCmd;
-import org.flowable.engine.impl.cmd.DeleteHistoricTaskInstancesCmd;
 import org.flowable.engine.impl.cmd.DeleteHistoricTaskLogEntryByLogNumberCmd;
 import org.flowable.engine.impl.cmd.DeleteRelatedDataOfRemovedHistoricProcessInstancesCmd;
 import org.flowable.engine.impl.cmd.DeleteTaskAndActivityDataOfRemovedHistoricProcessInstancesCmd;
 import org.flowable.engine.impl.cmd.GetHistoricEntityLinkChildrenForProcessInstanceCmd;
 import org.flowable.engine.impl.cmd.GetHistoricEntityLinkChildrenForTaskCmd;
+import org.flowable.engine.impl.cmd.GetHistoricEntityLinkChildrenWithSameRootAsProcessInstanceCmd;
 import org.flowable.engine.impl.cmd.GetHistoricEntityLinkParentsForProcessInstanceCmd;
 import org.flowable.engine.impl.cmd.GetHistoricEntityLinkParentsForTaskCmd;
 import org.flowable.engine.impl.cmd.GetHistoricIdentityLinksForTaskCmd;
@@ -71,7 +68,7 @@ public class HistoryServiceImpl extends CommonEngineServiceImpl<ProcessEngineCon
 
     @Override
     public HistoricProcessInstanceQuery createHistoricProcessInstanceQuery() {
-        return new HistoricProcessInstanceQueryImpl(commandExecutor);
+        return new HistoricProcessInstanceQueryImpl(commandExecutor, configuration);
     }
 
     @Override
@@ -81,7 +78,8 @@ public class HistoryServiceImpl extends CommonEngineServiceImpl<ProcessEngineCon
 
     @Override
     public HistoricTaskInstanceQuery createHistoricTaskInstanceQuery() {
-        return new HistoricTaskInstanceQueryImpl(commandExecutor, configuration.getDatabaseType());
+        return new HistoricTaskInstanceQueryImpl(commandExecutor, configuration.getDatabaseType(),
+                configuration.getTaskServiceConfiguration(), configuration.getVariableServiceConfiguration());
     }
 
     @Override
@@ -96,12 +94,12 @@ public class HistoryServiceImpl extends CommonEngineServiceImpl<ProcessEngineCon
 
     @Override
     public HistoricVariableInstanceQuery createHistoricVariableInstanceQuery() {
-        return new HistoricVariableInstanceQueryImpl(commandExecutor);
+        return new HistoricVariableInstanceQueryImpl(commandExecutor, configuration.getVariableServiceConfiguration());
     }
 
     @Override
     public NativeHistoricVariableInstanceQuery createNativeHistoricVariableInstanceQuery() {
-        return new NativeHistoricVariableInstanceQueryImpl(commandExecutor);
+        return new NativeHistoricVariableInstanceQueryImpl(commandExecutor, configuration.getVariableServiceConfiguration());
     }
 
     @Override
@@ -114,29 +112,6 @@ public class HistoryServiceImpl extends CommonEngineServiceImpl<ProcessEngineCon
         commandExecutor.execute(new DeleteHistoricProcessInstanceCmd(processInstanceId));
     }
 
-    @Override
-    public void deleteHistoricProcessInstances(HistoricProcessInstanceQueryImpl processInstanceQuery) {
-        commandExecutor.execute(new DeleteHistoricProcessInstancesCmd(processInstanceQuery));
-    }
-    
-    @Override
-    public void deleteHistoricProcessInstancesAndRelatedData(HistoricProcessInstanceQueryImpl processInstanceQuery) {
-        CommandConfig config = new CommandConfig().transactionRequiresNew();
-        commandExecutor.execute(config, new DeleteHistoricProcessInstancesCmd(processInstanceQuery));
-        commandExecutor.execute(config, new DeleteTaskAndActivityDataOfRemovedHistoricProcessInstancesCmd());
-        commandExecutor.execute(config, new DeleteRelatedDataOfRemovedHistoricProcessInstancesCmd());
-    }
-
-    @Override
-    public void deleteHistoricActivityInstances(HistoricActivityInstanceQueryImpl activityInstanceQuery) {
-        commandExecutor.execute(new DeleteHistoricActivityInstancesCmd(activityInstanceQuery));
-    }
-
-    @Override
-    public void deleteHistoricTaskInstances(HistoricTaskInstanceQueryImpl taskInstanceQuery) {
-        commandExecutor.execute(new DeleteHistoricTaskInstancesCmd(taskInstanceQuery));
-    }
-    
     @Override
     public void deleteTaskAndActivityDataOfRemovedHistoricProcessInstances() {
         commandExecutor.execute(new DeleteTaskAndActivityDataOfRemovedHistoricProcessInstancesCmd());
@@ -154,7 +129,7 @@ public class HistoryServiceImpl extends CommonEngineServiceImpl<ProcessEngineCon
 
     @Override
     public NativeHistoricTaskInstanceQuery createNativeHistoricTaskInstanceQuery() {
-        return new NativeHistoricTaskInstanceQueryImpl(commandExecutor);
+        return new NativeHistoricTaskInstanceQueryImpl(commandExecutor, configuration.getTaskServiceConfiguration());
     }
 
     @Override
@@ -178,6 +153,11 @@ public class HistoryServiceImpl extends CommonEngineServiceImpl<ProcessEngineCon
     }
 
     @Override
+    public List<HistoricEntityLink> getHistoricEntityLinkChildrenWithSameRootAsProcessInstance(String processInstanceId) {
+        return commandExecutor.execute(new GetHistoricEntityLinkChildrenWithSameRootAsProcessInstanceCmd(processInstanceId));
+    }
+
+    @Override
     public List<HistoricEntityLink> getHistoricEntityLinkChildrenForTask(String taskId) {
         return commandExecutor.execute(new GetHistoricEntityLinkChildrenForTaskCmd(taskId));
     }
@@ -194,7 +174,7 @@ public class HistoryServiceImpl extends CommonEngineServiceImpl<ProcessEngineCon
 
     @Override
     public ProcessInstanceHistoryLogQuery createProcessInstanceHistoryLogQuery(String processInstanceId) {
-        return new ProcessInstanceHistoryLogQueryImpl(commandExecutor, processInstanceId);
+        return new ProcessInstanceHistoryLogQueryImpl(commandExecutor, processInstanceId, configuration);
     }
 
     @Override
@@ -204,22 +184,22 @@ public class HistoryServiceImpl extends CommonEngineServiceImpl<ProcessEngineCon
 
     @Override
     public HistoricTaskLogEntryBuilder createHistoricTaskLogEntryBuilder(TaskInfo task) {
-        return new HistoricTaskLogEntryBuilderImpl(commandExecutor, task);
+        return new HistoricTaskLogEntryBuilderImpl(commandExecutor, task, configuration.getTaskServiceConfiguration());
     }
 
     @Override
     public HistoricTaskLogEntryBuilder createHistoricTaskLogEntryBuilder() {
-        return new HistoricTaskLogEntryBuilderImpl(commandExecutor);
+        return new HistoricTaskLogEntryBuilderImpl(commandExecutor, configuration.getTaskServiceConfiguration());
     }
 
     @Override
     public HistoricTaskLogEntryQuery createHistoricTaskLogEntryQuery() {
-        return new HistoricTaskLogEntryQueryImpl(commandExecutor);
+        return new HistoricTaskLogEntryQueryImpl(commandExecutor, configuration.getTaskServiceConfiguration());
     }
 
     @Override
     public NativeHistoricTaskLogEntryQuery createNativeHistoricTaskLogEntryQuery() {
-        return new NativeHistoricTaskLogEntryQueryImpl(commandExecutor);
+        return new NativeHistoricTaskLogEntryQueryImpl(commandExecutor, configuration.getTaskServiceConfiguration());
     }
 
 }

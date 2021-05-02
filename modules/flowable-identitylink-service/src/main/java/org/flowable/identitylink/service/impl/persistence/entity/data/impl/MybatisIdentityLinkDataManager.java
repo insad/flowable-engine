@@ -17,14 +17,20 @@ import java.util.List;
 import java.util.Map;
 
 import org.flowable.common.engine.api.scope.ScopeTypes;
+import org.flowable.common.engine.impl.cfg.IdGenerator;
 import org.flowable.common.engine.impl.db.AbstractDataManager;
 import org.flowable.common.engine.impl.db.DbSqlSession;
 import org.flowable.common.engine.impl.persistence.cache.CachedEntityMatcher;
+import org.flowable.identitylink.api.history.HistoricIdentityLink;
+import org.flowable.identitylink.service.IdentityLinkServiceConfiguration;
 import org.flowable.identitylink.service.impl.persistence.entity.IdentityLinkEntity;
 import org.flowable.identitylink.service.impl.persistence.entity.IdentityLinkEntityImpl;
 import org.flowable.identitylink.service.impl.persistence.entity.data.IdentityLinkDataManager;
 import org.flowable.identitylink.service.impl.persistence.entity.data.impl.cachematcher.IdentityLinksByProcessInstanceMatcher;
+import org.flowable.identitylink.service.impl.persistence.entity.data.impl.cachematcher.IdentityLinksByProcessInstanceUserGroupAndTypeMatcher;
 import org.flowable.identitylink.service.impl.persistence.entity.data.impl.cachematcher.IdentityLinksByScopeIdAndTypeMatcher;
+import org.flowable.identitylink.service.impl.persistence.entity.data.impl.cachematcher.IdentityLinksByScopeIdScopeTypeUserGroupAndTypeMatcher;
+import org.flowable.identitylink.service.impl.persistence.entity.data.impl.cachematcher.IdentityLinksBySubScopeIdAndTypeMatcher;
 import org.flowable.identitylink.service.impl.persistence.entity.data.impl.cachematcher.IdentityLinksByTaskIdMatcher;
 
 /**
@@ -35,7 +41,16 @@ public class MybatisIdentityLinkDataManager extends AbstractDataManager<Identity
     protected CachedEntityMatcher<IdentityLinkEntity> identityLinksByTaskIdMatcher = new IdentityLinksByTaskIdMatcher();
     protected CachedEntityMatcher<IdentityLinkEntity> identityLinkByProcessInstanceMatcher = new IdentityLinksByProcessInstanceMatcher();
     protected CachedEntityMatcher<IdentityLinkEntity> identityLinksByScopeIdAndTypeMatcher = new IdentityLinksByScopeIdAndTypeMatcher();
+    protected CachedEntityMatcher<IdentityLinkEntity> identityLinksBySubScopeIdAndTypeMatcher = new IdentityLinksBySubScopeIdAndTypeMatcher();
+    protected CachedEntityMatcher<IdentityLinkEntity> identityLinksByProcessInstanceUserGroupAndTypeMatcher = new IdentityLinksByProcessInstanceUserGroupAndTypeMatcher();
+    protected CachedEntityMatcher<IdentityLinkEntity> identityLinksByScopeIdScopeTypeUserGroupAndTypeMatcher = new IdentityLinksByScopeIdScopeTypeUserGroupAndTypeMatcher();
 
+    protected IdentityLinkServiceConfiguration identityLinkServiceConfiguration;
+    
+    public MybatisIdentityLinkDataManager(IdentityLinkServiceConfiguration identityLinkServiceConfiguration) {
+        this.identityLinkServiceConfiguration = identityLinkServiceConfiguration;
+    }
+    
     @Override
     public Class<? extends IdentityLinkEntity> getManagedEntityClass() {
         return IdentityLinkEntityImpl.class;
@@ -44,6 +59,11 @@ public class MybatisIdentityLinkDataManager extends AbstractDataManager<Identity
     @Override
     public IdentityLinkEntity create() {
         return new IdentityLinkEntityImpl();
+    }
+
+    @Override
+    public IdentityLinkEntity createIdentityLinkFromHistoricIdentityLink(HistoricIdentityLink historicIdentityLink) {
+        return new IdentityLinkEntityImpl(historicIdentityLink);
     }
 
     @Override
@@ -75,6 +95,14 @@ public class MybatisIdentityLinkDataManager extends AbstractDataManager<Identity
         parameters.put("scopeId", scopeId);
         parameters.put("scopeType", scopeType);
         return getList("selectIdentityLinksByScopeIdAndType", parameters, identityLinksByScopeIdAndTypeMatcher, true);
+    }
+    
+    @Override
+    public List<IdentityLinkEntity> findIdentityLinksBySubScopeIdAndType(String subScopeId, String scopeType) {
+        Map<String, String> parameters = new HashMap<>();
+        parameters.put("subScopeId", subScopeId);
+        parameters.put("scopeType", scopeType);
+        return getList("selectIdentityLinksBySubScopeIdAndType", parameters, identityLinksBySubScopeIdAndTypeMatcher, true);
     }
 
     @Override
@@ -111,7 +139,7 @@ public class MybatisIdentityLinkDataManager extends AbstractDataManager<Identity
         parameters.put("userId", userId);
         parameters.put("groupId", groupId);
         parameters.put("type", type);
-        return getDbSqlSession().selectList("selectIdentityLinkByProcessInstanceUserGroupAndType", parameters);
+        return getList("selectIdentityLinkByProcessInstanceUserGroupAndType", parameters, identityLinksByProcessInstanceUserGroupAndTypeMatcher);
     }
 
     @Override
@@ -134,7 +162,7 @@ public class MybatisIdentityLinkDataManager extends AbstractDataManager<Identity
         parameters.put("userId", userId);
         parameters.put("groupId", groupId);
         parameters.put("type", type);
-        return getDbSqlSession().selectList("selectIdentityLinkByScopeIdScopeTypeUserGroupAndType", parameters);
+        return getList("selectIdentityLinkByScopeIdScopeTypeUserGroupAndType", parameters, identityLinksByScopeIdScopeTypeUserGroupAndTypeMatcher);
     }
 
     @Override
@@ -179,12 +207,11 @@ public class MybatisIdentityLinkDataManager extends AbstractDataManager<Identity
 
         Map<String, String> parameters = new HashMap<>();
         parameters.put("scopeId", scopeId);
+        parameters.put("scopeType", scopeType);
 
         if (ScopeTypes.CMMN.equals(scopeType) && isEntityInserted(dbSqlSession, "caseInstance", scopeId)) {
             deleteCachedEntities(dbSqlSession, identityLinksByScopeIdAndTypeMatcher, parameters);
         } else {
-
-            parameters.put("scopeType", scopeType);
             bulkDelete("deleteIdentityLinksByScopeIdAndScopeType", identityLinksByScopeIdAndTypeMatcher, parameters);
         }
     }
@@ -197,4 +224,8 @@ public class MybatisIdentityLinkDataManager extends AbstractDataManager<Identity
         getDbSqlSession().delete("deleteIdentityLinksByScopeDefinitionIdAndScopeType", parameters, IdentityLinkEntityImpl.class);
     }
 
+    @Override
+    protected IdGenerator getIdGenerator() {
+        return identityLinkServiceConfiguration.getIdGenerator();
+    }
 }

@@ -21,6 +21,8 @@ public class PlanItemControl extends CaseElement {
     protected RepetitionRule repetitionRule;
     protected ManualActivationRule manualActivationRule;
     protected CompletionNeutralRule completionNeutralRule;
+    protected ParentCompletionRule parentCompletionRule;
+    protected ReactivationRule reactivationRule;
     
     public RequiredRule getRequiredRule() {
         return requiredRule;
@@ -52,5 +54,21 @@ public class PlanItemControl extends CaseElement {
 
     public void setCompletionNeutralRule(CompletionNeutralRule completionNeutralRule) {
         this.completionNeutralRule = completionNeutralRule;
+    }
+
+    public ParentCompletionRule getParentCompletionRule() {
+        return parentCompletionRule;
+    }
+
+    public void setParentCompletionRule(ParentCompletionRule parentCompletionRule) {
+        this.parentCompletionRule = parentCompletionRule;
+    }
+
+    public ReactivationRule getReactivationRule() {
+        return reactivationRule;
+    }
+
+    public void setReactivationRule(ReactivationRule reactivationRule) {
+        this.reactivationRule = reactivationRule;
     }
 }

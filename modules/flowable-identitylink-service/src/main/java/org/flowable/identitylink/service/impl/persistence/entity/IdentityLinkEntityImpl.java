@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.flowable.common.engine.api.FlowableException;
+import org.flowable.identitylink.api.history.HistoricIdentityLink;
 
 /**
  * @author Joram Barrez
@@ -32,11 +33,24 @@ public class IdentityLinkEntityImpl extends AbstractIdentityLinkServiceNoRevisio
     protected String processInstanceId;
     protected String processDefId;
     protected String scopeId;
+    protected String subScopeId;
     protected String scopeType;
     protected String scopeDefinitionId;
 
     public IdentityLinkEntityImpl() {
 
+    }
+
+    public IdentityLinkEntityImpl(HistoricIdentityLink historicIdentityLink) {
+        this.type = historicIdentityLink.getType();
+        this.userId = historicIdentityLink.getUserId();
+        this.groupId = historicIdentityLink.getGroupId();
+        this.taskId = historicIdentityLink.getTaskId();
+        this.processInstanceId = historicIdentityLink.getProcessInstanceId();
+        this.scopeId = historicIdentityLink.getScopeId();
+        this.subScopeId = historicIdentityLink.getSubScopeId();
+        this.scopeType = historicIdentityLink.getScopeType();
+        this.scopeDefinitionId = historicIdentityLink.getScopeDefinitionId();
     }
 
     @Override
@@ -66,6 +80,10 @@ public class IdentityLinkEntityImpl extends AbstractIdentityLinkServiceNoRevisio
         
         if (this.scopeId != null) {
             persistentState.put("scopeId", this.scopeId);
+        }
+        
+        if (this.subScopeId != null) {
+            persistentState.put("subScopeId", this.subScopeId);
         }
         
         if (this.scopeType!= null) {
@@ -168,6 +186,16 @@ public class IdentityLinkEntityImpl extends AbstractIdentityLinkServiceNoRevisio
     @Override
     public void setScopeId(String scopeId) {
         this.scopeId = scopeId;
+    }
+    
+    @Override
+    public String getSubScopeId() {
+        return subScopeId;
+    }
+
+    @Override
+    public void setSubScopeId(String subScopeId) {
+        this.subScopeId = subScopeId;
     }
 
     @Override

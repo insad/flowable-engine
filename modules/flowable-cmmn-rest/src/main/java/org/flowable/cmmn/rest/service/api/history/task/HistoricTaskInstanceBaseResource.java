@@ -87,6 +87,21 @@ public class HistoricTaskInstanceBaseResource {
         if (queryRequest.getCaseDefinitionId() != null) {
             query.caseDefinitionId(queryRequest.getCaseDefinitionId());
         }
+        if (queryRequest.getCaseDefinitionKey() != null) {
+            query.caseDefinitionKey(queryRequest.getCaseDefinitionKey());
+        }
+        if (queryRequest.getCaseDefinitionKeys() != null) {
+            query.caseDefinitionKeyIn(queryRequest.getCaseDefinitionKeys());
+        }
+        if (queryRequest.getCaseDefinitionKeyLike() != null) {
+            query.caseDefinitionKeyLike(queryRequest.getCaseDefinitionKeyLike());
+        }
+        if (queryRequest.getCaseDefinitionKeyLikeIgnoreCase() != null) {
+            query.caseDefinitionKeyLikeIgnoreCase(queryRequest.getCaseDefinitionKeyLikeIgnoreCase());
+        }
+        if (queryRequest.getPropagatedStageInstanceId() != null) {
+            query.propagatedStageInstanceId(queryRequest.getPropagatedStageInstanceId());
+        }
         if (queryRequest.getTaskName() != null) {
             query.taskName(queryRequest.getTaskName());
         }
@@ -222,6 +237,10 @@ public class HistoricTaskInstanceBaseResource {
         if (queryRequest.getTaskCandidateGroup() != null) {
             query.taskCandidateGroup(queryRequest.getTaskCandidateGroup());
         }
+
+        if (queryRequest.isIgnoreTaskAssignee()) {
+            query.ignoreAssigneeValue();
+        }
         
         if (restApiInterceptor != null) {
             restApiInterceptor.accessHistoryTaskInfoWithQuery(query, queryRequest);
@@ -311,6 +330,14 @@ public class HistoricTaskInstanceBaseResource {
                     throw new FlowableIllegalArgumentException("Only string variable values are supported using like, but was: " + actualValue.getClass().getName());
                 }
                 break;
+
+            case LIKE_IGNORE_CASE:
+                if (actualValue instanceof String) {
+                    taskInstanceQuery.taskVariableValueLikeIgnoreCase(variable.getName(), (String) actualValue);
+                } else {
+                    throw new FlowableIllegalArgumentException("Only string variable values are supported using like, but was: " + actualValue.getClass().getName());
+                }
+                break;
             default:
                 throw new FlowableIllegalArgumentException("Unsupported variable query operation: " + variable.getVariableOperation());
             }
@@ -384,6 +411,15 @@ public class HistoricTaskInstanceBaseResource {
                     throw new FlowableIllegalArgumentException("Only string variable values are supported using like, but was: " + actualValue.getClass().getName());
                 }
                 break;
+
+            case LIKE_IGNORE_CASE:
+                if (actualValue instanceof String) {
+                    taskInstanceQuery.processVariableValueLikeIgnoreCase(variable.getName(), (String) actualValue);
+                } else {
+                    throw new FlowableIllegalArgumentException("Only string variable values are supported using like, but was: " + actualValue.getClass().getName());
+                }
+                break;
+
             default:
                 throw new FlowableIllegalArgumentException("Unsupported variable query operation: " + variable.getVariableOperation());
             }

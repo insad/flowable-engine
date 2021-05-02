@@ -37,17 +37,42 @@ public interface CaseInstanceQuery extends Query<CaseInstanceQuery, CaseInstance
     CaseInstanceQuery caseInstanceStartedBefore(Date beforeTime);
     CaseInstanceQuery caseInstanceStartedAfter(Date afterTime);
     CaseInstanceQuery caseInstanceStartedBy(String userId);
+    CaseInstanceQuery caseInstanceLastReactivatedBefore(Date beforeTime);
+    CaseInstanceQuery caseInstanceLastReactivatedAfter(Date afterTime);
+    CaseInstanceQuery caseInstanceLastReactivatedBy(String userId);
     CaseInstanceQuery caseInstanceCallbackId(String callbackId);
     CaseInstanceQuery caseInstanceCallbackType(String callbackType);
+    CaseInstanceQuery caseInstanceReferenceId(String referenceId);
+    CaseInstanceQuery caseInstanceReferenceType(String referenceType);
     CaseInstanceQuery caseInstanceIsCompleteable();
     CaseInstanceQuery caseInstanceTenantId(String tenantId);
     CaseInstanceQuery caseInstanceTenantIdLike(String tenantIdLike);
     CaseInstanceQuery caseInstanceWithoutTenantId();
+    
+    /**
+     * Select the case instances with an active plan item definition id equal to the provided definition id.
+     */
+    CaseInstanceQuery activePlanItemDefinitionId(String planItemDefinitionId);
+    
+    /**
+     * Select the case instances with an active plan item definition id equal to one of the provided definition ids.
+     */
+    CaseInstanceQuery activePlanItemDefinitionIds(Set<String> planItemDefinitionIds);
 
     /**
      * Select the case instances with which the user with the given id is involved.
      */
     CaseInstanceQuery involvedUser(String userId);
+    
+    /**
+     * Select the case instances with which the user with the given id and identity link type are involved.
+     */
+    CaseInstanceQuery involvedUser(String userId, String identityLinkType);
+    
+    /**
+     * Select the case instances with which the group with the given id and identity link type are involved.
+     */
+    CaseInstanceQuery involvedGroup(String groupId, String identityLinkType);
 
     /**
      * Select the case instances with which the groups with the given ids are involved.
@@ -205,7 +230,9 @@ public interface CaseInstanceQuery extends Query<CaseInstanceQuery, CaseInstance
 
     /**
      * Limit case instance variables
+     * @deprecated no longer needed, this is a noop
      */
+    @Deprecated
     CaseInstanceQuery limitCaseInstanceVariables(Integer caseInstanceVariablesLimit);
 
 

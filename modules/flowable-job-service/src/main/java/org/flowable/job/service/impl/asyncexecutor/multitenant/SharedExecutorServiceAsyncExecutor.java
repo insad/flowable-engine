@@ -51,6 +51,7 @@ public class SharedExecutorServiceAsyncExecutor extends DefaultAsyncJobExecutor 
 
     public SharedExecutorServiceAsyncExecutor(TenantInfoHolder tenantInfoHolder) {
         this.tenantInfoHolder = tenantInfoHolder;
+        this.unlockOwnedJobs = false;
 
         setExecuteAsyncRunnableFactory(new ExecuteAsyncRunnableFactory() {
 
@@ -76,11 +77,13 @@ public class SharedExecutorServiceAsyncExecutor extends DefaultAsyncJobExecutor 
     @Override
     public void addTenantAsyncExecutor(String tenantId, boolean startExecutor) {
 
-        TenantAwareAcquireTimerJobsRunnable timerRunnable = new TenantAwareAcquireTimerJobsRunnable(this, tenantInfoHolder, tenantId);
+        TenantAwareAcquireTimerJobsRunnable timerRunnable = new TenantAwareAcquireTimerJobsRunnable(this, tenantInfoHolder, tenantId,
+            timerLifecycleListener, globalAcquireLockEnabled, globalAcquireLockPrefix, moveTimerExecutorPoolSize);
         timerJobAcquisitionRunnables.put(tenantId, timerRunnable);
         timerJobAcquisitionThreads.put(tenantId, new Thread(timerRunnable));
 
-        TenantAwareAcquireAsyncJobsDueRunnable asyncJobsRunnable = new TenantAwareAcquireAsyncJobsDueRunnable(this, tenantInfoHolder, tenantId);
+        TenantAwareAcquireAsyncJobsDueRunnable asyncJobsRunnable = new TenantAwareAcquireAsyncJobsDueRunnable(this, tenantInfoHolder, tenantId,
+            asyncJobsDueLifecycleListener, globalAcquireLockEnabled, globalAcquireLockPrefix);
         asyncJobAcquisitionRunnables.put(tenantId, asyncJobsRunnable);
         asyncJobAcquisitionThreads.put(tenantId, new Thread(asyncJobsRunnable));
 
@@ -109,13 +112,22 @@ public class SharedExecutorServiceAsyncExecutor extends DefaultAsyncJobExecutor 
     protected void unlockOwnedJobs() {
         for (String tenantId : timerJobAcquisitionThreads.keySet()) {
             tenantInfoHolder.setCurrentTenantId(tenantId);
-            jobServiceConfiguration.getCommandExecutor().execute(new UnacquireOwnedJobsCmd(lockOwner, tenantId));
+            jobServiceConfiguration.getCommandExecutor().execute(new UnacquireOwnedJobsCmd(lockOwner, tenantId, jobServiceConfiguration));
             tenantInfoHolder.clearCurrentTenantId();
         }
     }
 
     @Override
     public void start() {
+        if (isActive) {
+            return;
+        }
+
+        isActive = true;
+        
+        initializeJobEntityManager();
+        initAsyncJobExecutionThreadPool();
+
         for (String tenantId : timerJobAcquisitionRunnables.keySet()) {
             startTimerJobAcquisitionForTenant(tenantId);
             startAsyncJobAcquisitionForTenant(tenantId);

@@ -17,9 +17,9 @@ import java.io.Serializable;
 import java.util.List;
 
 import org.flowable.common.engine.api.FlowableIllegalArgumentException;
-import org.flowable.common.engine.impl.query.AbstractQuery;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.common.engine.impl.interceptor.CommandExecutor;
+import org.flowable.common.engine.impl.query.AbstractQuery;
 import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.DeploymentQuery;
@@ -237,7 +237,7 @@ public class DeploymentQueryImpl extends AbstractQuery<DeploymentQuery, Deployme
     }
 
     @Override
-    public DeploymentQuery orderByDeploymenTime() {
+    public DeploymentQuery orderByDeploymentTime() {
         return orderBy(DeploymentQueryProperty.DEPLOY_TIME);
     }
 
@@ -319,5 +319,29 @@ public class DeploymentQueryImpl extends AbstractQuery<DeploymentQuery, Deployme
 
     public String getProcessDefinitionKeyLike() {
         return processDefinitionKeyLike;
+    }
+
+    public String getCategoryLike() {
+        return categoryLike;
+    }
+
+    public String getKey() {
+        return key;
+    }
+
+    public String getKeyLike() {
+        return keyLike;
+    }
+
+    public String getParentDeploymentIdLike() {
+        return parentDeploymentIdLike;
+    }
+
+    public List<String> getParentDeploymentIds() {
+        return parentDeploymentIds;
+    }
+
+    public boolean isLatest() {
+        return latest;
     }
 }

@@ -32,6 +32,8 @@ public interface EventSubscriptionEntityManager extends EntityManager<EventSubsc
 
     CompensateEventSubscriptionEntity createCompensateEventSubscription();
 
+    GenericEventSubscriptionEntity createGenericEventSubscription();
+
     /* Create and insert */
 
     EventSubscription createEventSubscription(EventSubscriptionBuilder eventSubscriptionBuilder);
@@ -48,6 +50,10 @@ public interface EventSubscriptionEntityManager extends EntityManager<EventSubsc
     
     void deleteEventSubscriptionsForScopeIdAndType(String scopeId, String scopeType);
 
+    void deleteEventSubscriptionsForScopeDefinitionIdAndType(String scopeDefinitionId, String scopeType);
+
+    void deleteEventSubscriptionsForScopeDefinitionIdAndTypeAndNullScopeId(String scopeDefinitionId, String scopeType);
+
     /* Find (generic) */
 
     List<EventSubscriptionEntity> findEventSubscriptionsByName(String type, String eventName, String tenantId);
@@ -58,12 +64,16 @@ public interface EventSubscriptionEntityManager extends EntityManager<EventSubsc
 
     List<EventSubscriptionEntity> findEventSubscriptionsByExecutionAndType(String executionId, String type);
     
-    List<EventSubscriptionEntity> findEventSubscriptionsBySubScopeId(final String subScopeId);
+    List<EventSubscriptionEntity> findEventSubscriptionsByProcessInstanceAndType(String processInstanceId, String type);
+    
+    List<EventSubscriptionEntity> findEventSubscriptionsBySubScopeId(String subScopeId);
 
     List<EventSubscriptionEntity> findEventSubscriptionsByProcessInstanceAndActivityId(String processInstanceId, String activityId, String type);
 
     List<EventSubscriptionEntity> findEventSubscriptionsByTypeAndProcessDefinitionId(String type, String processDefinitionId, String tenantId);
 
+    List<EventSubscriptionEntity> findEventSubscriptionsByScopeIdAndType(String scopeId, String type);
+    
     List<EventSubscription> findEventSubscriptionsByQueryCriteria(EventSubscriptionQueryImpl eventSubscriptionQueryImpl);
 
     long findEventSubscriptionCountByQueryCriteria(EventSubscriptionQueryImpl eventSubscriptionQueryImpl);

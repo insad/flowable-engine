@@ -19,6 +19,7 @@ import org.flowable.eventsubscription.api.EventSubscription;
 import org.flowable.eventsubscription.service.impl.EventSubscriptionQueryImpl;
 import org.flowable.eventsubscription.service.impl.persistence.entity.CompensateEventSubscriptionEntity;
 import org.flowable.eventsubscription.service.impl.persistence.entity.EventSubscriptionEntity;
+import org.flowable.eventsubscription.service.impl.persistence.entity.GenericEventSubscriptionEntity;
 import org.flowable.eventsubscription.service.impl.persistence.entity.MessageEventSubscriptionEntity;
 import org.flowable.eventsubscription.service.impl.persistence.entity.SignalEventSubscriptionEntity;
 
@@ -32,6 +33,8 @@ public interface EventSubscriptionDataManager extends DataManager<EventSubscript
     SignalEventSubscriptionEntity createSignalEventSubscription();
 
     CompensateEventSubscriptionEntity createCompensateEventSubscription();
+
+    GenericEventSubscriptionEntity createGenericEventSubscriptionEntity();
 
     long findEventSubscriptionCountByQueryCriteria(EventSubscriptionQueryImpl eventSubscriptionQueryImpl);
 
@@ -48,6 +51,8 @@ public interface EventSubscriptionDataManager extends DataManager<EventSubscript
     List<SignalEventSubscriptionEntity> findSignalEventSubscriptionsByNameAndExecution(final String name, final String executionId);
 
     List<EventSubscriptionEntity> findEventSubscriptionsByExecutionAndType(final String executionId, final String type);
+    
+    List<EventSubscriptionEntity> findEventSubscriptionsByProcessInstanceAndType(final String processInstanceId, final String type);
 
     List<EventSubscriptionEntity> findEventSubscriptionsByProcessInstanceAndActivityId(final String processInstanceId, final String activityId, final String type);
 
@@ -56,6 +61,8 @@ public interface EventSubscriptionDataManager extends DataManager<EventSubscript
     List<EventSubscriptionEntity> findEventSubscriptionsBySubScopeId(final String subScopeId);
 
     List<EventSubscriptionEntity> findEventSubscriptionsByTypeAndProcessDefinitionId(String type, String processDefinitionId, String tenantId);
+    
+    List<EventSubscriptionEntity> findEventSubscriptionsByScopeIdAndType(final String scopeId, final String type);
 
     List<EventSubscriptionEntity> findEventSubscriptionsByName(final String type, final String eventName, final String tenantId);
 
@@ -70,5 +77,9 @@ public interface EventSubscriptionDataManager extends DataManager<EventSubscript
     void deleteEventSubscriptionsByExecutionId(String executionId);
     
     void deleteEventSubscriptionsForScopeIdAndType(String scopeId, String scopeType);
+
+    void deleteEventSubscriptionsForScopeDefinitionIdAndType(String scopeDefinitionId, String scopeType);
+
+    void deleteEventSubscriptionsForScopeDefinitionIdAndTypeAndNullScopeId(String scopeDefinitionId, String scopeType);
 
 }

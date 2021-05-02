@@ -52,7 +52,11 @@
     </insert>
 
     <update id="updateMilestoneInstance" parameterType="org.flowable.cmmn.engine.impl.persistence.entity.MilestoneInstanceEntityImpl">
-        update ${prefix}ACT_CMMN_RU_MIL_INST set NAME_ = #{name, jdbcType=VARCHAR} where ID_ = #{id, jdbcType=VARCHAR}
+        update ${prefix}ACT_CMMN_RU_MIL_INST
+        <set>
+            NAME_ = #{name, jdbcType=VARCHAR},
+        </set>
+        where ID_ = #{id, jdbcType=VARCHAR}
     </update>
 
     <delete id="deleteMilestoneInstance" parameterType="org.flowable.cmmn.engine.impl.persistence.entity.MilestoneInstanceEntityImpl">
@@ -78,11 +82,11 @@
     </select>
 
     <select id="selectMilestoneInstancesByQueryCriteria" parameterType="org.flowable.cmmn.engine.impl.runtime.MilestoneInstanceQueryImpl" resultMap="milestoneInstanceResultMap">
-        <if test="firstResult != null and firstResult &gt;= 0">${limitBefore}</if>
-        select RES.* <if test="firstResult != null and firstResult &gt;= 0">${limitBetween}</if>
+        <if test="needsPaging">${limitBefore}</if>
+        SELECT RES.* <if test="needsPaging">${limitBetween}</if>
         <include refid="selectMilestoneInstancesByQueryCriteriaSql" />
         ${orderBy}
-        <if test="firstResult != null and firstResult &gt;= 0">${limitAfter}</if>
+        <if test="needsPaging">${limitAfter}</if>
     </select>
 
     <select id="selectMilestoneInstanceCountByQueryCriteria" parameterType="org.flowable.cmmn.engine.impl.runtime.MilestoneInstanceQueryImpl" resultType="long">
@@ -93,6 +97,9 @@
     <sql id="selectMilestoneInstancesByQueryCriteriaSql">
         from ${prefix}ACT_CMMN_RU_MIL_INST RES
         <where>
+            <if test="milestoneInstanceId != null">
+                RES.ID_ = #{milestoneInstanceId}
+            </if>
             <if test="name != null">
                 RES.NAME_ = #{name}
             </if>

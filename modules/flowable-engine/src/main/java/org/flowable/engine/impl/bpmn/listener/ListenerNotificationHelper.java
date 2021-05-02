@@ -21,7 +21,6 @@ import org.flowable.bpmn.model.HasExecutionListeners;
 import org.flowable.bpmn.model.ImplementationType;
 import org.flowable.bpmn.model.Task;
 import org.flowable.bpmn.model.UserTask;
-import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.impl.cfg.TransactionContext;
 import org.flowable.common.engine.impl.cfg.TransactionListener;
 import org.flowable.common.engine.impl.cfg.TransactionState;
@@ -30,15 +29,15 @@ import org.flowable.engine.delegate.BaseExecutionListener;
 import org.flowable.engine.delegate.CustomPropertiesResolver;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.ExecutionListener;
-import org.flowable.engine.delegate.TaskListener;
 import org.flowable.engine.delegate.TransactionDependentExecutionListener;
 import org.flowable.engine.delegate.TransactionDependentTaskListener;
 import org.flowable.engine.impl.bpmn.parser.factory.ListenerFactory;
 import org.flowable.engine.impl.delegate.invocation.TaskListenerInvocation;
+import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
 import org.flowable.engine.impl.util.CommandContextUtil;
-import org.flowable.engine.impl.util.ExecutionHelper;
 import org.flowable.engine.impl.util.ProcessDefinitionUtil;
 import org.flowable.task.service.delegate.BaseTaskListener;
+import org.flowable.task.service.delegate.TaskListener;
 import org.flowable.task.service.impl.persistence.entity.TaskEntity;
 
 /**
@@ -118,7 +117,8 @@ public class ListenerNotificationHelper {
                 BaseTaskListener taskListener = createTaskListener(listener);
 
                 if (listener.getOnTransaction() != null) {
-                    planTransactionDependentTaskListener(ExecutionHelper.getExecution(taskEntity.getExecutionId()), (TransactionDependentTaskListener) taskListener, listener);
+                    ExecutionEntity executionEntity = CommandContextUtil.getExecutionEntityManager().findById(taskEntity.getExecutionId());
+                    planTransactionDependentTaskListener(executionEntity, (TransactionDependentTaskListener) taskListener, listener);
                 } else {
                     taskEntity.setEventName(eventType);
                     taskEntity.setEventHandlerId(listener.getId());
@@ -126,8 +126,6 @@ public class ListenerNotificationHelper {
                     try {
                         CommandContextUtil.getProcessEngineConfiguration().getDelegateInterceptor()
                                 .handleInvocation(new TaskListenerInvocation((TaskListener) taskListener, taskEntity));
-                    } catch (Exception e) {
-                        throw new FlowableException("Exception while invoking TaskListener: " + e.getMessage(), e);
                     } finally {
                         taskEntity.setEventName(null);
                     }

@@ -12,9 +12,11 @@
  */
 package org.flowable.cmmn.engine.impl.history;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 
+import org.flowable.cmmn.api.repository.CaseDefinition;
 import org.flowable.cmmn.engine.impl.persistence.entity.CaseInstanceEntity;
 import org.flowable.cmmn.engine.impl.persistence.entity.MilestoneInstanceEntity;
 import org.flowable.cmmn.engine.impl.persistence.entity.PlanItemInstanceEntity;
@@ -32,7 +34,7 @@ public class CompositeCmmnHistoryManager implements CmmnHistoryManager {
     protected final Collection<CmmnHistoryManager> historyManagers;
 
     public CompositeCmmnHistoryManager(Collection<CmmnHistoryManager> historyManagers) {
-        this.historyManagers = historyManagers;
+        this.historyManagers = new ArrayList<>(historyManagers);
     }
 
     @Override
@@ -47,6 +49,13 @@ public class CompositeCmmnHistoryManager implements CmmnHistoryManager {
     public void recordCaseInstanceEnd(CaseInstanceEntity caseInstanceEntity, String state, Date endTime) {
         for (CmmnHistoryManager historyManager : historyManagers) {
             historyManager.recordCaseInstanceEnd(caseInstanceEntity, state, endTime);
+        }
+    }
+
+    @Override
+    public void recordHistoricCaseInstanceReactivated(CaseInstanceEntity caseInstanceEntity) {
+        for (CmmnHistoryManager historyManager : historyManagers) {
+            historyManager.recordHistoricCaseInstanceReactivated(caseInstanceEntity);
         }
     }
 
@@ -71,9 +80,9 @@ public class CompositeCmmnHistoryManager implements CmmnHistoryManager {
     }
 
     @Override
-    public void recordHistoricCaseInstanceDeleted(String caseInstanceId) {
+    public void recordHistoricCaseInstanceDeleted(String caseInstanceId, String tenantId) {
         for (CmmnHistoryManager historyManager : historyManagers) {
-            historyManager.recordHistoricCaseInstanceDeleted(caseInstanceId);
+            historyManager.recordHistoricCaseInstanceDeleted(caseInstanceId, tenantId);
         }
     }
 
@@ -155,9 +164,30 @@ public class CompositeCmmnHistoryManager implements CmmnHistoryManager {
     }
 
     @Override
+    public void recordPlanItemInstanceReactivated(PlanItemInstanceEntity planItemInstanceEntity) {
+        for (CmmnHistoryManager historyManager : historyManagers) {
+            historyManager.recordPlanItemInstanceReactivated(planItemInstanceEntity);
+        }
+    }
+
+    @Override
+    public void recordPlanItemInstanceUpdated(PlanItemInstanceEntity planItemInstanceEntity) {
+        for (CmmnHistoryManager historyManager : historyManagers) {
+            historyManager.recordPlanItemInstanceUpdated(planItemInstanceEntity);
+        }
+    }
+
+    @Override
     public void recordPlanItemInstanceAvailable(PlanItemInstanceEntity planItemInstanceEntity) {
         for (CmmnHistoryManager historyManager : historyManagers) {
             historyManager.recordPlanItemInstanceAvailable(planItemInstanceEntity);
+        }
+    }
+
+    @Override
+    public void recordPlanItemInstanceUnavailable(PlanItemInstanceEntity planItemInstanceEntity) {
+        for (CmmnHistoryManager historyManager : historyManagers) {
+            historyManager.recordPlanItemInstanceUnavailable(planItemInstanceEntity);
         }
     }
 
@@ -216,6 +246,13 @@ public class CompositeCmmnHistoryManager implements CmmnHistoryManager {
             historyManager.recordPlanItemInstanceExit(planItemInstanceEntity);
         }
     }
+    
+    @Override
+    public void updateCaseDefinitionIdInHistory(CaseDefinition caseDefinition, CaseInstanceEntity caseInstance) {
+        for (CmmnHistoryManager historyManager : historyManagers) {
+            historyManager.updateCaseDefinitionIdInHistory(caseDefinition, caseInstance);
+        }
+    }
 
     @Override
     public void recordHistoricUserTaskLogEntry(HistoricTaskLogEntryBuilder taskLogEntryBuilder) {
@@ -229,5 +266,9 @@ public class CompositeCmmnHistoryManager implements CmmnHistoryManager {
         for (CmmnHistoryManager historyManager : historyManagers) {
             historyManager.deleteHistoricUserTaskLogEntry(logNumber);
         }
+    }
+
+    public void addHistoryManager(CmmnHistoryManager historyManager) {
+        historyManagers.add(historyManager);
     }
 }

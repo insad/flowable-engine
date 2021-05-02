@@ -27,9 +27,10 @@ public class Stage extends PlanFragment implements HasExitCriteria {
     protected boolean autoComplete; 
     protected String autoCompleteCondition;
     protected String formKey; // For the start form of the plan model. Null otherwise
+    protected boolean sameDeployment = true;
     protected String validateFormFields;
     protected Integer displayOrder;
-    protected boolean includeInStageOverview;
+    protected String includeInStageOverview;
     protected Map<String, PlanItemDefinition> planItemDefinitionMap = new LinkedHashMap<>();
 
     public void addPlanItemDefinition(PlanItemDefinition planItemDefinition) {
@@ -137,6 +138,14 @@ public class Stage extends PlanFragment implements HasExitCriteria {
         this.formKey = formKey;
     }
 
+    public boolean isSameDeployment() {
+        return sameDeployment;
+    }
+
+    public void setSameDeployment(boolean sameDeployment) {
+        this.sameDeployment = sameDeployment;
+    }
+
     public String getValidateFormFields() {
         return validateFormFields;
     }
@@ -158,11 +167,11 @@ public class Stage extends PlanFragment implements HasExitCriteria {
         this.displayOrder = displayOrder;
     }
 
-    public  boolean isIncludeInStageOverview() {
+    public String getIncludeInStageOverview() {
         return includeInStageOverview;
     }
 
-    public void setIncludeInStageOverview(boolean includeInStageOverview) {
+    public void setIncludeInStageOverview(String includeInStageOverview) {
         this.includeInStageOverview = includeInStageOverview;
     }
 

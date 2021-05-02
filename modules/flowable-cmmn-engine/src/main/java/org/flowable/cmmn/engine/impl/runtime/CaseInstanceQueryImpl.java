@@ -19,9 +19,14 @@ import java.util.Set;
 
 import org.flowable.cmmn.api.runtime.CaseInstance;
 import org.flowable.cmmn.api.runtime.CaseInstanceQuery;
-import org.flowable.cmmn.engine.impl.util.CommandContextUtil;
+import org.flowable.cmmn.engine.CmmnEngineConfiguration;
+import org.flowable.cmmn.engine.impl.IdentityLinkQueryObject;
+import org.flowable.cmmn.engine.impl.persistence.entity.CaseInstanceEntity;
 import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.query.CacheAwareQuery;
+import org.flowable.common.engine.api.scope.ScopeTypes;
+import org.flowable.common.engine.impl.AbstractEngineConfiguration;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.common.engine.impl.interceptor.CommandExecutor;
 import org.flowable.variable.service.impl.AbstractVariableQueryImpl;
@@ -30,9 +35,12 @@ import org.flowable.variable.service.impl.AbstractVariableQueryImpl;
  * @author Joram Barrez
  * @author Tijs Rademakers
  */
-public class CaseInstanceQueryImpl extends AbstractVariableQueryImpl<CaseInstanceQuery, CaseInstance> implements CaseInstanceQuery {
+public class CaseInstanceQueryImpl extends AbstractVariableQueryImpl<CaseInstanceQuery, CaseInstance>
+        implements CaseInstanceQuery, CacheAwareQuery<CaseInstanceEntity> {
 
     private static final long serialVersionUID = 1L;
+    
+    protected CmmnEngineConfiguration cmmnEngineConfiguration;
 
     protected String caseDefinitionId;
     protected String caseDefinitionKey;
@@ -49,31 +57,40 @@ public class CaseInstanceQueryImpl extends AbstractVariableQueryImpl<CaseInstanc
     protected Date startedBefore;
     protected Date startedAfter;
     protected String startedBy;
+    protected Date lastReactivatedBefore;
+    protected Date lastReactivatedAfter;
+    protected String lastReactivatedBy;
     protected String callbackId;
     protected String callbackType;
+    protected String referenceId;
+    protected String referenceType;
     protected boolean completeable;
     protected String tenantId;
     protected String tenantIdLike;
     protected boolean withoutTenantId;
     protected boolean includeCaseVariables;
+    protected String activePlanItemDefinitionId;
+    protected Set<String> activePlanItemDefinitionIds;
     protected String involvedUser;
+    protected IdentityLinkQueryObject involvedUserIdentityLink;
     protected Set<String> involvedGroups;
+    protected IdentityLinkQueryObject involvedGroupIdentityLink;
 
     protected List<CaseInstanceQueryImpl> orQueryObjects = new ArrayList<>();
     protected CaseInstanceQueryImpl currentOrQueryObject;
     protected boolean inOrStatement;
 
-    protected Integer caseInstanceVariablesLimit;
-
     public CaseInstanceQueryImpl() {
     }
 
-    public CaseInstanceQueryImpl(CommandContext commandContext) {
-        super(commandContext);
+    public CaseInstanceQueryImpl(CommandContext commandContext, CmmnEngineConfiguration cmmnEngineConfiguration) {
+        super(commandContext, cmmnEngineConfiguration.getVariableServiceConfiguration());
+        this.cmmnEngineConfiguration = cmmnEngineConfiguration;
     }
 
-    public CaseInstanceQueryImpl(CommandExecutor commandExecutor) {
-        super(commandExecutor);
+    public CaseInstanceQueryImpl(CommandExecutor commandExecutor, CmmnEngineConfiguration cmmnEngineConfiguration) {
+        super(commandExecutor, cmmnEngineConfiguration.getVariableServiceConfiguration());
+        this.cmmnEngineConfiguration = cmmnEngineConfiguration;
     }
 
     @Override
@@ -261,6 +278,46 @@ public class CaseInstanceQueryImpl extends AbstractVariableQueryImpl<CaseInstanc
     }
 
     @Override
+    public CaseInstanceQuery caseInstanceLastReactivatedBefore(Date beforeTime) {
+        if (beforeTime == null) {
+            throw new FlowableIllegalArgumentException("before time is null");
+        }
+
+        if (inOrStatement) {
+            this.currentOrQueryObject.lastReactivatedBefore = beforeTime;
+        } else {
+            this.lastReactivatedBefore = beforeTime;
+        }
+        return this;
+    }
+
+    @Override
+    public CaseInstanceQuery caseInstanceLastReactivatedAfter(Date afterTime) {
+        if (afterTime == null) {
+            throw new FlowableIllegalArgumentException("after time is null");
+        }
+        if (inOrStatement) {
+            this.currentOrQueryObject.lastReactivatedAfter = afterTime;
+        } else {
+            this.lastReactivatedAfter = afterTime;
+        }
+        return this;
+    }
+
+    @Override
+    public CaseInstanceQuery caseInstanceLastReactivatedBy(String userId) {
+        if (userId == null) {
+            throw new FlowableIllegalArgumentException("user id is null");
+        }
+        if (inOrStatement) {
+            this.currentOrQueryObject.lastReactivatedBy = userId;
+        } else {
+            this.lastReactivatedBy = userId;
+        }
+        return this;
+    }
+
+    @Override
     public CaseInstanceQuery caseInstanceCallbackId(String callbackId) {
         if (callbackId == null) {
             throw new FlowableIllegalArgumentException("callbackId is null");
@@ -279,9 +336,35 @@ public class CaseInstanceQueryImpl extends AbstractVariableQueryImpl<CaseInstanc
             throw new FlowableIllegalArgumentException("callbackType is null");
         }
         if (inOrStatement) {
-            this.currentOrQueryObject.callbackType= callbackType;
+            this.currentOrQueryObject.callbackType = callbackType;
         } else {
             this.callbackType = callbackType;
+        }
+        return this;
+    }
+
+    @Override
+    public CaseInstanceQuery caseInstanceReferenceId(String referenceId) {
+        if (referenceId == null) {
+            throw new FlowableIllegalArgumentException("referenceId is null");
+        }
+        if (inOrStatement) {
+            this.currentOrQueryObject.referenceId = referenceId;
+        } else {
+            this.referenceId = referenceId;
+        }
+        return this;
+    }
+
+    @Override
+    public CaseInstanceQuery caseInstanceReferenceType(String referenceType) {
+        if (referenceType == null) {
+            throw new FlowableIllegalArgumentException("referenceType is null");
+        }
+        if (inOrStatement) {
+            this.currentOrQueryObject.referenceType = referenceType;
+        } else {
+            this.referenceType = referenceType;
         }
         return this;
     }
@@ -332,6 +415,33 @@ public class CaseInstanceQueryImpl extends AbstractVariableQueryImpl<CaseInstanc
 
         return this;
     }
+    
+    @Override
+    public CaseInstanceQuery activePlanItemDefinitionId(String planItemDefinitionId) {
+        if (planItemDefinitionId == null) {
+            throw new FlowableIllegalArgumentException("planItemDefinitionId is null");
+        }
+        if (inOrStatement) {
+            this.currentOrQueryObject.activePlanItemDefinitionId = planItemDefinitionId;
+        } else {
+            this.activePlanItemDefinitionId = planItemDefinitionId;
+        }
+        return this;
+    }
+    
+    @Override
+    public CaseInstanceQuery activePlanItemDefinitionIds(Set<String> planItemDefinitionIds) {
+        if (planItemDefinitionIds == null) {
+            throw new FlowableIllegalArgumentException("planItemDefinitionIds is null");
+        }
+        if (inOrStatement) {
+            this.currentOrQueryObject.activePlanItemDefinitionIds = planItemDefinitionIds;
+        } else {
+            this.activePlanItemDefinitionIds = planItemDefinitionIds;
+        }
+        return this;
+    }
+    
     @Override
     public CaseInstanceQuery involvedUser(String userId) {
         if (userId == null) {
@@ -341,6 +451,38 @@ public class CaseInstanceQueryImpl extends AbstractVariableQueryImpl<CaseInstanc
             this.currentOrQueryObject.involvedUser = userId;
         } else {
             this.involvedUser = userId;
+        }
+        return this;
+    }
+    
+    @Override
+    public CaseInstanceQuery involvedUser(String userId, String identityLinkType) {
+        if (userId == null) {
+            throw new FlowableIllegalArgumentException("userId is null");
+        }
+        if (identityLinkType == null) {
+            throw new FlowableIllegalArgumentException("identityLinkType is null");
+        }
+        if (inOrStatement) {
+            this.currentOrQueryObject.involvedUserIdentityLink = new IdentityLinkQueryObject(userId, null, identityLinkType);
+        } else {
+            this.involvedUserIdentityLink = new IdentityLinkQueryObject(userId, null, identityLinkType);
+        }
+        return this;
+    }
+    
+    @Override
+    public CaseInstanceQuery involvedGroup(String groupId, String identityLinkType) {
+        if (groupId == null) {
+            throw new FlowableIllegalArgumentException("groupId is null");
+        }
+        if (identityLinkType == null) {
+            throw new FlowableIllegalArgumentException("identityLinkType is null");
+        }
+        if (inOrStatement) {
+            this.currentOrQueryObject.involvedGroupIdentityLink = new IdentityLinkQueryObject(null, groupId, identityLinkType);
+        } else {
+            this.involvedGroupIdentityLink = new IdentityLinkQueryObject(null, groupId, identityLinkType);
         }
         return this;
     }
@@ -368,7 +510,11 @@ public class CaseInstanceQueryImpl extends AbstractVariableQueryImpl<CaseInstanc
         }
 
         inOrStatement = true;
-        currentOrQueryObject = new CaseInstanceQueryImpl();
+        if (commandContext != null) {
+            currentOrQueryObject = new CaseInstanceQueryImpl(commandContext, cmmnEngineConfiguration);
+        } else {
+            currentOrQueryObject = new CaseInstanceQueryImpl(commandExecutor, cmmnEngineConfiguration);
+        }
         orQueryObjects.add(currentOrQueryObject);
         return this;
     }
@@ -554,12 +700,7 @@ public class CaseInstanceQueryImpl extends AbstractVariableQueryImpl<CaseInstanc
 
     @Override
     public CaseInstanceQuery limitCaseInstanceVariables(Integer caseInstanceVariablesLimit) {
-        this.caseInstanceVariablesLimit = caseInstanceVariablesLimit;
         return this;
-    }
-
-    public Integer getCaseInstanceVariablesLimit() {
-        return this.caseInstanceVariablesLimit;
     }
 
     // results ////////////////////////////////////////////////////
@@ -567,16 +708,24 @@ public class CaseInstanceQueryImpl extends AbstractVariableQueryImpl<CaseInstanc
     @Override
     public long executeCount(CommandContext commandContext) {
         ensureVariablesInitialized();
-        return CommandContextUtil.getCaseInstanceEntityManager(commandContext).countByCriteria(this);
+        return cmmnEngineConfiguration.getCaseInstanceEntityManager().countByCriteria(this);
     }
 
     @Override
     public List<CaseInstance> executeList(CommandContext commandContext) {
         ensureVariablesInitialized();
         if (this.isIncludeCaseVariables()) {
-            return CommandContextUtil.getCaseInstanceEntityManager(commandContext).findWithVariablesByCriteria(this);
+            return cmmnEngineConfiguration.getCaseInstanceEntityManager().findWithVariablesByCriteria(this);
         }
-        return CommandContextUtil.getCaseInstanceEntityManager(commandContext).findByCriteria(this);
+        return cmmnEngineConfiguration.getCaseInstanceEntityManager().findByCriteria(this);
+    }
+
+    @Override
+    public void enhanceCachedValue(CaseInstanceEntity caseInstance) {
+        if (isIncludeCaseVariables()) {
+            caseInstance.getQueryVariables().addAll(cmmnEngineConfiguration.getVariableServiceConfiguration().getVariableService()
+                    .findVariableInstanceByScopeIdAndScopeType(caseInstance.getId(), ScopeTypes.CMMN));
+        }
     }
 
     public String getCaseDefinitionKey() {
@@ -600,6 +749,11 @@ public class CaseInstanceQueryImpl extends AbstractVariableQueryImpl<CaseInstanc
     }
 
     public String getCaseInstanceId() {
+        return caseInstanceId;
+    }
+    
+    @Override
+    public String getId() {
         return caseInstanceId;
     }
 
@@ -626,6 +780,10 @@ public class CaseInstanceQueryImpl extends AbstractVariableQueryImpl<CaseInstanc
     public String getParentId() {
         return caseInstanceParentId;
     }
+    
+    public String getCaseInstanceParentPlanItemInstanceId() {
+        return caseInstanceParentPlanItemInstanceId;
+    }
 
     public String getCaseInstanceParentId() {
         return caseInstanceParentId;
@@ -651,6 +809,14 @@ public class CaseInstanceQueryImpl extends AbstractVariableQueryImpl<CaseInstanc
         return callbackType;
     }
 
+    public String getReferenceId() {
+        return referenceId;
+    }
+
+    public String getReferenceType() {
+        return referenceType;
+    }
+
     public boolean isCompleteable() {
         return completeable;
     }
@@ -667,8 +833,24 @@ public class CaseInstanceQueryImpl extends AbstractVariableQueryImpl<CaseInstanc
         return withoutTenantId;
     }
 
+    public String getActivePlanItemDefinitionId() {
+        return activePlanItemDefinitionId;
+    }
+
+    public Set<String> getActivePlanItemDefinitionIds() {
+        return activePlanItemDefinitionIds;
+    }
+
     public String getInvolvedUser() {
         return involvedUser;
+    }
+
+    public IdentityLinkQueryObject getInvolvedUserIdentityLink() {
+        return involvedUserIdentityLink;
+    }
+
+    public IdentityLinkQueryObject getInvolvedGroupIdentityLink() {
+        return involvedGroupIdentityLink;
     }
 
     public Set<String> getInvolvedGroups() {
@@ -679,11 +861,17 @@ public class CaseInstanceQueryImpl extends AbstractVariableQueryImpl<CaseInstanc
         return includeCaseVariables;
     }
 
-    public String getMssqlOrDB2OrderBy() {
-        String specialOrderBy = super.getOrderByColumns();
-        if (specialOrderBy != null && specialOrderBy.length() > 0) {
-            specialOrderBy = specialOrderBy.replace("RES.", "TEMPRES_");
+    public boolean isNeedsCaseDefinitionOuterJoin() {
+        if (isNeedsPaging()) {
+            if (AbstractEngineConfiguration.DATABASE_TYPE_ORACLE.equals(databaseType)
+                    || AbstractEngineConfiguration.DATABASE_TYPE_DB2.equals(databaseType)
+                    || AbstractEngineConfiguration.DATABASE_TYPE_MSSQL.equals(databaseType)) {
+                // When using oracle, db2 or mssql we don't need outer join for the process definition join.
+                // It is not needed because the outer join order by is done by the row number instead
+                return false;
+            }
         }
-        return specialOrderBy;
+
+        return hasOrderByForColumn(CaseInstanceQueryProperty.CASE_DEFINITION_KEY.getName());
     }
 }

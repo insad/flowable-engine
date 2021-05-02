@@ -40,6 +40,12 @@ public interface JobQuery extends Query<JobQuery, Job> {
     /** Only select jobs which exist for the given process definition id */
     JobQuery processDefinitionId(String processDefinitionId);
     
+    /** Only select jobs which exist for the given category */
+    JobQuery category(String category);
+    
+    /** Only select jobs like for the given category value */
+    JobQuery categoryLike(String categoryLike);
+    
     /** Only select jobs which exist for the given element id */
     JobQuery elementId(String elementId);
     
@@ -54,6 +60,11 @@ public interface JobQuery extends Query<JobQuery, Job> {
     
     /** Only select tasks for the given scope type. */
     JobQuery scopeType(String scopeType);
+
+    /**
+     * Only return jobs that do not have a scope type.
+     */
+    JobQuery withoutScopeType();
     
     /** Only select tasks for the given scope definition identifier. */
     JobQuery scopeDefinitionId(String scopeDefinitionId);
@@ -67,6 +78,9 @@ public interface JobQuery extends Query<JobQuery, Job> {
     /** Only select jobs for the given plan item instance.  */
     JobQuery planItemInstanceId(String planItemInstanceId);
     
+    /** Only select jobs with the given correlationId. */
+    JobQuery correlationId(String correlationId);
+
     /**
      * Only select jobs that are timers. Cannot be used together with {@link #messages()}
      */
@@ -132,6 +146,11 @@ public interface JobQuery extends Query<JobQuery, Job> {
     JobQuery orderByJobDuedate();
 
     /**
+     * Order by create time (needs to be followed by {@link #asc()} or {@link #desc()}).
+     */
+    JobQuery orderByJobCreateTime();
+
+    /**
      * Order by retries (needs to be followed by {@link #asc()} or {@link #desc()}).
      */
     JobQuery orderByJobRetries();
@@ -150,5 +169,4 @@ public interface JobQuery extends Query<JobQuery, Job> {
      * Order by tenant id (needs to be followed by {@link #asc()} or {@link #desc()}).
      */
     JobQuery orderByTenantId();
-
 }

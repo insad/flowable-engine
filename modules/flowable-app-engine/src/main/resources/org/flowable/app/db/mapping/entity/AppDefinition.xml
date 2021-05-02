@@ -7,8 +7,7 @@
   <insert id="insertAppDefinition" parameterType="org.flowable.app.engine.impl.persistence.entity.AppDefinitionEntityImpl">
     insert into ${prefix}ACT_APP_APPDEF(ID_, REV_, CATEGORY_, NAME_, KEY_, VERSION_, DEPLOYMENT_ID_, RESOURCE_NAME_, DESCRIPTION_, TENANT_ID_)
     values (#{id, jdbcType=VARCHAR},
-    		1,
-            #{category, jdbcType=VARCHAR},
+    		1, #{category, jdbcType=VARCHAR},
             #{name, jdbcType=VARCHAR},
             #{key, jdbcType=VARCHAR}, 
             #{version, jdbcType=INTEGER},
@@ -23,8 +22,7 @@
     VALUES 
       <foreach collection="list" item="appDefinition" index="index" separator=","> 
         (#{appDefinition.id, jdbcType=VARCHAR},
-         1,
-         #{appDefinition.category, jdbcType=VARCHAR},
+         1, #{appDefinition.category, jdbcType=VARCHAR},
          #{appDefinition.name, jdbcType=VARCHAR},
          #{appDefinition.key, jdbcType=VARCHAR}, 
          #{appDefinition.version, jdbcType=INTEGER},
@@ -41,8 +39,7 @@
       INTO ${prefix}ACT_APP_APPDEF(ID_, REV_, CATEGORY_, NAME_, KEY_, VERSION_, DEPLOYMENT_ID_, RESOURCE_NAME_,
       DESCRIPTION_, TENANT_ID_) VALUES 
         (#{appDefinition.id, jdbcType=VARCHAR},
-         1,
-         #{appDefinition.category, jdbcType=VARCHAR},
+         1, #{appDefinition.category, jdbcType=VARCHAR},
          #{appDefinition.name, jdbcType=VARCHAR},
          #{appDefinition.key, jdbcType=VARCHAR}, 
          #{appDefinition.version, jdbcType=INTEGER},
@@ -55,9 +52,11 @@
   </insert>
   
   <update id="updateAppDefinition" parameterType="org.flowable.app.engine.impl.persistence.entity.AppDefinitionEntityImpl">
-    update ${prefix}ACT_APP_APPDEF set
+    update ${prefix}ACT_APP_APPDEF
+    <set>
       REV_ = #{revisionNext, jdbcType=INTEGER},    
-      CATEGORY_ = #{category, jdbcType=VARCHAR}
+      CATEGORY_ = #{category, jdbcType=VARCHAR},
+    </set>
     where ID_ = #{id, jdbcType=VARCHAR}
       and REV_ = #{revision, jdbcType=INTEGER}
   </update>
@@ -138,11 +137,11 @@
   </select>
   
   <select id="selectAppDefinitionsByQueryCriteria" parameterType="org.flowable.app.engine.impl.repository.AppDefinitionQueryImpl" resultMap="appDefinitionResultMap">
-    <if test="firstResult != null and firstResult &gt;= 0">${limitBefore}</if>
-    select RES.* <if test="nullHandlingColumn != null">, ${nullHandlingColumn}</if> <if test="firstResult != null and firstResult &gt;= 0">${limitBetween}</if>
+    <if test="needsPaging">${limitBefore}</if>
+    SELECT RES.* <if test="needsPaging">${limitBetween}</if>
     <include refid="selectAppDefinitionsByQueryCriteriaSql"/>
     ${orderBy}
-    <if test="firstResult != null and firstResult &gt;= 0">${limitAfter}</if>
+    <if test="needsPaging">${limitAfter}</if>
   </select>
 
   <select id="selectAppDefinitionCountByQueryCriteria" parameterType="org.flowable.app.engine.impl.repository.AppDefinitionQueryImpl" resultType="long">

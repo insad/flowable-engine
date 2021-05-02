@@ -36,12 +36,15 @@ public class CaseInstanceCreateRequest {
 
     protected String caseDefinitionId;
     protected String caseDefinitionKey;
+    protected String name;
     protected String businessKey;
     protected List<RestVariable> variables;
     protected List<RestVariable> transientVariables;
     protected List<RestVariable> startFormVariables;
     protected String outcome;
     protected String tenantId;
+    protected String overrideDefinitionTenantId;
+
     protected boolean returnVariables;
 
     @ApiModelProperty(example = "oneTaskCase:1:158")
@@ -62,6 +65,14 @@ public class CaseInstanceCreateRequest {
         this.caseDefinitionKey = caseDefinitionKey;
     }
 
+    @ApiModelProperty(example = "My case name")
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
     @ApiModelProperty(example = "myBusinessKey")
     public String getBusinessKey() {
         return businessKey;
@@ -71,9 +82,22 @@ public class CaseInstanceCreateRequest {
         this.businessKey = businessKey;
     }
 
+    public void setTenantId(String tenantId) {
+        this.tenantId = tenantId;
+    }
+
     @ApiModelProperty(example = "tenant1")
     public String getTenantId() {
         return tenantId;
+    }
+
+    @ApiModelProperty(example = "overrideTenant1")
+    public String getOverrideDefinitionTenantId() {
+        return overrideDefinitionTenantId;
+    }
+
+    public void setOverrideDefinitionTenantId(String overrideDefinitionTenantId) {
+        this.overrideDefinitionTenantId = overrideDefinitionTenantId;
     }
 
     @JsonTypeInfo(use = Id.CLASS, defaultImpl = RestVariable.class)

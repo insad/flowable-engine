@@ -20,15 +20,25 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.flowable.cmmn.api.delegate.ReadOnlyDelegatePlanItemInstance;
+import org.flowable.cmmn.api.history.HistoricPlanItemInstance;
+import org.flowable.cmmn.api.listener.PlanItemInstanceLifecycleListener;
 import org.flowable.cmmn.engine.CmmnEngineConfiguration;
+import org.flowable.cmmn.engine.impl.delegate.ReadOnlyDelegatePlanItemInstanceImpl;
 import org.flowable.cmmn.engine.impl.repository.CaseDefinitionUtil;
 import org.flowable.cmmn.engine.impl.util.CommandContextUtil;
+import org.flowable.cmmn.engine.impl.util.ExpressionUtil;
 import org.flowable.cmmn.model.Case;
+import org.flowable.cmmn.model.FlowableListener;
 import org.flowable.cmmn.model.PlanFragment;
 import org.flowable.cmmn.model.PlanItem;
+import org.flowable.cmmn.model.RepetitionRule;
 import org.flowable.common.engine.api.scope.ScopeTypes;
+import org.flowable.variable.service.VariableServiceConfiguration;
 import org.flowable.variable.service.impl.persistence.entity.VariableInstanceEntity;
 import org.flowable.variable.service.impl.persistence.entity.VariableScopeImpl;
+
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * @author Joram Barrez
@@ -36,6 +46,7 @@ import org.flowable.variable.service.impl.persistence.entity.VariableScopeImpl;
 public class PlanItemInstanceEntityImpl extends AbstractCmmnEngineVariableScopeEntity implements PlanItemInstanceEntity, CountingPlanItemInstanceEntity {
     
     protected String caseDefinitionId;
+    protected String derivedCaseDefinitionId;
     protected String caseInstanceId;
     protected String stageInstanceId;
     protected boolean isStage;
@@ -46,6 +57,7 @@ public class PlanItemInstanceEntityImpl extends AbstractCmmnEngineVariableScopeE
     protected String state;
     protected Date createTime;
     protected Date lastAvailableTime;
+    protected Date lastUnavailableTime;
     protected Date lastEnabledTime;
     protected Date lastDisabledTime;
     protected Date lastStartedTime;
@@ -58,9 +70,10 @@ public class PlanItemInstanceEntityImpl extends AbstractCmmnEngineVariableScopeE
     protected String startUserId;
     protected String referenceId;
     protected String referenceType;
-    protected boolean completeable;
+    protected boolean completable;
     protected String entryCriterionId;
     protected String exitCriterionId;
+    protected String extraValue;
     protected String tenantId = CmmnEngineConfiguration.NO_TENANT_ID;
     
     // Counts
@@ -73,11 +86,52 @@ public class PlanItemInstanceEntityImpl extends AbstractCmmnEngineVariableScopeE
     protected List<PlanItemInstanceEntity> childPlanItemInstances;
     protected PlanItemInstanceEntity stagePlanItemInstance;
     protected List<SentryPartInstanceEntity> satisfiedSentryPartInstances;
-    
+
+    protected PlanItemInstanceLifecycleListener currentLifecycleListener; // Only set when executing an plan item lifecycle listener
+    protected FlowableListener currentFlowableListener; // Only set when executing an plan item lifecycle listener
+
+    public PlanItemInstanceEntityImpl() {
+    }
+
+    public PlanItemInstanceEntityImpl(HistoricPlanItemInstance historicPlanItemInstance) {
+        setId(historicPlanItemInstance.getId());
+        setName(historicPlanItemInstance.getName());
+        setState(historicPlanItemInstance.getState());
+        setCaseDefinitionId(historicPlanItemInstance.getCaseDefinitionId());
+        setDerivedCaseDefinitionId(historicPlanItemInstance.getDerivedCaseDefinitionId());
+        setCaseInstanceId(historicPlanItemInstance.getCaseInstanceId());
+        setStageInstanceId(historicPlanItemInstance.getStageInstanceId());
+        setStage(historicPlanItemInstance.isStage());
+        setElementId(historicPlanItemInstance.getElementId());
+        setPlanItemDefinitionId(historicPlanItemInstance.getPlanItemDefinitionId());
+        setPlanItemDefinitionType(historicPlanItemInstance.getPlanItemDefinitionType());
+        setCreateTime(historicPlanItemInstance.getCreateTime());
+        setLastAvailableTime(historicPlanItemInstance.getLastAvailableTime());
+        setLastUnavailableTime(historicPlanItemInstance.getLastUnavailableTime());
+        setLastEnabledTime(historicPlanItemInstance.getLastEnabledTime());
+        setLastDisabledTime(historicPlanItemInstance.getLastDisabledTime());
+        setLastStartedTime(historicPlanItemInstance.getLastStartedTime());
+        setLastSuspendedTime(historicPlanItemInstance.getLastSuspendedTime());
+        setCompletedTime(historicPlanItemInstance.getCompletedTime());
+        setOccurredTime(historicPlanItemInstance.getOccurredTime());
+        setTerminatedTime(historicPlanItemInstance.getTerminatedTime());
+        setExitTime(historicPlanItemInstance.getExitTime());
+        setEndedTime(historicPlanItemInstance.getEndedTime());
+        setStartUserId(historicPlanItemInstance.getStartUserId());
+        setReferenceId(historicPlanItemInstance.getReferenceId());
+        setReferenceType(historicPlanItemInstance.getReferenceType());
+        setEntryCriterionId(historicPlanItemInstance.getEntryCriterionId());
+        setExitCriterionId(historicPlanItemInstance.getExitCriterionId());
+        setFormKey(historicPlanItemInstance.getFormKey());
+        setExtraValue(historicPlanItemInstance.getExtraValue());
+        setTenantId(historicPlanItemInstance.getTenantId());
+    }
+
     @Override
     public Object getPersistentState() {
         Map<String, Object> persistentState = new HashMap<>();
         persistentState.put("caseDefinitionId", caseDefinitionId);
+        persistentState.put("derivedCaseDefinitionId", derivedCaseDefinitionId);
         persistentState.put("caseInstanceId", caseInstanceId);
         persistentState.put("stageInstanceId", stageInstanceId);
         persistentState.put("isStage", isStage);
@@ -88,6 +142,7 @@ public class PlanItemInstanceEntityImpl extends AbstractCmmnEngineVariableScopeE
         persistentState.put("state", state);
         persistentState.put("createTime", createTime);
         persistentState.put("lastAvailableTime", lastAvailableTime);
+        persistentState.put("lastUnavailableTime", lastUnavailableTime);
         persistentState.put("lastEnabledTime", lastEnabledTime);
         persistentState.put("lastDisabledTime", lastDisabledTime);
         persistentState.put("lastStartedTime", lastStartedTime);
@@ -100,9 +155,10 @@ public class PlanItemInstanceEntityImpl extends AbstractCmmnEngineVariableScopeE
         persistentState.put("startUserId", startUserId);
         persistentState.put("referenceId", referenceId);
         persistentState.put("referenceType", referenceType);
-        persistentState.put("completeable", completeable);
+        persistentState.put("completeable", completable);
         persistentState.put("entryCriterionId", entryCriterionId);
         persistentState.put("exitCriterionId", exitCriterionId);
+        persistentState.put("extraValue", extraValue);
         persistentState.put("countEnabled", countEnabled);
         persistentState.put("variableCount", variableCount);
         persistentState.put("sentryPartInstanceCount", sentryPartInstanceCount);
@@ -111,9 +167,21 @@ public class PlanItemInstanceEntityImpl extends AbstractCmmnEngineVariableScopeE
     }
     
     @Override
+    public ReadOnlyDelegatePlanItemInstance snapshotReadOnly() {
+        return new ReadOnlyDelegatePlanItemInstanceImpl(this);
+    }
+
+    @Override
     public PlanItem getPlanItem() {
         if (planItem == null) {
-            Case caze = CaseDefinitionUtil.getCase(caseDefinitionId);
+            Case caze;
+
+            // check, if the plan item is a derived one
+            if (derivedCaseDefinitionId != null) {
+                caze = CaseDefinitionUtil.getCase(derivedCaseDefinitionId);
+            } else {
+                caze = CaseDefinitionUtil.getCase(caseDefinitionId);
+            }
             planItem = (PlanItem) caze.getAllCaseElements().get(elementId);
         }
         return planItem;
@@ -126,6 +194,14 @@ public class PlanItemInstanceEntityImpl extends AbstractCmmnEngineVariableScopeE
     @Override
     public void setCaseDefinitionId(String caseDefinitionId) {
         this.caseDefinitionId = caseDefinitionId;
+    }
+    @Override
+    public String getDerivedCaseDefinitionId() {
+        return derivedCaseDefinitionId;
+    }
+    @Override
+    public void setDerivedCaseDefinitionId(String derivedCaseDefinitionId) {
+        this.derivedCaseDefinitionId = derivedCaseDefinitionId;
     }
     @Override
     public String getCaseInstanceId() {
@@ -214,6 +290,14 @@ public class PlanItemInstanceEntityImpl extends AbstractCmmnEngineVariableScopeE
     @Override
     public void setLastAvailableTime(Date lastAvailableTime) {
         this.lastAvailableTime = lastAvailableTime;
+    }
+    @Override
+    public Date getLastUnavailableTime() {
+        return lastUnavailableTime;
+    }
+    @Override
+    public void setLastUnavailableTime(Date lastUnavailableTime) {
+        this.lastUnavailableTime = lastUnavailableTime;
     }
     @Override
     public Date getLastEnabledTime() {
@@ -321,12 +405,12 @@ public class PlanItemInstanceEntityImpl extends AbstractCmmnEngineVariableScopeE
         this.referenceType = referenceType;
     }
     @Override
-    public boolean isCompleteable() {
-        return completeable;
+    public boolean isCompletable() {
+        return completable;
     }
     @Override
-    public void setCompleteable(boolean completeable) {
-        this.completeable = completeable;
+    public void setCompletable(boolean completable) {
+        this.completable = completable;
     }
     @Override
     public String getEntryCriterionId() {
@@ -343,6 +427,22 @@ public class PlanItemInstanceEntityImpl extends AbstractCmmnEngineVariableScopeE
     @Override
     public void setExitCriterionId(String exitCriterionId) {
         this.exitCriterionId = exitCriterionId;
+    }
+    @Override
+    public String getFormKey() {
+        return extraValue;
+    }
+    @Override
+    public void setFormKey(String formKey) {
+        this.extraValue = formKey;
+    }
+    @Override
+    public String getExtraValue() {
+        return extraValue;
+    }
+    @Override
+    public void setExtraValue(String extraValue) {
+        this.extraValue = extraValue;
     }
     @Override
     public String getTenantId() {
@@ -370,6 +470,9 @@ public class PlanItemInstanceEntityImpl extends AbstractCmmnEngineVariableScopeE
 
     @Override
     public List<PlanItemInstanceEntity> getChildPlanItemInstances() {
+        if (childPlanItemInstances == null && id != null) {
+            childPlanItemInstances = CommandContextUtil.getPlanItemInstanceEntityManager().findByStagePlanItemInstanceId(id);
+        }
         return childPlanItemInstances;
     }
     
@@ -402,11 +505,15 @@ public class PlanItemInstanceEntityImpl extends AbstractCmmnEngineVariableScopeE
 
     @Override
     protected Collection<VariableInstanceEntity> loadVariableInstances() {
-        return CommandContextUtil.getVariableService().findVariableInstanceBySubScopeIdAndScopeType(id, ScopeTypes.CMMN);
+        return getVariableServiceConfiguration().getVariableService().findVariableInstanceBySubScopeIdAndScopeType(id, ScopeTypes.CMMN);
     }
 
     @Override
-    protected VariableScopeImpl getParentVariableScope() {
+    public VariableScopeImpl getParentVariableScope() {
+        PlanItemInstanceEntity stagePlanItem = getStagePlanItemInstanceEntity();
+        if (stagePlanItem != null) {
+            return (VariableScopeImpl) stagePlanItem;
+        }
         if (caseInstanceId != null) {
             return (VariableScopeImpl) CommandContextUtil.getCaseInstanceEntityManager().findById(caseInstanceId);
         }
@@ -421,6 +528,27 @@ public class PlanItemInstanceEntityImpl extends AbstractCmmnEngineVariableScopeE
     }
 
     @Override
+    protected boolean storeVariableLocal(String variableName) {
+        if (super.storeVariableLocal(variableName)) {
+            return true;
+        }
+
+        RepetitionRule repetitionRule = ExpressionUtil.getRepetitionRule(this);
+        if (repetitionRule != null && repetitionRule.getAggregations() != null) {
+            // If this is a plan item with a repetition rule and has aggregations then we need to store the variables locally
+            // Checking for the aggregations is for backwards compatibility
+            return true;
+        }
+
+        return false;
+    }
+
+    @Override
+    protected void addLoggingSessionInfo(ObjectNode loggingNode) {
+        // TODO
+    }
+
+    @Override
     protected void createVariableLocal(String variableName, Object value) {
         super.createVariableLocal(variableName, value);
         setVariableCount(variableCount + 1); 
@@ -428,17 +556,32 @@ public class PlanItemInstanceEntityImpl extends AbstractCmmnEngineVariableScopeE
 
     @Override
     protected VariableInstanceEntity getSpecificVariable(String variableName) {
-        return CommandContextUtil.getVariableService().findVariableInstanceBySubScopeIdAndScopeTypeAndName(id, ScopeTypes.CMMN, variableName);
+        return getVariableServiceConfiguration().getVariableService()
+                .createInternalVariableInstanceQuery()
+                .subScopeId(id)
+                .scopeType(ScopeTypes.CMMN)
+                .name(variableName)
+                .singleResult();
     }
 
     @Override
     protected List<VariableInstanceEntity> getSpecificVariables(Collection<String> variableNames) {
-        return CommandContextUtil.getVariableService().findVariableInstancesBySubScopeIdAndScopeTypeAndNames(id, ScopeTypes.CMMN, variableNames);
+        return getVariableServiceConfiguration().getVariableService()
+                .createInternalVariableInstanceQuery()
+                .subScopeId(id)
+                .scopeType(ScopeTypes.CMMN)
+                .names(variableNames)
+                .list();
     }
 
     @Override
     protected boolean isPropagateToHistoricVariable() {
         return true;
+    }
+
+    @Override
+    protected VariableServiceConfiguration getVariableServiceConfiguration() {
+        return CommandContextUtil.getCmmnEngineConfiguration().getVariableServiceConfiguration();
     }
 
     @Override
@@ -470,5 +613,36 @@ public class PlanItemInstanceEntityImpl extends AbstractCmmnEngineVariableScopeE
     public void setSentryPartInstanceCount(int sentryPartInstanceCount) {
         this.sentryPartInstanceCount = sentryPartInstanceCount;
     }
-    
+
+    @Override
+    public FlowableListener getCurrentFlowableListener() {
+        return currentFlowableListener;
+    }
+
+    @Override
+    public PlanItemInstanceLifecycleListener getCurrentLifecycleListener() {
+        return currentLifecycleListener;
+    }
+
+    @Override
+    public void setCurrentLifecycleListener(PlanItemInstanceLifecycleListener lifecycleListener, FlowableListener flowableListener) {
+        this.currentLifecycleListener = lifecycleListener;
+        this.currentFlowableListener = flowableListener;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("PlanItemInstance with id: ")
+            .append(id);
+
+        if (getName() != null) {
+            stringBuilder.append(", name: ").append(name);
+        }
+        stringBuilder.append(", definitionId: ")
+            .append(planItemDefinitionId)
+            .append(", state: ")
+            .append(state);
+        return stringBuilder.toString();
+    }
 }

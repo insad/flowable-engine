@@ -15,9 +15,12 @@ package org.flowable.cmmn.engine.impl.cmd;
 
 import java.io.Serializable;
 
+import org.flowable.cmmn.engine.CmmnEngineConfiguration;
 import org.flowable.cmmn.engine.impl.util.CommandContextUtil;
 import org.flowable.common.engine.impl.interceptor.Command;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.entitylink.api.history.HistoricEntityLinkService;
+import org.flowable.identitylink.service.IdentityLinkServiceConfiguration;
 
 /**
  * @author Tijs Rademakers
@@ -25,15 +28,20 @@ import org.flowable.common.engine.impl.interceptor.CommandContext;
 public class DeleteRelatedDataOfRemovedHistoricCaseInstancesCmd implements Command<Object>, Serializable {
 
     private static final long serialVersionUID = 1L;
-
+    
     @Override
     public Object execute(CommandContext commandContext) {
-        CommandContextUtil.getHistoricMilestoneInstanceEntityManager(commandContext).deleteHistoricMilestoneInstancesForNonExistingCaseInstances();
-        CommandContextUtil.getHistoricIdentityLinkService().deleteHistoricCaseIdentityLinksForNonExistingInstances();
-        CommandContextUtil.getHistoricIdentityLinkService().deleteHistoricTaskIdentityLinksForNonExistingInstances();
-        CommandContextUtil.getHistoricEntityLinkService().deleteHistoricEntityLinksForNonExistingCaseInstances();
-        CommandContextUtil.getHistoricTaskService(commandContext).deleteHistoricTaskLogEntriesForNonExistingCaseInstances();
-        CommandContextUtil.getHistoricVariableService().deleteHistoricVariableInstancesForNonExistingCaseInstances();
+        CmmnEngineConfiguration cmmnEngineConfiguration = CommandContextUtil.getCmmnEngineConfiguration(commandContext);
+        cmmnEngineConfiguration.getHistoricMilestoneInstanceEntityManager().deleteHistoricMilestoneInstancesForNonExistingCaseInstances();
+        IdentityLinkServiceConfiguration identityLinkServiceConfiguration = cmmnEngineConfiguration.getIdentityLinkServiceConfiguration();
+        identityLinkServiceConfiguration.getHistoricIdentityLinkService().deleteHistoricCaseIdentityLinksForNonExistingInstances();
+        identityLinkServiceConfiguration.getHistoricIdentityLinkService().deleteHistoricTaskIdentityLinksForNonExistingInstances();
+        HistoricEntityLinkService historicEntityLinkService = cmmnEngineConfiguration.getEntityLinkServiceConfiguration().getHistoricEntityLinkService();
+        if (historicEntityLinkService != null) {
+            historicEntityLinkService.deleteHistoricEntityLinksForNonExistingCaseInstances();
+        }
+        cmmnEngineConfiguration.getTaskServiceConfiguration().getHistoricTaskService().deleteHistoricTaskLogEntriesForNonExistingCaseInstances();
+        cmmnEngineConfiguration.getVariableServiceConfiguration().getHistoricVariableService().deleteHistoricVariableInstancesForNonExistingCaseInstances();
 
         return null;
     }

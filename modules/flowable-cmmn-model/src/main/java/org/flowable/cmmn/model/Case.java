@@ -22,10 +22,13 @@ public class Case extends CmmnElement implements HasLifecycleListeners {
     protected String name;
     protected String initiatorVariableName;
     protected Stage planModel;
+    protected String startEventType;
     protected List<String> candidateStarterUsers = new ArrayList<>();
     protected List<String> candidateStarterGroups = new ArrayList<>();
     protected Map<String, CaseElement> allCaseElements = new HashMap<>();
     protected List<FlowableListener> lifecycleListeners = new ArrayList<>();
+    /** Having a reactivation case listener marks the case eligible for reactivation once completed. */
+    protected ReactivateEventListener reactivateEventListener;
 
     public String getName() {
         return name;
@@ -51,6 +54,14 @@ public class Case extends CmmnElement implements HasLifecycleListeners {
         this.planModel = planModel;
     }
 
+    public String getStartEventType() {
+        return startEventType;
+    }
+
+    public void setStartEventType(String startEventType) {
+        this.startEventType = startEventType;
+    }
+
     public List<String> getCandidateStarterUsers() {
         return candidateStarterUsers;
     }
@@ -73,6 +84,14 @@ public class Case extends CmmnElement implements HasLifecycleListeners {
 
     public void setAllCaseElements(Map<String, CaseElement> allCaseElements) {
         this.allCaseElements = allCaseElements;
+    }
+
+    public ReactivateEventListener getReactivateEventListener() {
+        return reactivateEventListener;
+    }
+
+    public void setReactivateEventListener(ReactivateEventListener reactivateEventListener) {
+        this.reactivateEventListener = reactivateEventListener;
     }
 
     @Override

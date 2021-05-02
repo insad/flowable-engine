@@ -16,7 +16,7 @@ import java.util.Collection;
 import java.util.Iterator;
 
 import org.apache.commons.lang3.StringUtils;
-import org.flowable.variable.api.delegate.VariableScope;
+import org.flowable.common.engine.api.variable.VariableContainer;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -31,19 +31,19 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
  * - {@link ArrayNode}: supports checking if the arraynode contains a JsonNode for the types that are supported as variable type
  * 
  * When the variable value is null, false is returned in all cases.
- * When the variale value is not null, and the instance type is not one of the cases above, false will be returned.
+ * When the variable value is not null, and the instance type is not one of the cases above, false will be returned.
  * 
  * @author Joram Barrez
  */
 public class VariableContainsExpressionFunction extends AbstractFlowableVariableExpressionFunction {
     
-    public VariableContainsExpressionFunction(String variableScopeName) {
-        super(variableScopeName, "contains");
+    public VariableContainsExpressionFunction() {
+        super("contains");
     }
     
     @SuppressWarnings({ "rawtypes"})
-    public static boolean contains(VariableScope variableScope, String variableName, Object... values) {
-        Object variableValue = getVariableValue(variableScope, variableName);
+    public static boolean contains(VariableContainer variableContainer, String variableName, Object... values) {
+        Object variableValue = getVariableValue(variableContainer, variableName);
         if (variableValue != null) {
             if (variableValue instanceof String) {
                 String variableStringValue = (String) variableValue;

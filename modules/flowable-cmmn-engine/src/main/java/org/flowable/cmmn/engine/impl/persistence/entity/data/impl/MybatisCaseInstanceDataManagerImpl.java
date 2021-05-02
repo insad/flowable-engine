@@ -13,11 +13,12 @@
 package org.flowable.cmmn.engine.impl.persistence.entity.data.impl;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import org.flowable.cmmn.api.history.HistoricCaseInstance;
 import org.flowable.cmmn.api.runtime.CaseInstance;
 import org.flowable.cmmn.engine.CmmnEngineConfiguration;
 import org.flowable.cmmn.engine.impl.persistence.entity.CaseInstanceEntity;
@@ -31,6 +32,7 @@ import org.flowable.cmmn.engine.impl.runtime.CaseInstanceQueryImpl;
 import org.flowable.common.engine.api.FlowableIllegalArgumentException;
 import org.flowable.common.engine.api.FlowableOptimisticLockingException;
 import org.flowable.common.engine.impl.persistence.cache.EntityCache;
+import org.flowable.variable.service.impl.persistence.entity.VariableInstanceEntity;
 
 /**
  * @author Joram Barrez
@@ -55,6 +57,11 @@ public class MybatisCaseInstanceDataManagerImpl extends AbstractCmmnDataManager<
         caseInstanceEntityImpl.setSatisfiedSentryPartInstances(new ArrayList<>(1));
         caseInstanceEntityImpl.internalSetVariableInstances(new HashMap<>(1));
         return caseInstanceEntityImpl;
+    }
+
+    @Override
+    public CaseInstanceEntity create(HistoricCaseInstance historicCaseInstance, Map<String, VariableInstanceEntity> variables) {
+        return new CaseInstanceEntityImpl(historicCaseInstance, variables);
     }
 
     @Override
@@ -113,6 +120,9 @@ public class MybatisCaseInstanceDataManagerImpl extends AbstractCmmnDataManager<
                     // Cache
                     entityCache.put(planItemInstanceEntity, true);
 
+                    // Always add empty list, so no check is needed later and plan items
+                    // without children have a non-null value, not triggering the fetch
+                    currentPlanItemInstanceEntity.setChildPlanItemInstances(new ArrayList<>());
                 }
 
                 // plan items of case plan model
@@ -120,9 +130,6 @@ public class MybatisCaseInstanceDataManagerImpl extends AbstractCmmnDataManager<
                     directPlanItemInstances.add(currentPlanItemInstanceEntity);
                 }
 
-                // Always add empty list, so no check is needed later and plan items
-                // without children have a non-null value, not triggering the fetch
-                currentPlanItemInstanceEntity.setChildPlanItemInstances(new ArrayList<>());
             }
 
             // Add to correct parent
@@ -161,43 +168,13 @@ public class MybatisCaseInstanceDataManagerImpl extends AbstractCmmnDataManager<
     public List<CaseInstance> findByCriteria(CaseInstanceQueryImpl query) {
         // Not going through cache as the case instance should always be loaded with all related plan item instances
         // when not doing a query call
-        return getDbSqlSession().selectListNoCacheCheck("selectCaseInstancesByQueryCriteria", query);
+        return getDbSqlSession().selectListNoCacheLoadAndStore("selectCaseInstancesByQueryCriteria", query, getManagedEntityClass());
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public List<CaseInstance> findWithVariablesByCriteria(CaseInstanceQueryImpl query) {
-        // paging doesn't work for combining case instances and variables due
-        // to an outer join, so doing it in-memory
-
-        CaseInstanceQueryImpl caseInstanceQuery = (CaseInstanceQueryImpl) query;
-        int firstResult = caseInstanceQuery.getFirstResult();
-        int maxResults = caseInstanceQuery.getMaxResults();
-
-        // setting max results, limit to 20000 results for performance reasons
-        if (caseInstanceQuery.getCaseInstanceVariablesLimit() != null) {
-            caseInstanceQuery.setMaxResults(caseInstanceQuery.getCaseInstanceVariablesLimit());
-        } else {
-            caseInstanceQuery.setMaxResults(cmmnEngineConfiguration.getCaseQueryLimit());
-        }
-        caseInstanceQuery.setFirstResult(0);
-
-        List<CaseInstance> instanceList = getDbSqlSession().selectListWithRawParameterNoCacheCheck("selectCaseInstanceWithVariablesByQueryCriteria", caseInstanceQuery);
-
-        if (instanceList != null && !instanceList.isEmpty()) {
-            if (firstResult > 0) {
-                if (firstResult <= instanceList.size()) {
-                    int toIndex = firstResult + Math.min(maxResults, instanceList.size() - firstResult);
-                    return instanceList.subList(firstResult, toIndex);
-                } else {
-                    return Collections.EMPTY_LIST;
-                }
-            } else {
-                int toIndex = maxResults > 0 ? Math.min(maxResults, instanceList.size()) : instanceList.size();
-                return instanceList.subList(0, toIndex);
-            }
-        }
-        return Collections.EMPTY_LIST;
+        return getDbSqlSession().selectListNoCacheLoadAndStore("selectCaseInstanceWithVariablesByQueryCriteria", query, getManagedEntityClass());
     }
 
     @Override
@@ -206,11 +183,12 @@ public class MybatisCaseInstanceDataManagerImpl extends AbstractCmmnDataManager<
     }
 
     @Override
-    public void updateLockTime(String caseInstanceId, Date lockDate, Date expirationTime) {
+    public void updateLockTime(String caseInstanceId, Date lockDate, String lockOwner, Date expirationTime) {
         HashMap<String, Object> params = new HashMap<>();
         params.put("id", caseInstanceId);
         params.put("lockTime", lockDate);
         params.put("expirationTime", expirationTime);
+        params.put("lockOwner", lockOwner);
 
         int result = getDbSqlSession().update("updateCaseInstanceLockTime", params);
         if (result == 0) {
@@ -223,6 +201,13 @@ public class MybatisCaseInstanceDataManagerImpl extends AbstractCmmnDataManager<
         HashMap<String, Object> params = new HashMap<>();
         params.put("id", caseInstanceId);
         getDbSqlSession().update("clearCaseInstanceLockTime", params);
+    }
+
+    @Override
+    public void clearAllLockTimes(String lockOwner) {
+        HashMap<String, Object> params = new HashMap<>();
+        params.put("lockOwner", lockOwner);
+        getDbSqlSession().update("clearAllCaseInstanceLockTimes", params);
     }
 
 }

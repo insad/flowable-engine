@@ -12,43 +12,42 @@
  */
 package org.flowable.editor.language.xml;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.ByteArrayInputStream;
 import java.util.List;
 
-import org.flowable.bpmn.converter.BpmnXMLConverter;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.ExtensionElement;
 import org.flowable.bpmn.model.FlowElement;
-import org.junit.Test;
+import org.flowable.editor.language.xml.util.BpmnXmlConverterTest;
+import org.flowable.editor.language.xml.util.ConversionDirection;
 
 /**
  * @author Joram Barrez
  */
-public class ExtensionsConverterTest extends AbstractConverterTest {
+class ExtensionsConverterTest {
 
-    @Override
-    protected String getResource() {
-        return "extensions.bpmn20.xml";
-    }
-    
-    @Test
-    public void convertXMLToModel() throws Exception {
-        
-        // Check that reconverting doesn't duplicate extension elements
-        BpmnModel bpmnModel = readXMLFile();
+    @BpmnXmlConverterTest("extensions.bpmn20.xml")
+    void validateModel(BpmnModel bpmnModel) {
         FlowElement flowElement = bpmnModel.getMainProcess().getFlowElement("theTask");
         List<ExtensionElement> extensionElements = flowElement.getExtensionElements().get("test");
-        assertEquals(1, extensionElements.size());
-        
-        // Reconvert to xml and back to bpmn model
-        BpmnXMLConverter bpmnXMLConverter = new BpmnXMLConverter();
-        byte[] xmlBytes = bpmnXMLConverter.convertToXML(bpmnModel);
-        bpmnModel = readXMLFile(new ByteArrayInputStream(xmlBytes));
-        
-        extensionElements = bpmnModel.getMainProcess().getFlowElement("theTask").getExtensionElements().get("test");
-        assertEquals(1, extensionElements.size());
+        assertThat(extensionElements).hasSize(1);
     }
 
+    // We are only converting one direction since the XML location changes when we do it both ways
+    @BpmnXmlConverterTest(value = "extensionsXmlLocation.bpmn20.xml", directions = ConversionDirection.xmlToModel)
+    void validateXmlLocations(BpmnModel bpmnModel) {
+        FlowElement flowElement = bpmnModel.getMainProcess().getFlowElement("theTask");
+        List<ExtensionElement> extensionElements = flowElement.getExtensionElements().get("test");
+        assertThat(extensionElements).hasSize(1);
+        ExtensionElement element = extensionElements.get(0);
+        assertThat(element.getXmlRowNumber()).isEqualTo(9);
+        assertThat(element.getXmlColumnNumber()).isEqualTo(43);
+
+        extensionElements = flowElement.getExtensionElements().get("testValue");
+        assertThat(extensionElements).hasSize(1);
+        element = extensionElements.get(0);
+        assertThat(element.getXmlRowNumber()).isEqualTo(10);
+        assertThat(element.getXmlColumnNumber()).isEqualTo(50);
+    }
 }

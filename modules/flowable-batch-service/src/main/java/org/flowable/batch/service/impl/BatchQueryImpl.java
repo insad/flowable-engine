@@ -19,15 +19,20 @@ import java.util.List;
 
 import org.flowable.batch.api.Batch;
 import org.flowable.batch.api.BatchQuery;
-import org.flowable.batch.service.impl.util.CommandContextUtil;
+import org.flowable.batch.service.BatchServiceConfiguration;
+import org.flowable.batch.service.impl.persistence.entity.BatchEntity;
 import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.query.CacheAwareQuery;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.common.engine.impl.interceptor.CommandExecutor;
 import org.flowable.common.engine.impl.query.AbstractQuery;
 
-public class BatchQueryImpl extends AbstractQuery<BatchQuery, Batch> implements BatchQuery, Serializable {
+public class BatchQueryImpl extends AbstractQuery<BatchQuery, Batch> implements BatchQuery, CacheAwareQuery<BatchEntity>, Serializable {
 
     private static final long serialVersionUID = 1L;
+    
+    protected BatchServiceConfiguration batchServiceConfiguration;
+    
     protected String id;
     protected String batchType;
     protected String searchKey;
@@ -44,12 +49,14 @@ public class BatchQueryImpl extends AbstractQuery<BatchQuery, Batch> implements 
     public BatchQueryImpl() {
     }
 
-    public BatchQueryImpl(CommandContext commandContext) {
+    public BatchQueryImpl(CommandContext commandContext, BatchServiceConfiguration batchServiceConfiguration) {
         super(commandContext);
+        this.batchServiceConfiguration = batchServiceConfiguration;
     }
 
-    public BatchQueryImpl(CommandExecutor commandExecutor) {
+    public BatchQueryImpl(CommandExecutor commandExecutor, BatchServiceConfiguration batchServiceConfiguration) {
         super(commandExecutor);
+        this.batchServiceConfiguration = batchServiceConfiguration;
     }
 
     @Override
@@ -178,16 +185,17 @@ public class BatchQueryImpl extends AbstractQuery<BatchQuery, Batch> implements 
 
     @Override
     public long executeCount(CommandContext commandContext) {
-        return CommandContextUtil.getBatchEntityManager(commandContext).findBatchCountByQueryCriteria(this);
+        return batchServiceConfiguration.getBatchEntityManager().findBatchCountByQueryCriteria(this);
     }
 
     @Override
     public List<Batch> executeList(CommandContext commandContext) {
-        return CommandContextUtil.getBatchEntityManager(commandContext).findBatchesByQueryCriteria(this);
+        return batchServiceConfiguration.getBatchEntityManager().findBatchesByQueryCriteria(this);
     }
     
     // getters //////////////////////////////////////////
 
+    @Override
     public String getId() {
         return id;
     }
@@ -210,6 +218,10 @@ public class BatchQueryImpl extends AbstractQuery<BatchQuery, Batch> implements 
 
     public Date getCreateTimeLowerThan() {
         return createTimeLowerThan;
+    }
+
+    public String getStatus() {
+        return status;
     }
 
     public String getTenantId() {

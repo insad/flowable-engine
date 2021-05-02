@@ -63,7 +63,7 @@ public class CaseInstanceUtil {
     }
 
     /**
-     * Similar to {@link #findChildPlanItemInstances(CaseInstanceEntity, List)}, but returns a map {planItemId, List<PlanItemInstances>}
+     * Similar to {@link #findChildPlanItemInstances(CaseInstanceEntity, List)}, but returns a map planItemId, List
      */
     public static Map<String, List<PlanItemInstanceEntity>> findChildPlanItemInstancesMap(CaseInstanceEntity caseInstanceEntity, List<PlanItem> planItems) {
 
@@ -99,8 +99,7 @@ public class CaseInstanceUtil {
         return planItemInstances;
     }
 
-    protected static void internalCollectPlanItemInstances(PlanItemInstanceContainer planItemInstanceContainer,
-        List<PlanItemInstanceEntity> planItemInstances) {
+    protected static void internalCollectPlanItemInstances(PlanItemInstanceContainer planItemInstanceContainer, List<PlanItemInstanceEntity> planItemInstances) {
         List<PlanItemInstanceEntity> childPlanItemInstances = planItemInstanceContainer.getChildPlanItemInstances();
         if (childPlanItemInstances != null && !childPlanItemInstances.isEmpty()) {
             for (PlanItemInstanceEntity childPlanItemInstanceEntity : childPlanItemInstances) {
